@@ -130,6 +130,53 @@ export default function App() {
     }
   };
 
+  // If on landing tab, render the standalone Landing Page layout without internal app header
+  if (activeTab === 'landing') {
+    return (
+      <div className="min-h-screen max-w-full overflow-x-hidden bg-stone-950 font-sans selection:bg-amber-500 selection:text-stone-950">
+        <LandingPage
+          onStartOnboarding={() => setIsOnboardingOpen(true)}
+          onGoogleSignIn={handleGoogleSignIn}
+          onExploreDemo={() => {
+            if (authUser) {
+              setActiveTab('dashboard');
+            } else {
+              handleGoogleSignIn();
+            }
+          }}
+        />
+
+        {/* Placement Test Modal */}
+        {isPlacementTestOpen && (
+          <PlacementTestModal
+            onClose={() => setIsPlacementTestOpen(false)}
+            userProgress={userProgress}
+            setUserProgress={setUserProgress}
+          />
+        )}
+
+        {/* Goal Setup Onboarding Modal */}
+        <OnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+          onGoogleSignIn={handleGoogleSignIn}
+          onCompleteGuest={(goalData) => {
+            setUserProgress(prev => ({
+              ...prev,
+              currentLevel: (goalData.level as any) || prev.currentLevel,
+              dailyGoalMinutes: goalData.dailyMinutes || prev.dailyGoalMinutes
+            }));
+            if (authUser) {
+              setActiveTab('dashboard');
+            } else {
+              handleGoogleSignIn();
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen max-w-full overflow-x-hidden bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col selection:bg-amber-500 selection:text-stone-950 transition-colors duration-200">
       {/* World-Class Header with Duolingo Stats & Firebase Auth */}
@@ -147,14 +194,6 @@ export default function App() {
 
       {/* Main Tab Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {activeTab === 'landing' && (
-          <LandingPage
-            onStartOnboarding={() => setIsOnboardingOpen(true)}
-            onGoogleSignIn={handleGoogleSignIn}
-            onExploreDemo={() => setActiveTab('dashboard')}
-          />
-        )}
-
         {activeTab === 'dashboard' && (
           <ReadingDashboard
             userProgress={userProgress}
