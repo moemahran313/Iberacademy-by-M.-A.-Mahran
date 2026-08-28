@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile & Progress",
+      "description": "User profile with Google account metadata, XP, level, streak, and reading stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "currentLevel": { "type": "string" },
+        "streakDays": { "type": "number" },
+        "xp": { "type": "number" },
+        "lastActiveDate": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "progressData": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile document containing XP, level, and stats for global league ranking."
+    }
+  }
+}

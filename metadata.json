@@ -1,0 +1,7 @@
+{
+  "name": "Iberacademy",
+  "description": "Iberacademy — Elite Spanish language learning platform from A1 to B2 featuring a 1000+ core words spaced repetition vocabulary vault, verb conjugator, grammar encyclopedia, comprehensible input stories, and AI tutor.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
