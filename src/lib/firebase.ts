@@ -75,16 +75,31 @@ export const signInWithGoogle = async (): Promise<User | null> => {
   pendingSignInPromise = (async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      localStorage.removeItem('iberacademy_fallback_user');
       return result.user;
     } catch (error: any) {
       const errorCode = error?.code || '';
-      console.warn('Firebase Sign-In warning/error code:', errorCode, error?.message);
 
-      // If unauthorized domain, popup blocked, cancelled, or any auth limitation on external hosts (e.g. Vercel),
-      // seamlessly transition to an authenticated local user session so the user is never blocked!
-      console.info('Using instant fallback session for smooth access on external host.');
-      return createFallbackUserSession();
+      if (
+        errorCode === 'auth/popup-blocked' ||
+        errorCode === 'auth/cancelled-popup-request'
+      ) {
+        console.warn('Popup blocked, attempting redirect sign-in...', errorCode);
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return null;
+        } catch (redirectError: any) {
+          console.error('Redirect Sign-In Error:', redirectError);
+          throw redirectError;
+        }
+      }
+
+      if (errorCode === 'auth/popup-closed-by-user') {
+        console.info('Sign-in popup closed by user.');
+        return null;
+      }
+
+      console.error('Google Sign-In Error:', error);
+      throw error;
     } finally {
       pendingSignInPromise = null;
     }

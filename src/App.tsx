@@ -19,7 +19,7 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { UserProgress, ImportedContent } from './types';
 import { loadUserProgress, saveUserProgress } from './utils/storage';
 import { User } from 'firebase/auth';
-import { auth, signInWithGoogle, logoutUser, syncUserDataToFirestore, loadUserDataFromFirestore, getRedirectResult, getStoredFallbackUser, createFallbackUserSession } from './lib/firebase';
+import { auth, signInWithGoogle, logoutUser, syncUserDataToFirestore, loadUserDataFromFirestore, getRedirectResult } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
@@ -27,8 +27,8 @@ export default function App() {
   const [userProgress, setUserProgress] = useState<UserProgress>(loadUserProgress());
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState<boolean>(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
-  const [authUser, setAuthUser] = useState<User | null>(getStoredFallbackUser());
-  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(!getStoredFallbackUser());
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [dailyGoalToast, setDailyGoalToast] = useState<{
     show: boolean;
     streak: number;
@@ -61,9 +61,10 @@ export default function App() {
     });
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setAuthUser(user);
+      setIsAuthLoading(false);
+
       if (user) {
-        setAuthUser(user);
-        setIsAuthLoading(false);
         // Load cloud progress from Firestore if available
         const cloudProgress = await loadUserDataFromFirestore(user);
         if (cloudProgress) {
@@ -75,16 +76,7 @@ export default function App() {
         // Redirect directly to main platform app dashboard on sign-in
         setActiveTab('dashboard');
       } else {
-        const fallback = getStoredFallbackUser();
-        if (fallback) {
-          setAuthUser(fallback);
-          setIsAuthLoading(false);
-          setActiveTab('dashboard');
-        } else {
-          setAuthUser(null);
-          setIsAuthLoading(false);
-          setActiveTab('landing');
-        }
+        setActiveTab('landing');
       }
     });
 
@@ -118,17 +110,13 @@ export default function App() {
   const handleGoogleSignIn = async () => {
     try {
       setIsAuthLoading(true);
-      let user = await signInWithGoogle();
-      if (!user) {
-        user = createFallbackUserSession();
+      const user = await signInWithGoogle();
+      if (user) {
+        setAuthUser(user);
+        setActiveTab('dashboard');
       }
-      setAuthUser(user);
-      setActiveTab('dashboard');
     } catch (err) {
-      console.warn('Sign in handled:', err);
-      const fallback = createFallbackUserSession();
-      setAuthUser(fallback);
-      setActiveTab('dashboard');
+      console.error('Google Sign-In error:', err);
     } finally {
       setIsAuthLoading(false);
     }
