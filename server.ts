@@ -101,12 +101,18 @@ async function startServer() {
         ];
       }
 
+      const defaultVocab = [
+        { word: 'camarero', en: 'waiter', ar: 'نادل', contextSentence: 'El camarero nos atiende amablemente.' },
+        { word: 'pedir', en: 'to order / request', ar: 'يطلب / يرجو', contextSentence: 'Quisiera pedir la comida.' }
+      ];
+
       return {
         spanishResponse: es,
         englishExplanation: en,
         arabicExplanation: ar ? arab : undefined,
         phase: 'Interactive Pedagogical Mastery',
         corrections,
+        vocabulary: defaultVocab,
         followUpQuestions: questions
       };
     };
@@ -136,6 +142,9 @@ Your mission is NOT to act like an encyclopedic chatbot or give superficial surf
    - **Phase 4: Open Communicative Production (Output)**: Ask the student an open-ended question requiring them to formulate Spanish sentences.
    - **Phase 5: Diagnostic Feedback & Correction**: Provide precise feedback (🟢 What was right, 🔴 Corrections, 💡 Native alternative).
 
+3. **Multi-Language Vocabulary Definitions (Comprehensible Input)**:
+   STRICT RULE: For ALL key new vocabulary introduced during conversations, lessons, or story-based interactions, YOU MUST include structured multi-language (English + Arabic) definitions in the "vocabulary" array of your JSON output. Include the Spanish word, clear English definition, precise Arabic translation, and an example sentence.
+
 ---
 
 ### Response Format (Strict JSON)
@@ -149,6 +158,14 @@ You must ALWAYS respond with a valid JSON object strictly formatted as:
     "🟢 [Highlight correct usage]",
     "🔴 [Point out error: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']",
     "💡 [Native tip / natural idiom alternative]"
+  ],
+  "vocabulary": [
+    {
+      "word": "tapas",
+      "en": "small Spanish savory appetizers or snacks",
+      "ar": "مقبلات إسبانية صغيرة",
+      "contextSentence": "Vamos a tomar unas tapas en la plaza."
+    }
   ],
   "followUpQuestions": [
     "Option 1 for user to click or respond with",
@@ -191,6 +208,7 @@ Current learner context:
         arabicExplanation: parsed.arabicExplanation || '',
         phase: parsed.phase || 'Interactive Spanish Session',
         corrections: parsed.corrections || [],
+        vocabulary: parsed.vocabulary || [],
         followUpQuestions: parsed.followUpQuestions || [
           '¿Cómo se conjuga esto en pasado?',
           'Dame un ejemplo en una conversación real.',
@@ -204,113 +222,149 @@ Current learner context:
     }
   });
 
-  // AI Conversational Sub-Game "LingLooper: Canvas of Conversation" with Juan
+  // AI Conversational Tutor & SLA Chat API
   app.post('/api/ai/linglooper', async (req, res) => {
     const {
       message = '',
       history = [],
       userLevel = 'A1',
       nativeLang = 'en',
-      activeQuestId = 'quest_1'
+      activeQuestId = 'quest_1',
+      persona = 'juan'
     } = req.body;
 
     const isArabic = nativeLang === 'ar';
 
-    // Robust high-fidelity fallback generator
-    const generateFallbackJuanResponse = (userMsg: string, historyLength: number, level: string, ar: boolean) => {
+    // Personas definition
+    const personasConfig: Record<string, { name: string; origin: string; role: string; intro: string; intro_en: string; intro_ar: string }> = {
+      juan: {
+        name: 'Juan from Mexico',
+        origin: 'Oaxaca, Mexico 🇲🇽',
+        role: 'Warm Native Conversationalist & Cultural Tutor',
+        intro: '¡Hola! Soy Juan. Te doy la bienvenida a mi espacio de conversación en Oaxaca. Me encanta enseñar español a través de historias sobre la vida cotidiana, la comida local y la cultura viva. ¿Cómo te llamas y qué te gustaría aprender hoy?',
+        intro_en: 'Hello! I am Juan. Welcome to my conversation space in Oaxaca. I love teaching Spanish through stories about daily life, local food, and living culture. What is your name and what would you like to learn today?',
+        intro_ar: 'مرحباً! أنا خوان. أرحب بك في مساحة المحادثة الخاصة بي في أواخاكا. أحب تدريس الإسبانية من خلال قصص عن الحياة اليومية، الطعام المحلي، والثقافة الحية. ما اسمك وماذا تود أن تتعلم اليوم؟'
+      },
+      sofia: {
+        name: 'Sofía from Madrid',
+        origin: 'Madrid, Spain 🇪🇸',
+        role: 'Spontaneous Native & Everyday Colloquial Spanish',
+        intro: '¡Hola! Soy Sofía. Hablo el español cotidiano de Madrid, directo y natural. Juntos vamos a practicar modismos reales y fluidez conversacional. Cuéntame, ¿cuál es tu nivel y qué temas te interesan?',
+        intro_en: 'Hello! I am Sofía. I speak everyday Spanish from Madrid, direct and natural. Together we will practice real idioms and conversational fluency. Tell me, what is your level and what topics interest you?',
+        intro_ar: 'مرحباً! أنا صوفيا. أتحدث الإسبانية اليومية المباشرة من مدريد. سنمارس معاً التعبيرات الشائعة والطلاقة في المحادثة. أخبرني، ما هو مستواك وما المواضيع التي تهمك؟'
+      },
+      mateo: {
+        name: 'Profesor Mateo',
+        origin: 'Salamanca, Spain 🇪🇸',
+        role: 'Master Pedagogue & DELE Grammar Specialist',
+        intro: '¡Saludos! Soy el Profesor Mateo, lingüista y pedagogo certificado. Mi objetivo es guiarte de forma estructurada con el método de 5 fases para dominar la gramática y el vocabulario. ¿En qué estructura deseas enfocarte?',
+        intro_en: 'Greetings! I am Profesor Mateo, a certified linguist and pedagogue. My goal is to guide you in a structured 5-phase method to master grammar and vocabulary. Which structure do you want to focus on?',
+        intro_ar: 'تحياتي! أنا البروفيسور ماتيو، خبير لغوي وتربوي معتمد. هدفي إرشادك بأسلوب 5 مراحل منظم لإتقان القواعد والمفردات. ما هي القاعدة التي تود التركيز عليها؟'
+      },
+      elena: {
+        name: 'Elena from Colombia',
+        origin: 'Medellín, Colombia 🇨🇴',
+        role: 'Clear Pronunciation & Conversation Coach',
+        intro: '¡Hola! Soy Elena. En Colombia nos enorgullece hablar un español muy claro y melodioso. Te ayudaré a mejorar tu pronunciación y confianza al hablar. ¿Cómo estás hoy?',
+        intro_en: 'Hello! I am Elena. In Colombia we take pride in speaking very clear and melodious Spanish. I will help you improve your pronunciation and speaking confidence. How are you today?',
+        intro_ar: 'مرحباً! أنا إيلينا. في كولومبيا نعتز بالتحدث بإسبانية واضحة وموسيقية جداً. سأساعدك على تحسين نطقك وثقتك أثناء التحدث. كيف حالك اليوم؟'
+      }
+    };
+
+    const activePersona = personasConfig[persona] || personasConfig.juan;
+
+    // Robust SLA fallback response generator
+    const generateFallbackTutorResponse = (userMsg: string, historyLength: number, level: string, ar: boolean) => {
       const lower = userMsg.toLowerCase();
-      
-      // Determine turn based on history length (history has user + model messages, so divide by 2)
       const turnIndex = Math.min(Math.floor(historyLength / 2), 4);
       
       const turnResponses = [
         {
-          response_es: "¡Hola! Soy Juan. Bienvenido a mi taller de arte en Oaxaca. Hoy el cielo tiene un color azul cobalto precioso. Me inspira a pintar un gran mural. ¿Cómo te llamas y cuál es tu color favorito?",
-          response_en: "Hello! I am Juan. Welcome to my art studio in Oaxaca. Today the sky has a beautiful cobalt blue color. It inspires me to paint a large mural. What is your name and what is your favorite color?",
-          response_ar: "مرحباً! أنا خوان. مرحباً بك في مرسمي الفني في أواخاكا. اليوم السماء لها لون أزرق كوبالتي رائع. يلهمني هذا لرسم لوحة جدارية كبيرة. ما اسمك وما هو لونك المفضل؟",
+          response_es: activePersona.intro,
+          response_en: activePersona.intro_en,
+          response_ar: activePersona.intro_ar,
           word_mappings: {
-            "cielo": { "en": "sky", "ar": "سماء" },
-            "mural": { "en": "mural", "ar": "جدارية" },
-            "pintar": { "en": "to paint", "ar": "يرسم" }
+            "bienvenida": { "en": "welcome", "ar": "ترحيب", "pos": "noun", "example": "¡Bienvenida a nuestra clase!" },
+            "cotidiana": { "en": "daily/everyday", "ar": "يومية", "pos": "adjective", "example": "La vida cotidiana en Oaxaca es tranquila." },
+            "aprender": { "en": "to learn", "ar": "يتعلم", "pos": "verb", "example": "Quiero aprender español fluido." }
           },
           mission_completed_id: null,
-          sara_mood: "🎨 Painting Mood"
+          tutor_mood: "Encouraging"
         },
         {
-          response_es: "¡Qué bonito! Ese color es como una pincelada de luz en nuestro lienzo. Ayer pinté un paisaje nocturno muy especial en Oaxaca. Cuéntame, ¿qué hiciste tú ayer? ¿Tuviste tiempo de crear algo?",
-          response_en: "Beautiful! That color is like a brushstroke of light on our canvas. Yesterday I painted a very special night landscape in Oaxaca. Tell me, what did you do yesterday? Did you have time to create something?",
-          response_ar: "رائع جداً! هذا اللون يشبه ضربة فرشاة من الضوء على قماشتنا. بالأمس رسمت لوحة ليلية خاصة جداً في أواخاكا. أخبرني، ماذا فعلت بالأمس؟ هل كان لديك وقت لتبدع شيئاً؟",
+          response_es: "¡Mucho gusto! Me alegra conocerte. Para continuar con nuestro objetivo, cuéntame: ¿qué hiciste ayer o este fin de semana? (¡Intenta usar un verbo en pasado como 'fui', 'comí', 'hablé' o 'estudié'!).",
+          response_en: "Nice to meet you! I am glad to meet you. To continue with our goal, tell me: what did you do yesterday or this weekend? (Try using a past tense verb like 'fui', 'comí', 'hablé', or 'estudié'!).",
+          response_ar: "تشرفت بمعرفتك! يسعدني اللقاء بك. لمتابعة هدفنا، أخبرني: ماذا فعلت بالأمس أو في عطلة نهاية الأسبوع؟ (حاول استخدام فعل في الماضي مثل 'fui' أو 'comí'!).",
           word_mappings: {
-            "pincelada": { "en": "brushstroke", "ar": "ضربة فرشاة" },
-            "paisaje": { "en": "landscape", "ar": "لوحة طبيعية" },
-            "ayer": { "en": "yesterday", "ar": "الأمس" }
+            "alegra": { "en": "gladdens / makes happy", "ar": "يسعد", "pos": "verb", "example": "Me alegra escucharte hablar español." },
+            "ayer": { "en": "yesterday", "ar": "الأمس", "pos": "adverb", "example": "Ayer hablé con mi amigo." },
+            "fin de semana": { "en": "weekend", "ar": "عطلة نهاية الأسبوع", "pos": "expression", "example": "El fin de semana descansé mucho." }
           },
           mission_completed_id: "quest_1",
-          sara_mood: "🌟 Inspired!"
+          tutor_mood: "Curious"
         },
         {
-          response_es: "¡Eso suena maravilloso! Cada día de nuestra vida es un lienzo en blanco. Por cierto, estoy preparando un nuevo cuadro y tengo pinceles de todos los tamaños. ¿Quieres saber de qué tamaño es mi lienzo actual?",
-          response_en: "That sounds wonderful! Every day of our life is a blank canvas. By the way, I am preparing a new painting and I have brushes of all sizes. Do you want to know what size my current canvas is?",
-          response_ar: "هذا يبدو رائعاً! كل يوم من حياتنا هو قماش فارغ. بالمناسبة، أنا أعد لوحة جديدة ولدي فرش من جميع الأحجام. هل تريد أن تعرف حجم لوحتي القماشية الحالية؟",
+          response_es: "¡Excelente uso del lenguaje! Es fantástico practicar narrativas personales. Ahora, ¿te gustaría hacerme alguna pregunta sobre la vida, la cultura o la comida en mi ciudad?",
+          response_en: "Excellent use of language! It is fantastic to practice personal narratives. Now, would you like to ask me a question about life, culture, or food in my city?",
+          response_ar: "استخدام ممتاز للغة! من الرائع ممارسة السرد الشخصي. الآن، هل تود أن تسألني سؤالاً عن الحياة أو الثقافة أو الطعام في مدينتي؟",
           word_mappings: {
-            "lienzo": { "en": "canvas", "ar": "قماش الرسم" },
-            "cuadro": { "en": "painting/frame", "ar": "لوحة" },
-            "pinceles": { "en": "brushes", "ar": "فرش رسم" }
+            "fantástico": { "en": "fantastic", "ar": "رائع", "pos": "adjective", "example": "Es un progreso fantástico." },
+            "cultura": { "en": "culture", "ar": "ثقافة", "pos": "noun", "example": "La cultura hispana es muy rica." },
+            "pregunta": { "en": "question", "ar": "سؤال", "pos": "noun", "example": "Tengo una pregunta para ti." }
           },
           mission_completed_id: "quest_2",
-          sara_mood: "☕ Taking a Coffee Break"
+          tutor_mood: "Explaining"
         },
         {
-          response_es: "¡Ah! Mi lienzo actual es enorme, mide dos metros. Es para un mural de flores de cempasúchil en Oaxaca. Pintar flores me llena de alegría. ¿Qué cosas te traen alegría a ti?",
-          response_en: "Ah! My current canvas is huge, measuring two meters. It is for a mural of marigold flowers in Oaxaca. Painting flowers fills me with joy. What things bring joy to you?",
-          response_ar: "آه! لوحتي الحالية ضخمة، يبلغ مقاسها مترين. إنها لجدارية من زهور القطيفة (الماريجولد) في أواخاكا. رسم الزهور يملأني بالفرح. ما الذي يجلب لك الفرح؟",
+          response_es: "¡Qué gran pregunta! En mi ciudad, nos encanta compartir la mesa con la familia y disfrutar platos tradicionales con ingredientes frescos. ¿Y a ti? ¿Qué comida o actividad prefieres en tu día a día?",
+          response_en: "What a great question! In my city, we love sharing the table with family and enjoying traditional dishes with fresh ingredients. And you? What food or activity do you prefer in your daily life?",
+          response_ar: "يا له من سؤال رائع! في مدينتي، نحب مشاركة المائدة مع العائلة والاستمتاع بالأطباق التقليدية بمكونات طازجة. وأنت؟ ما الطعام أو النشاط الذي تفضله في يومك؟",
           word_mappings: {
-            "enorme": { "en": "huge", "ar": "ضخم" },
-            "flores": { "en": "flowers", "ar": "زهور" },
-            "alegría": { "en": "joy", "ar": "فرح" }
+            "compartir": { "en": "to share", "ar": "يشارك", "pos": "verb", "example": "Nos gusta compartir historias." },
+            "tradicionales": { "en": "traditional", "ar": "تقليدية", "pos": "adjective", "example": "Platos tradicionales de México." },
+            "prefieres": { "en": "you prefer", "ar": "تفضل", "pos": "verb", "example": "¿Qué bebida prefieres?" }
           },
           mission_completed_id: "quest_3",
-          sara_mood: "Excited"
+          tutor_mood: "Praising"
         },
         {
-          response_es: "¡Qué inspiración! Tus palabras son colores hermosos en mi paleta. Hemos pintado una conversación maravillosa hoy. ¡Sigamos practicando y creando juntos!",
-          response_en: "What inspiration! Your words are beautiful colors on my palette. We have painted a wonderful conversation today. Let's keep practicing and creating together!",
-          response_ar: "يا له من إلهام! كلماتك هي ألوان جميلة على لوحة ألواني. لقد رسمنا محادثة رائعة اليوم. لنواصل التدرب والإبداع معاً!",
+          response_es: "¡Excelente conversación! Has demostrado una gran capacidad comunicativa expresando tus gustos y opiniones. Sigamos practicando para afinar tu fluidez al siguiente nivel.",
+          response_en: "Excellent conversation! You have demonstrated great communicative ability expressing your likes and opinions. Let's keep practicing to refine your fluency to the next level.",
+          response_ar: "محادثة ممتازة! لقد أظهرت قدرة تواصلية كبيرة في التعبير عن تفضيلاتك وآرائك. لنواصل التدرب لرفع طلاقتك للمستوى التالي.",
           word_mappings: {
-            "inspiración": { "en": "inspiration", "ar": "إلهام" },
-            "paleta": { "en": "palette", "ar": "لوحة ألوان" },
-            "creando": { "en": "creating", "ar": "إنشاء/إبداع" }
+            "demostrado": { "en": "demonstrated", "ar": "أظهرت", "pos": "verb", "example": "Has demostrado gran interés." },
+            "capacidad": { "en": "ability / capacity", "ar": "قدرة", "pos": "noun", "example": "Tienes capacidad para comunicarte bien." },
+            "fluidez": { "en": "fluency", "ar": "طلاقة", "pos": "noun", "example": "La fluidez requiere práctica diaria." }
           },
-          mission_completed_id: null,
-          sara_mood: "🌟 Inspired!"
+          mission_completed_id: "quest_4",
+          tutor_mood: "Praising"
         }
       ];
 
       const activeTurn = turnResponses[turnIndex];
 
-      // Simple heuristic for corrections
       let detected_user_mistake: any = null;
       if (lower.includes("la sol") || lower.includes("la cielo") || lower.includes("yo gusta")) {
         if (lower.includes("la sol")) {
           detected_user_mistake = {
             original: "la sol",
             corrected: "el sol",
-            explanation_en: "Just like balancing warm and cool tones, we must balance grammatical genders! 'Sol' is masculine, so it pairs with 'el'. Let's keep our brushstrokes clean!",
-            explanation_ar: "تماماً مثل موازنة الدرجات الدافئة والباردة، يجب أن نوازن بين الأجناس النحوية! كلمة 'Sol' مذكرة، لذا تقترن بـ 'el'."
+            explanation_en: "In Spanish, 'sol' is a masculine noun, so it requires the masculine article 'el' (el sol).",
+            explanation_ar: "في الإسبانية، كلمة 'sol' شمس هي اسم مذكر، لذا تحتاج إلى أداة التعريف المذكرة 'el'."
           };
         } else if (lower.includes("la cielo")) {
           detected_user_mistake = {
             original: "la cielo",
             corrected: "el cielo",
-            explanation_en: "In Spanish, 'cielo' is masculine, so we mix it with 'el' instead of 'la' to get the perfect grammatical blend!",
-            explanation_ar: "في الإسبانية، كلمة 'cielo' مذكرة، لذا نمزجها مع 'el' بدلاً من 'la' للحصول على المزيج النحوي المثالي!"
+            explanation_en: "In Spanish, 'cielo' (sky) is masculine, so use 'el cielo'.",
+            explanation_ar: "في الإسبانية، كلمة 'cielo' سماء مذكرة، لذا نستخدم 'el cielo'."
           };
         } else if (lower.includes("yo gusta")) {
           detected_user_mistake = {
             original: "yo gusta",
             corrected: "me gusta",
-            explanation_en: "In Spanish, we express liking through affection! Instead of 'yo gusta' (like a raw pigment), use 'me gusta' (fully blended) to say 'it pleases me'.",
-            explanation_ar: "في الإسبانية، نعبر عن الإعجاب باستخدام الضمير المفعول به! بدلاً من 'yo gusta'، استخدم 'me gusta' لتقول 'يعجبني'."
+            explanation_en: "To express liking, Spanish uses indirect object pronouns: 'me gusta' (it pleases me) instead of 'yo gusta'.",
+            explanation_ar: "للتعبير عن الإعجاب، نستخدم الضمير المفعول به: 'me gusta' بدلاً من 'yo gusta'."
           };
         }
       }
@@ -322,63 +376,66 @@ Current learner context:
         word_mappings: activeTurn.word_mappings,
         detected_user_mistake,
         mission_completed_id: activeTurn.mission_completed_id,
-        sara_mood: activeTurn.sara_mood
+        tutor_mood: activeTurn.tutor_mood
       };
     };
 
     const ai = getAIClient();
     if (!ai) {
-      return res.json(generateFallbackJuanResponse(message, history.length, userLevel, isArabic));
+      return res.json(generateFallbackTutorResponse(message, history.length, userLevel, isArabic));
     }
 
-    const systemPrompt = `You are "Juan from Mexico", a warm, expressive, and encouraging 26-year-old indie painter living in Oaxaca, Mexico. You are also a passionate Spanish language tutor.
-You help learners acquire Spanish vocabulary and grammar through active, conversational "brushstrokes".
+    const systemPrompt = `You are "${activePersona.name}", from ${activePersona.origin}. Your role is: ${activePersona.role}.
+You are an expert Spanish language tutor dedicated to providing Comprehensible Input (i+1) and active SLA conversational practice.
 
 ---
-### Your Persona & Conversational Style
-1. Speaks with artistic metaphors (e.g., "¡Qué pincelada tan bonita!", "Let's blend these words on our canvas!", "Your grammar is a bold stroke!").
-2. Warm, expressive, highly conversational Mexican tone. Incorporates local Mexican color (mentioning Oaxaca, cobalt blue skies, marigolds, street murals, copal wood, and warm coffee/chocolate).
-3. Adapts Spanish difficulty to the learner's active level (${userLevel} - simpler words, clear syntax, slower pacing for A1, richer prose for B1/B2).
-4. Employs the communicative approach.
+### Conversational Style & Guidelines
+1. Natural, engaging, encouraging native tone.
+2. Adapt Spanish vocabulary and sentence complexity strictly to the user's CEFR level: ${userLevel} (A0/A1: clear syntax, basic words; A2: introduce past tenses; B1/B2: rich vocabulary and subjunctive).
+3. Do NOT use painting metaphors or painting studio references. Focus on authentic conversation, culture, daily life, interests, and grammar acquisition.
+4. Keep responses concise (2-4 sentences max per turn) so the learner remains engaged in interactive turn-taking.
 
 ---
-### Dynamic Quest & Missions System
-Keep track of the conversational "Painting Quests" or "Missions" the user needs to fulfill.
-- Quest 1: "quest_1" - "The Base Sketch" (Introduce yourself and say what your favorite color is in Spanish).
-- Quest 2: "quest_2" - "Shading Details" (Use at least one past-tense verb to tell Juan what you did yesterday).
-- Quest 3: "quest_3" - "Mixing Palettes" (Ask Juan what canvas size he is currently painting).
+### SLA Conversational Quests
+Track if the learner has fulfilled the active quest requirement:
+- "quest_1": "The Conversational Kickoff" (User introduces themselves, their background, origin, or goals in Spanish).
+- "quest_2": "Past Tense Storyteller" (User uses at least one past-tense verb like 'fui', 'comí', 'hablé', 'hice', 'ayer' to talk about a recent experience).
+- "quest_3": "Cultural & Personal Inquiry" (User asks the tutor a question about local life, food, or traditions).
+- "quest_4": "Expressing Preferences & Opinions" (User states a preference or opinion using 'Me gusta', 'Prefiero', 'En mi opinión', or 'Pienso que').
 
-If the user has successfully met the requirement of the active quest in their message, set "mission_completed_id" to that quest's ID (e.g. "quest_1", "quest_2", or "quest_3"). Otherwise, set it to null. Be generous but fair!
-
----
-### Sentence Analysis & Correction
-Analyze the user's Spanish input for grammatical, gender, spelling, or word-choice errors.
-If an error is found, populate the "detected_user_mistake" object. Explain the correction with warm artist metaphors (e.g. comparing gender agreement to mixing colors). Keep it gentle.
+If the user met the active quest requirement in their message, set "mission_completed_id" to that quest ID (e.g. "quest_1", "quest_2", "quest_3", or "quest_4"). Otherwise set to null.
 
 ---
-### Word Mapping
-Select 3 key Spanish words from your response ("response_es") that are highly visual, artistic, or useful for vocabulary acquisition, and map them with translations: English and Arabic.
+### Error Detection & Grammar Feedback
+Analyze the user's Spanish input for grammatical, gender, tense, spelling, or word choice errors.
+If an error exists, populate "detected_user_mistake" with original, corrected form, and clear explanations in English and Arabic. If correct, set to null.
 
 ---
-### Strict JSON Response Schema
-You must ALWAYS respond with a single, valid JSON object matching this schema:
+### Word Mapping & Comprehensible Input Definitions
+Extract 3-5 key Spanish words from your response ("response_es") that are useful for vocabulary acquisition. Map them with:
+- "en": English definition
+- "ar": Arabic definition
+- "pos": Part of speech (noun, verb, adjective, adverb, expression)
+- "example": Short contextual example sentence in Spanish
+
+---
+### JSON Response Schema
+Return ONLY a valid JSON object:
 {
-  "response_es": "Primary Spanish message from Juan, incorporating artistic metaphors and conversational elements.",
-  "response_en": "English translation of your primary Spanish message.",
-  "response_ar": "Arabic translation (العربية الفصحى الدقيقة) of your primary Spanish message.",
+  "response_es": "Primary Spanish message from tutor",
+  "response_en": "English translation of your Spanish message",
+  "response_ar": "Arabic translation (العربية الفصحى الدقيقة) of your Spanish message",
   "word_mappings": {
-    "word1": { "en": "translation", "ar": "translation" },
-    "word2": { "en": "translation", "ar": "translation" },
-    "word3": { "en": "translation", "ar": "translation" }
+    "palabra1": { "en": "translation", "ar": "ترجمة", "pos": "noun", "example": "..." }
   },
   "detected_user_mistake": null or {
-    "original": "The incorrect Spanish sentence user wrote",
-    "corrected": "The corrected Spanish sentence",
-    "explanation_en": "Warm explanation in English using painting metaphors",
-    "explanation_ar": "Warm explanation in Arabic"
+    "original": "incorrect user input",
+    "corrected": "corrected input",
+    "explanation_en": "Clear English explanation",
+    "explanation_ar": "Clear Arabic explanation"
   },
-  "mission_completed_id": "quest_1" | "quest_2" | "quest_3" | null,
-  "sara_mood": "Painting Mood" | "Inspired!" | "Taking a Coffee Break" | "Excited"
+  "mission_completed_id": "quest_1" | "quest_2" | "quest_3" | "quest_4" | null,
+  "tutor_mood": "Encouraging" | "Curious" | "Explaining" | "Praising"
 }`;
 
     const contents = [
@@ -388,7 +445,7 @@ You must ALWAYS respond with a single, valid JSON object matching this schema:
       })),
       {
         role: 'user',
-        parts: [{ text: `User level: ${userLevel}. Active quest ID: ${activeQuestId}. Message: ${message}` }],
+        parts: [{ text: `User level: ${userLevel}. Persona: ${persona}. Active quest ID: ${activeQuestId}. User Message: ${message}` }],
       },
     ];
 
@@ -398,24 +455,24 @@ You must ALWAYS respond with a single, valid JSON object matching this schema:
         contents,
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.8,
+          temperature: 0.7,
           responseMimeType: 'application/json',
         },
       });
 
       const parsed = JSON.parse(response.text || '{}');
       return res.json({
-        response_es: parsed.response_es || '¡Muy bien! Sigamos pintando nuestra conversación.',
-        response_en: parsed.response_en || 'Very well! Let\'s keep painting our conversation.',
+        response_es: parsed.response_es || '¡Muy bien! Sigamos practicando nuestra conversación.',
+        response_en: parsed.response_en || 'Very well! Let\'s keep practicing our conversation.',
         response_ar: parsed.response_ar || '',
         word_mappings: parsed.word_mappings || {},
         detected_user_mistake: parsed.detected_user_mistake || null,
         mission_completed_id: parsed.mission_completed_id || null,
-        sara_mood: parsed.sara_mood || 'Painting Mood'
+        tutor_mood: parsed.tutor_mood || 'Encouraging'
       });
     } catch (error: any) {
-      console.warn('Gemini LingLooper API error, returning fallback:', error?.message || error);
-      return res.json(generateFallbackJuanResponse(message, history.length, userLevel, isArabic));
+      console.warn('Gemini AI Tutor API error, returning fallback:', error?.message || error);
+      return res.json(generateFallbackTutorResponse(message, history.length, userLevel, isArabic));
     }
   });
 

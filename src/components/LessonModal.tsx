@@ -87,37 +87,85 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     return getLessonVocabulary(lesson, ALL_VOCABULARY);
   }, [lesson]);
 
-  // Generate comprehensive 15-exercise set of context-rich Cloze Deletion fill-in-the-blank exercises
+  // Generate comprehensive 15-exercise set engaging ALL cognitive skills (Listening, Reading, Writing, Situational Reasoning)
   const allLessonExercises: Exercise[] = useMemo(() => {
-    const clozeExercises: Exercise[] = [];
+    const multiSkillExercises: Exercise[] = [];
 
-    // For each vocabulary item in this lesson, generate 3 context-rich cloze deletion sentence variations
+    // For each vocabulary item in this lesson, generate multi-skill contextual exercises
     lessonVocabulary.forEach((vocab, vocabIdx) => {
       const variations = generate3ContextClozeExercises(vocab, lessonVocabulary);
 
       variations.forEach((varItem, varIdx) => {
-        clozeExercises.push({
-          id: `cloze-ex-${lesson.id}-${vocabIdx}-${varIdx}`,
-          type: 'fill_blank',
-          prompt_es: `${varItem.clozeSentence}`,
-          prompt_en: `Fill in the missing word: "${varItem.sentence_en}"`,
-          prompt_ar: `أكمل الكلمة الناقصة: "${varItem.sentence_ar}"`,
-          options: varItem.options,
-          correctAnswer: varItem.targetWordForm || varItem.targetWord,
-          explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
-          explanation_ar: varItem.explanation_ar,
-          audioText: varItem.sentence_es
-        });
+        // Cycle through 4 distinct cognitive skill modalities
+        const skillModality = (vocabIdx + varIdx) % 4;
+
+        if (skillModality === 0) {
+          // 🎧 LISTENING COMPREHENSION SKILL
+          multiSkillExercises.push({
+            id: `ex-listen-${lesson.id}-${vocabIdx}-${varIdx}`,
+            type: 'listening_recall',
+            prompt_es: `🎧 Escucha el audio atentamente y selecciona la palabra que completa el contexto natural:`,
+            prompt_en: `🎧 Listening Skill: Listen to the authentic audio prompt and select the word that completes the sentence ("${varItem.sentence_en}")`,
+            prompt_ar: `🎧 مهارة الاستماع: استمع للتسجيل الصوتي واختار الكلمة الناقصة ("${varItem.sentence_ar}")`,
+            options: varItem.options,
+            correctAnswer: varItem.targetWordForm || varItem.targetWord,
+            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
+            explanation_ar: varItem.explanation_ar,
+            audioText: varItem.sentence_es
+          });
+        } else if (skillModality === 1) {
+          // 📖 READING & CONTEXTUAL ANALYSIS SKILL
+          multiSkillExercises.push({
+            id: `ex-read-${lesson.id}-${vocabIdx}-${varIdx}`,
+            type: 'multiple_choice',
+            prompt_es: `📖 Contexto Real: "${varItem.sentence_es}"`,
+            prompt_en: `📖 Reading Analysis: What does the target expression in this context mean?\n"${varItem.sentence_en}"`,
+            prompt_ar: `📖 القراءة والتحليل السياقي: ماذا يعني التعبير في هذا السياق؟\n"${varItem.sentence_ar}"`,
+            options: varItem.options,
+            correctAnswer: varItem.targetWordForm || varItem.targetWord,
+            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
+            explanation_ar: varItem.explanation_ar,
+            audioText: varItem.sentence_es
+          });
+        } else if (skillModality === 2) {
+          // ✍️ ACTIVE WRITING & RECALL SKILL
+          multiSkillExercises.push({
+            id: `ex-write-${lesson.id}-${vocabIdx}-${varIdx}`,
+            type: 'fill_blank',
+            prompt_es: `${varItem.clozeSentence}`,
+            prompt_en: `✍️ Active Recall: Fill in the missing Spanish word for "${varItem.sentence_en}"`,
+            prompt_ar: `✍️ الكتابة والاستدعاء النشط: أكمل الكلمة الناقصة في الجملة ("${varItem.sentence_ar}")`,
+            options: varItem.options,
+            correctAnswer: varItem.targetWordForm || varItem.targetWord,
+            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
+            explanation_ar: varItem.explanation_ar,
+            audioText: varItem.sentence_es
+          });
+        } else {
+          // 🧠 SITUATIONAL REASONING & APPLICATION SKILL
+          multiSkillExercises.push({
+            id: `ex-situation-${lesson.id}-${vocabIdx}-${varIdx}`,
+            type: 'error_correction',
+            prompt_es: `🧠 Situación Práctica: "${varItem.sentence_en}"`,
+            prompt_en: `🧠 Situational Application: Select the correct natural Spanish term for this scenario ("${varItem.sentence_ar}")`,
+            prompt_ar: `🧠 التفكير والتطبيق الموقفي: اختر التعبير الإسباني المناسب لهذا الموقف الواقعي`,
+            options: varItem.options,
+            correctAnswer: varItem.targetWordForm || varItem.targetWord,
+            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
+            explanation_ar: varItem.explanation_ar,
+            audioText: varItem.sentence_es
+          });
+        }
       });
     });
 
-    if (clozeExercises.length >= 15) {
-      return clozeExercises.slice(0, 15);
+    if (multiSkillExercises.length >= 15) {
+      return multiSkillExercises.slice(0, 15);
     }
 
     // Include existing exercises if needed to reach 15
     const existing = [...(lesson.exercises || [])];
-    return [...clozeExercises, ...existing].slice(0, 15);
+    return [...multiSkillExercises, ...existing].slice(0, 15);
   }, [lesson, lessonVocabulary]);
 
   // Handle auto-enrolling lesson words into user's SRS spaced repetition system
