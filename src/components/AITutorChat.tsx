@@ -534,7 +534,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
               {matchedRule.summary_en}
             </p>
             <ul className="list-disc pl-4 space-y-1 text-stone-600 dark:text-stone-400 font-normal">
-              {matchedRule.explanation_en.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*')).slice(0, 4).map((line, i) => (
+              {(matchedRule.fullContent_en || '').split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*')).slice(0, 4).map((line, i) => (
                 <li key={i}>{line.replace(/^[-\*\s]+/, '')}</li>
               )) || (
                 <li>Master the active structure and practice conjugations.</li>
@@ -555,14 +555,14 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
               >
                 <div className="space-y-0.5">
                   <p className="text-xs font-extrabold text-stone-900 dark:text-stone-100">
-                    {q.question}
+                    {q.question_es}
                   </p>
                   <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                    👉 Hint: Choose the correct form to complete the sentence
+                    👉 {q.question_en}
                   </p>
                 </div>
                 <button
-                  onClick={() => speakSpanish(q.question, userProgress.settings.audioSpeed)}
+                  onClick={() => speakSpanish(q.question_es, userProgress.settings.audioSpeed)}
                   className="p-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:text-amber-500 dark:hover:text-amber-400 transition"
                   title="Speak Example Sentence"
                 >
@@ -1051,6 +1051,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
             </button>
           </form>
         </div>
+      </div>
 
         {/* At-a-Glance Cheat Sheet Column (Right Column - Desktop Only) */}
         <div className="lg:col-span-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm space-y-4 h-[700px] overflow-y-auto hidden lg:flex flex-col shrink-0">

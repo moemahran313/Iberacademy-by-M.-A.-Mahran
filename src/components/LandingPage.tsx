@@ -27,6 +27,8 @@ import {
 import { User } from 'firebase/auth';
 import { soundEffects, speakSpanish } from '../utils/audio';
 import { IberioLogo } from './IberacademyLogo';
+import { HispanosphereGlobe } from './HispanosphereGlobe';
+import { FlagIcon } from './FlagIcon';
 
 interface LandingPageProps {
   onStartOnboarding: () => void;
@@ -297,138 +299,189 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </span>
         </div>
 
-        {/* Interactive Micro-Demo Reader Widget with Smooth Transitions */}
+        {/* Interactive Showcases Section: Story Engine First, Then 3D Hispanosphere Globe */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...smoothEase, delay: 0.4 }}
-          className="mt-14 max-w-3xl mx-auto bg-white border border-stone-200/80 rounded-3xl p-6 sm:p-8 shadow-xl shadow-stone-200/40 space-y-5 text-left relative overflow-hidden group"
+          className="mt-14 max-w-5xl mx-auto space-y-12 text-left"
         >
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
-          
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-stone-200" />
-              <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
-              <span className="text-xs font-bold text-stone-500 ml-2">Interactive Preview: Comprehensible Input Engine</span>
+          {/* 1. INTERACTIVE STORY ENGINE (Comprehensible Input Micro-Demo) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-orange-500/10 text-orange-600">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight">
+                    Interactive Story Engine
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Live Comprehensible Input • Tap words for instant native audio & CEFR translation
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-orange-100 text-orange-950 border border-orange-200/60">
+                <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Interactive Reader
+              </span>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-orange-50 text-orange-950 border border-orange-200/40">
-              Interactive Storyteller
-            </span>
+
+            {/* Interactive Micro-Demo Reader Card */}
+            <div className="bg-white border border-stone-200/80 rounded-3xl p-6 sm:p-8 shadow-xl shadow-stone-200/40 space-y-5 text-left relative overflow-hidden group">
+              <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
+              
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-stone-200" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+                  <span className="text-xs font-bold text-stone-500 ml-2">Interactive Preview: Comprehensible Input Engine</span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-orange-50 text-orange-950 border border-orange-200/40">
+                  Interactive Storyteller
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-lg sm:text-2xl font-medium leading-relaxed text-stone-800 font-serif">
+                  &quot;La{' '}
+                  <span
+                    onClick={() => {
+                      speakSpanish('mariposa');
+                      setSelectedWord('mariposa');
+                    }}
+                    className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
+                      selectedWord === 'mariposa'
+                        ? 'bg-orange-500 text-white font-black border-orange-600'
+                        : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
+                    }`}
+                  >
+                    mariposa
+                  </span>{' '}
+                  vuela sobre el jardín lleno de{' '}
+                  <span
+                    onClick={() => {
+                      speakSpanish('sueños');
+                      setSelectedWord('sueños');
+                    }}
+                    className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
+                      selectedWord === 'sueños'
+                        ? 'bg-orange-500 text-white font-black border-orange-600'
+                        : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
+                    }`}
+                  >
+                    sueños
+                  </span>
+                  . Para{' '}
+                  <span
+                    onClick={() => {
+                      speakSpanish('lograr');
+                      setSelectedWord('lograr');
+                    }}
+                    className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
+                      selectedWord === 'lograr'
+                        ? 'bg-orange-500 text-white font-black border-orange-600'
+                        : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
+                    }`}
+                  >
+                    lograr
+                  </span>{' '}
+                  la{' '}
+                  <span
+                    onClick={() => {
+                      speakSpanish('fluidez');
+                      setSelectedWord('fluidez');
+                    }}
+                    className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
+                      selectedWord === 'fluidez'
+                        ? 'bg-orange-500 text-white font-black border-orange-600'
+                        : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
+                    }`}
+                  >
+                    fluidez
+                  </span>
+                  , escuchamos español todos los días.&quot;
+                </p>
+
+                {/* Instant Definition Popover with Smooth Height Animation */}
+                <AnimatePresence mode="wait">
+                  {selectedWord && (
+                    <motion.div
+                      key={selectedWord}
+                      initial={{ opacity: 0, height: 0, y: 10 }}
+                      animate={{ opacity: 1, height: "auto", y: 0 }}
+                      exit={{ opacity: 0, height: 0, y: 10 }}
+                      transition={springTransition}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <motion.button
+                            onClick={() => speakSpanish(selectedWord)}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="p-3 rounded-xl bg-orange-500 text-stone-950 hover:bg-orange-600 transition-colors cursor-pointer shrink-0 shadow-md shadow-orange-500/10"
+                            title="Speak word"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                          </motion.button>
+                          <div>
+                            <span className="text-sm font-black text-stone-900 capitalize flex items-center gap-2">
+                              {selectedWord}
+                              <span className="text-[10px] bg-orange-150 text-orange-950 px-2 py-0.5 rounded font-mono font-bold">
+                                {sampleWords.find((w) => w.es === selectedWord)?.level}
+                              </span>
+                            </span>
+                            <span className="text-xs text-stone-600 block mt-1">
+                              Definition: <span className="font-bold text-stone-900">{sampleWords.find((w) => w.es === selectedWord)?.en || 'word'}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <motion.button
+                          onClick={() => {
+                            soundEffects.playPop();
+                            onStartOnboarding();
+                          }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-950 text-white hover:bg-stone-900 text-xs font-black transition-colors cursor-pointer shrink-0 text-center shadow-md"
+                        >
+                          + Save to SRS Flashcards
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <p className="text-lg sm:text-2xl font-medium leading-relaxed text-stone-800 font-serif">
-              &quot;La{' '}
-              <span
-                onClick={() => {
-                  speakSpanish('mariposa');
-                  setSelectedWord('mariposa');
-                }}
-                className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
-                  selectedWord === 'mariposa'
-                    ? 'bg-orange-500 text-white font-black border-orange-600'
-                    : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
-                }`}
-              >
-                mariposa
-              </span>{' '}
-              vuela sobre el jardín lleno de{' '}
-              <span
-                onClick={() => {
-                  speakSpanish('sueños');
-                  setSelectedWord('sueños');
-                }}
-                className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
-                  selectedWord === 'sueños'
-                    ? 'bg-orange-500 text-white font-black border-orange-600'
-                    : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
-                }`}
-              >
-                sueños
+          {/* 2. 3D HISPANOSPHERE GLOBE */}
+          <div className="space-y-3 pt-4">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight">
+                    3D Hispanosphere Globe
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    500M+ Spanish speakers across 21 sovereign nations & US high-density Spanish states
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-black bg-amber-100 text-amber-900 border border-amber-200/60">
+                21 Nations + 15 US States
               </span>
-              . Para{' '}
-              <span
-                onClick={() => {
-                  speakSpanish('lograr');
-                  setSelectedWord('lograr');
-                }}
-                className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
-                  selectedWord === 'lograr'
-                    ? 'bg-orange-500 text-white font-black border-orange-600'
-                    : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
-                }`}
-              >
-                lograr
-              </span>{' '}
-              la{' '}
-              <span
-                onClick={() => {
-                  speakSpanish('fluidez');
-                  setSelectedWord('fluidez');
-                }}
-                className={`cursor-pointer px-1.5 py-0.5 rounded border transition-colors duration-200 ${
-                  selectedWord === 'fluidez'
-                    ? 'bg-orange-500 text-white font-black border-orange-600'
-                    : 'bg-orange-50 text-orange-950 border-orange-200/50 hover:bg-orange-100'
-                }`}
-              >
-                fluidez
-              </span>
-              , escuchamos español todos los días.&quot;
-            </p>
+            </div>
 
-            {/* Instant Definition Popover with Smooth Height Animation */}
-            <AnimatePresence mode="wait">
-              {selectedWord && (
-                <motion.div
-                  key={selectedWord}
-                  initial={{ opacity: 0, height: 0, y: 10 }}
-                  animate={{ opacity: 1, height: "auto", y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: 10 }}
-                  transition={springTransition}
-                  className="overflow-hidden"
-                >
-                  <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                      <motion.button
-                        onClick={() => speakSpanish(selectedWord)}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className="p-3 rounded-xl bg-orange-500 text-stone-950 hover:bg-orange-600 transition-colors cursor-pointer shrink-0 shadow-md shadow-orange-500/10"
-                        title="Speak word"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                      </motion.button>
-                      <div>
-                        <span className="text-sm font-black text-stone-900 capitalize flex items-center gap-2">
-                          {selectedWord}
-                          <span className="text-[10px] bg-orange-150 text-orange-950 px-2 py-0.5 rounded font-mono font-bold">
-                            {sampleWords.find((w) => w.es === selectedWord)?.level}
-                          </span>
-                        </span>
-                        <span className="text-xs text-stone-600 block mt-1">
-                          Definition: <span className="font-bold text-stone-900">{sampleWords.find((w) => w.es === selectedWord)?.en || 'word'}</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <motion.button
-                      onClick={() => {
-                        soundEffects.playPop();
-                        onStartOnboarding();
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-950 text-white hover:bg-stone-900 text-xs font-black transition-colors cursor-pointer shrink-0 text-center shadow-md"
-                    >
-                      + Save to SRS Flashcards
-                    </motion.button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="w-full">
+              <HispanosphereGlobe />
+            </div>
           </div>
         </motion.div>
       </section>

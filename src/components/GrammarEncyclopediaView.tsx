@@ -36,6 +36,7 @@ import {
   SYNTAX_REPAIR_CHALLENGES
 } from '../data/slaGrammarEngine';
 import { speakSpanish, soundEffects } from '../utils/audio';
+import { useApp } from '../context/AppContext';
 
 interface GrammarEncyclopediaViewProps {
   userProgress: UserProgress;
@@ -46,6 +47,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   userProgress,
   setUserProgress
 }) => {
+  const { setActiveTab, setGrammarPracticeTopic } = useApp();
   const [activeTabMode, setActiveTabMode] = useState<
     'path' | 'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'encyclopedia'
   >('path');
@@ -661,6 +663,37 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                       </div>
                       <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
                         Read bilingual deep dives and complete validation quizzes.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Quest 6: AI Tutor Live Interactive Drill */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setGrammarPracticeTopic({
+                        id: selectedTopic.id,
+                        title_es: selectedTopic.title_es,
+                        title_en: selectedTopic.title_en,
+                        formula: selectedTopic.formula
+                      });
+                      setActiveTab('tutor');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 hover:border-amber-500 hover:scale-[1.01] transition flex items-center gap-3 cursor-pointer shadow-sm group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-stone-950 dark:bg-amber-500 text-amber-400 dark:text-stone-950 flex items-center justify-center shrink-0 shadow">
+                      <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+                          Practice with AI Mateo
+                          <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded-full">NEW</span>
+                        </span>
+                        <span className="text-[9px] font-mono font-black text-amber-600 dark:text-amber-400">+25 XP</span>
+                      </div>
+                      <p className="text-[10px] text-stone-600 dark:text-stone-300 line-clamp-1">
+                        Live conversational sentence challenges and silent grammar validator.
                       </p>
                     </div>
                   </button>
@@ -1375,10 +1408,28 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
             <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-6">
               {/* Header */}
               <div className="border-b border-stone-100 dark:border-stone-800 pb-4">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-100 dark:bg-stone-800 text-amber-800 dark:text-amber-400 uppercase">
-                    UNIT {selectedTopic.unit} • {selectedTopic.cefr} • {selectedTopic.category}
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-100 dark:bg-stone-800 text-amber-800 dark:text-amber-400 uppercase">
+                      UNIT {selectedTopic.unit} • {selectedTopic.cefr} • {selectedTopic.category}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setGrammarPracticeTopic({
+                        id: selectedTopic.id,
+                        title_es: selectedTopic.title_es,
+                        title_en: selectedTopic.title_en,
+                        formula: selectedTopic.formula
+                      });
+                      setActiveTab('tutor');
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-950 dark:bg-amber-500 text-white dark:text-stone-950 font-black text-xs hover:opacity-90 transition shadow-sm cursor-pointer w-fit"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
+                    <span>Practice Rule with AI</span>
+                  </button>
                 </div>
                 <h2 className="text-2xl font-black text-stone-900 dark:text-white mt-2">
                   {selectedTopic.title_es}
