@@ -22,11 +22,13 @@ import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { UserProgress, CEFRLevel } from '../types';
 import { soundEffects } from '../utils/audio';
+import { AvatarDisplay } from './AvatarDisplay';
 
 export interface LeaderboardUser {
   uid: string;
   displayName: string;
   photoURL?: string;
+  avatarId?: string;
   currentLevel: CEFRLevel | string;
   streakDays: number;
   xp: number;
@@ -69,6 +71,7 @@ export const GlobalLeague: React.FC<GlobalLeagueProps> = ({ userProgress }) => {
               uid: data.uid || doc.id,
               displayName: data.displayName || 'Learner',
               photoURL: data.photoURL || '',
+              avatarId: data.avatarId || undefined,
               currentLevel: data.currentLevel || 'A1',
               streakDays: typeof data.streakDays === 'number' ? data.streakDays : 0,
               xp: typeof data.xp === 'number' ? data.xp : 0,
@@ -290,19 +293,14 @@ export const GlobalLeague: React.FC<GlobalLeagueProps> = ({ userProgress }) => {
                       )}
                     </div>
 
-                    {/* Avatar Image or Initial Fallback */}
+                    {/* Avatar Image or Cultural Avatar */}
                     <div className="relative shrink-0">
-                      {item.photoURL ? (
-                        <img
-                          src={item.photoURL}
-                          alt={item.displayName}
-                          className="w-9 h-9 rounded-xl object-cover border border-stone-200 dark:border-stone-700"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-black flex items-center justify-center text-xs border border-stone-300 dark:border-stone-700">
-                          {item.displayName.substring(0, 2).toUpperCase()}
-                        </div>
-                      )}
+                      <AvatarDisplay
+                        photoURL={item.photoURL}
+                        avatarId={item.avatarId}
+                        name={item.displayName}
+                        size="sm"
+                      />
                       {item.countryFlag && (
                         <span className="absolute -bottom-1 -right-1 text-[11px] leading-none drop-shadow-xs">
                           {item.countryFlag}

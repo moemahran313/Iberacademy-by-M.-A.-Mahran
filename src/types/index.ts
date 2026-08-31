@@ -445,6 +445,9 @@ export interface UserProgress {
   streakDays: number;
   lastActiveDate: string;
   xp: number;
+  avatarId?: string;
+  photoURL?: string;
+  targetDialect?: 'castilian' | 'latin_america' | 'mexico' | 'rioplatense' | 'caribbean' | string;
   completedLessonIds: string[];
   passedUnitQuizIds?: string[];
   quizScores?: Record<string, number>;

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   User as UserIcon,
   Flame,
@@ -54,12 +54,16 @@ import {
 import { UserProgress, CEFRLevel, ExplanationLanguage, ReminderSettings } from '../types';
 import { User } from 'firebase/auth';
 import { soundEffects } from '../utils/audio';
+import { useApp } from '../context/AppContext';
+import { AvatarDisplay } from './AvatarDisplay';
+import { AvatarGallery } from './AvatarGallery';
+import { EmailVerificationBanner } from './EmailVerificationBanner';
 
 interface ProfileViewProps {
   userProgress: UserProgress;
   setUserProgress: React.Dispatch<React.SetStateAction<UserProgress>>;
   authUser: User | null;
-  onGoogleSignIn: () => void;
+  onOpenAuthModal?: (mode?: 'signin' | 'signup') => void;
   onLogout: () => void;
   onOpenPlacementTest: () => void;
   isAuthLoading?: boolean;
@@ -75,22 +79,33 @@ const INTEREST_TOPICS = [
   'Grammar & Syntax'
 ];
 
+export const SPANISH_DIALECTS = [
+  { id: 'spain', name: 'Castilian (Spain)', flag: '🇪🇸', desc: 'Peninsular Spanish, vosotros verb forms, distinción (c/z /θ/)' },
+  { id: 'mexico', name: 'Mexican Spanish', flag: '🇲🇽', desc: 'Standard North American Spanish, rich colloquial vocabulary' },
+  { id: 'argentina', name: 'Rioplatense (Argentina/Uruguay)', flag: '🇦🇷', desc: 'Voseo (vos tenés), distinctive sheísmo accent' },
+  { id: 'colombia', name: 'Colombian Spanish', flag: '🇨🇴', desc: 'High vocal clarity (Bogotá / Medellín), polite phrasing' },
+  { id: 'caribbean', name: 'Caribbean (PR, DR, Cuba)', flag: '🇩🇴', desc: 'Rhythmic, melodic phrasing and energetic cadence' },
+  { id: 'general_latam', name: 'Neutral Latin American', flag: '🌎', desc: 'Universal broadcast standard, widely spoken across Americas' }
+];
+
 export const ProfileView: React.FC<ProfileViewProps> = ({
   userProgress,
   setUserProgress,
   authUser,
-  onGoogleSignIn,
+  onOpenAuthModal,
   onLogout,
   onOpenPlacementTest,
   isAuthLoading = false
 }) => {
-  const [isEditingName, setIsEditingName] = useState(false);
+  const { handleUpdateProfile, openAuthModal } = useApp();
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [customName, setCustomName] = useState(
     authUser?.displayName || userProgress.userInterests?.[0] || 'Spanish Learner'
   );
-  const [customBio, setCustomBio] = useState(
-    'Passionate about mastering Spanish naturally through comprehensible input and daily immersion.'
-  );
+  const [selectedAvatarId, setSelectedAvatarId] = useState(userProgress.avatarId || 'sun');
+  const [selectedPhotoURL, setSelectedPhotoURL] = useState(userProgress.photoURL || authUser?.photoURL || '');
+  const [selectedDialect, setSelectedDialect] = useState(userProgress.targetDialect || 'spain');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
   const [chartViewMode, setChartViewMode] = useState<'timeline' | 'radar'>('timeline');
   const [testReminderToast, setTestReminderToast] = useState<{ show: boolean; message: string; channel: string } | null>(null);
@@ -243,6 +258,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     });
   };
 
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    soundEffects.playPop();
+    try {
+      await handleUpdateProfile({
+        displayName: customName.trim() || undefined,
+        avatarId: selectedAvatarId,
+        photoURL: selectedPhotoURL.trim() || undefined,
+        targetDialect: selectedDialect,
+      });
+      triggerSaveToast();
+      setIsEditingProfile(false);
+      soundEffects.playLevelUp();
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const currentDialectMeta = SPANISH_DIALECTS.find(d => d.id === (userProgress.targetDialect || selectedDialect)) || SPANISH_DIALECTS[0];
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-16">
       {/* Toast Notification */}
@@ -258,6 +295,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </motion.div>
       )}
 
+      {/* Email Verification Action Banner */}
+      <EmailVerificationBanner />
+
       {/* Account Card & Hero Header */}
       <div className="relative overflow-hidden bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
@@ -265,30 +305,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {/* User Photo & Info */}
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="relative">
-              {authUser?.photoURL ? (
-                <img
-                  src={authUser.photoURL}
-                  alt={authUser.displayName || 'Profile Avatar'}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-amber-500/40 shadow-md"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 flex items-center justify-center font-black text-3xl shadow-md">
-                  {authUser?.displayName?.[0] || 'U'}
-                </div>
-              )}
-              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-stone-900" title="Firebase Cloud Connected">
-                <Shield className="w-4 h-4" />
+              <AvatarDisplay
+                photoURL={userProgress.photoURL || authUser?.photoURL}
+                avatarId={userProgress.avatarId || selectedAvatarId}
+                name={authUser?.displayName || customName}
+                email={authUser?.email}
+                size="xl"
+              />
+              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-stone-900" title="Cloud Synchronized">
+                <Shield className="w-3.5 h-3.5" />
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
                   {authUser?.displayName || customName}
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-stone-950 font-mono">
                   {userProgress.currentLevel} Learner
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center gap-1">
+                  <span>{currentDialectMeta.flag}</span>
+                  <span className="text-[10px]">{currentDialectMeta.name.split(' ')[0]}</span>
                 </span>
               </div>
 
@@ -299,28 +338,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {authUser ? (
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Google Account Linked & Synced</span>
+                  <span>Firestore Cloud Database Active</span>
                 </div>
               ) : (
                 <button
-                  onClick={onGoogleSignIn}
+                  onClick={() => onOpenAuthModal?.('signin')}
                   disabled={isAuthLoading}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-white bg-stone-900 dark:bg-stone-100 dark:text-stone-900 px-3 py-1 rounded-full hover:opacity-90 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-stone-950 bg-amber-500 hover:bg-amber-400 px-3 py-1 rounded-full transition cursor-pointer shadow-xs"
                 >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>Connect Google Account</span>
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Sign In / Create Account</span>
                 </button>
               )}
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <button
+              onClick={() => setIsEditingProfile(!isEditingProfile)}
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-900 dark:text-white border border-stone-200 dark:border-stone-700 text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Edit3 className="w-4 h-4 text-amber-500" />
+              <span>{isEditingProfile ? 'Close Editor' : 'Edit Avatar & Profile'}</span>
+            </button>
+
             {authUser && (
               <button
                 onClick={onLogout}
@@ -341,6 +383,129 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Expandable Profile & Avatar Editor */}
+      <AnimatePresence>
+        {isEditingProfile && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm overflow-hidden"
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-stone-900 dark:text-white">
+                    Customize Profile & Dialect Target
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    Changes are synchronized directly to your cloud profile and the Global League.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={isSavingProfile}
+                className="px-4 py-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSavingProfile ? 'Saving...' : 'Save Changes'}</span>
+              </button>
+            </div>
+
+            {/* Display Name Input */}
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-wider text-stone-600 dark:text-stone-300 flex items-center gap-1.5">
+                <UserIcon className="w-3.5 h-3.5 text-amber-500" />
+                <span>Display Name</span>
+              </label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="e.g. Sofia Martinez"
+                className="w-full sm:w-80 px-4 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
+              />
+            </div>
+
+            {/* Avatar & Photo Picker */}
+            <div className="space-y-3">
+              <label className="text-xs font-black uppercase tracking-wider text-stone-600 dark:text-stone-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Choose Your Cultural Avatar or Custom Photo</span>
+              </label>
+              <AvatarGallery
+                selectedAvatarId={selectedAvatarId}
+                photoURL={selectedPhotoURL}
+                displayName={customName}
+                onSelectAvatar={(id) => setSelectedAvatarId(id)}
+                onUpdatePhotoURL={(url) => setSelectedPhotoURL(url)}
+              />
+            </div>
+
+            {/* Target Spanish Dialect Selector */}
+            <div className="space-y-3 pt-2">
+              <label className="text-xs font-black uppercase tracking-wider text-stone-600 dark:text-stone-300 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-amber-500" />
+                <span>Target Spanish Dialect Focus</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {SPANISH_DIALECTS.map((dialect) => {
+                  const isSelected = selectedDialect === dialect.id;
+                  return (
+                    <button
+                      key={dialect.id}
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playPop();
+                        setSelectedDialect(dialect.id);
+                      }}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                        isSelected
+                          ? 'bg-amber-500/10 border-amber-500 shadow-xs'
+                          : 'bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 hover:border-amber-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xl">{dialect.flag}</span>
+                        {isSelected && <Check className="w-4 h-4 text-amber-500" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-stone-900 dark:text-white">
+                          {dialect.name}
+                        </p>
+                        <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed">
+                          {dialect.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Save Action */}
+            <div className="pt-4 border-t border-stone-100 dark:border-stone-800 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={isSavingProfile}
+                className="px-6 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs transition flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSavingProfile ? 'Saving...' : 'Save Profile Changes'}</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
 
       {/* Duolingo-Style Stats & Progress Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

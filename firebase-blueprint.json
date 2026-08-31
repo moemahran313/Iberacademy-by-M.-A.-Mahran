@@ -2,17 +2,21 @@
   "entities": {
     "users": {
       "title": "User Profile & Progress",
-      "description": "User profile with Google account metadata, XP, level, streak, and reading stats",
+      "description": "User profile with account metadata, avatar, target dialect, XP, level, streak, and sync progress",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
+        "avatarId": { "type": "string" },
+        "targetDialect": { "type": "string" },
+        "emailVerified": { "type": "boolean" },
         "currentLevel": { "type": "string" },
         "streakDays": { "type": "number" },
         "xp": { "type": "number" },
         "lastActiveDate": { "type": "string" },
+        "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" },
         "progressData": { "type": "string" }
       },
@@ -22,7 +26,8 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "users",
-      "description": "User profile document containing XP, level, and stats for global league ranking."
+      "description": "User profile document containing account credentials, avatar ID, XP, level, and stats for global league ranking and cloud synchronization."
     }
   }
 }
+

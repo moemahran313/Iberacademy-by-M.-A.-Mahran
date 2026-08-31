@@ -1,18 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { UserProgress } from '../types';
-import { loadUserProgress, saveUserProgress } from '../utils/storage';
+import { loadUserProgress, saveUserProgress, createZeroUserProgress } from '../utils/storage';
 import {
   auth,
-  signInWithGoogle,
+  signUpWithEmail,
+  signInWithEmail,
   logoutUser,
   syncUserDataToFirestore,
   loadUserDataFromFirestore,
-  getRedirectResult,
   getStoredFallbackUser,
-  createFallbackUserSession
+  createFallbackUserSession,
+  updateUserProfileData
 } from '../lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 
 interface AppContextType {
   authUser: User | null;
@@ -26,13 +26,26 @@ interface AppContextType {
   setIsPlacementTestOpen: (open: boolean) => void;
   isOnboardingOpen: boolean;
   setIsOnboardingOpen: (open: boolean) => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+  authModalMode: 'signin' | 'signup';
+  setAuthModalMode: (mode: 'signin' | 'signup') => void;
+  openAuthModal: (mode?: 'signin' | 'signup') => void;
+  isWelcomeVerificationOpen: boolean;
+  setIsWelcomeVerificationOpen: (open: boolean) => void;
+  verificationGate: { open: boolean; featureName: string; onPassed?: () => void } | null;
+  requireEmailVerification: (featureName: string, onPassed?: () => void) => boolean;
+  closeVerificationGate: () => void;
   dailyGoalToast: {
     show: boolean;
     streak: number;
     message: string;
   } | null;
   setDailyGoalToast: (toast: { show: boolean; streak: number; message: string; } | null) => void;
-  handleGoogleSignIn: () => Promise<void>;
+  handleEmailSignIn: (email: string, password: string) => Promise<User>;
+  handleEmailSignUp: (email: string, password: string, displayName?: string, avatarId?: string, photoURL?: string, chosenLevel?: 'A1' | 'A2' | 'B1' | 'B2') => Promise<User>;
+  handleGuestSignIn: (displayName?: string, email?: string, avatarId?: string, photoURL?: string, chosenLevel?: 'A1' | 'A2' | 'B1' | 'B2') => void;
+  handleUpdateProfile: (updates: { displayName?: string; photoURL?: string; avatarId?: string; targetDialect?: string }) => Promise<void>;
   handleLogout: () => Promise<void>;
   handleLessonCompleted: (lessonId: string) => void;
   grammarPracticeTopic: { id: string; title_es: string; title_en: string; formula?: string } | null;
@@ -69,6 +82,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [userProgress, setUserProgress] = useState<UserProgress>(loadUserProgress());
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState<boolean>(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [isWelcomeVerificationOpen, setIsWelcomeVerificationOpen] = useState<boolean>(false);
+  const [verificationGate, setVerificationGate] = useState<{
+    open: boolean;
+    featureName: string;
+    onPassed?: () => void;
+  } | null>(null);
+
   const [authUser, setAuthUser] = useState<User | null>(getStoredFallbackUser());
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(!getStoredFallbackUser());
   const [dailyGoalToast, setDailyGoalToast] = useState<{
@@ -78,6 +100,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   } | null>(null);
 
   const [grammarPracticeTopic, setGrammarPracticeTopic] = useState<{ id: string; title_es: string; title_en: string; formula?: string } | null>(null);
+
+  const openAuthModal = (mode: 'signin' | 'signup' = 'signin') => {
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
+  const requireEmailVerification = (featureName: string, onPassed?: () => void): boolean => {
+    if (!authUser) {
+      openAuthModal('signin');
+      return false;
+    }
+    const isVerified = Boolean(authUser.emailVerified) || localStorage.getItem('iberio_verified_' + authUser.uid) === 'true';
+    if (!isVerified) {
+      setVerificationGate({
+        open: true,
+        featureName,
+        onPassed
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const closeVerificationGate = () => {
+    setVerificationGate(null);
+  };
 
   const handleLessonCompleted = (_lessonId: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -97,19 +145,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 4500);
   };
 
-  // Sync Firebase Auth State & Protect Platform Access
+  // Sync Firebase Auth State & Listen for changes
   useEffect(() => {
-    getRedirectResult(auth).catch((err) => {
-      console.warn('Redirect result check:', err);
-    });
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setAuthUser(user);
         setIsAuthLoading(false);
-        const cloudProgress = await loadUserDataFromFirestore(user);
-        if (cloudProgress) {
-          setUserProgress(cloudProgress);
+        const cloudData = await loadUserDataFromFirestore(user);
+        if (cloudData && cloudData.progress) {
+          setUserProgress((prev) => ({
+            ...prev,
+            ...cloudData.progress,
+            avatarId: cloudData.avatarId || cloudData.progress.avatarId || prev.avatarId || 'sun',
+            photoURL: cloudData.photoURL || cloudData.progress.photoURL || user.photoURL || prev.photoURL,
+            targetDialect: cloudData.targetDialect || cloudData.progress.targetDialect || prev.targetDialect || 'castilian'
+          }));
         } else {
           syncUserDataToFirestore(user, userProgress);
         }
@@ -154,25 +204,125 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [userProgress, authUser]);
 
-  const handleGoogleSignIn = async () => {
+  const handleEmailSignUp = async (
+    email: string,
+    password: string,
+    displayName?: string,
+    avatarId: string = 'sun',
+    photoURL?: string,
+    chosenLevel: 'A1' | 'A2' | 'B1' | 'B2' = 'A1'
+  ): Promise<User> => {
+    setIsAuthLoading(true);
     try {
-      setIsAuthLoading(true);
-      let user = await signInWithGoogle();
-      if (!user) {
-        user = createFallbackUserSession();
-      }
+      const user = await signUpWithEmail(email, password, displayName, avatarId, photoURL);
       setAuthUser(user);
-      const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
-      setActiveTab(savedTab && savedTab !== 'landing' ? savedTab : 'dashboard');
-    } catch (err) {
-      console.warn('Sign in handled:', err);
-      const fallback = createFallbackUserSession();
-      setAuthUser(fallback);
-      const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
-      setActiveTab(savedTab && savedTab !== 'landing' ? savedTab : 'dashboard');
+      setIsOnboardingOpen(false);
+      setIsAuthModalOpen(false);
+
+      // Initialize brand new account strictly at 0 XP, fresh start
+      const freshZeroProgress = createZeroUserProgress(
+        chosenLevel,
+        avatarId || 'sun',
+        photoURL || user.photoURL || '',
+        'castilian'
+      );
+      setUserProgress(freshZeroProgress);
+      saveUserProgress(freshZeroProgress);
+      await syncUserDataToFirestore(user, freshZeroProgress);
+
+      // Open welcome verification lifecycle notice in non-intrusive mode
+      setIsWelcomeVerificationOpen(false);
+
+      localStorage.setItem(ACTIVE_TAB_KEY, 'dashboard');
+      setActiveTab('dashboard');
+      return user;
     } finally {
       setIsAuthLoading(false);
+      setIsOnboardingOpen(false);
+      setIsAuthModalOpen(false);
     }
+  };
+
+  const handleEmailSignIn = async (email: string, password: string): Promise<User> => {
+    setIsAuthLoading(true);
+    try {
+      const user = await signInWithEmail(email, password);
+      setAuthUser(user);
+      setIsOnboardingOpen(false);
+      setIsAuthModalOpen(false);
+
+      const cloudData = await loadUserDataFromFirestore(user);
+      if (cloudData && cloudData.progress) {
+        setUserProgress({
+          ...cloudData.progress,
+          avatarId: cloudData.avatarId || cloudData.progress.avatarId || 'sun',
+          photoURL: cloudData.photoURL || cloudData.progress.photoURL || user.photoURL || '',
+          targetDialect: cloudData.targetDialect || cloudData.progress.targetDialect || 'castilian'
+        });
+      } else {
+        await syncUserDataToFirestore(user, userProgress);
+      }
+      const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
+      setActiveTab(savedTab && savedTab !== 'landing' ? savedTab : 'dashboard');
+      return user;
+    } finally {
+      setIsAuthLoading(false);
+      setIsOnboardingOpen(false);
+      setIsAuthModalOpen(false);
+    }
+  };
+
+  const handleGuestSignIn = (
+    displayName?: string,
+    email?: string,
+    avatarId?: string,
+    photoURL?: string,
+    chosenLevel: 'A1' | 'A2' | 'B1' | 'B2' = 'A1'
+  ) => {
+    const fallback = createFallbackUserSession(displayName, email, avatarId, photoURL);
+    setAuthUser(fallback);
+    const zeroProgress = createZeroUserProgress(
+      chosenLevel,
+      avatarId || 'sun',
+      photoURL || '',
+      'castilian'
+    );
+    setUserProgress(zeroProgress);
+    saveUserProgress(zeroProgress);
+    setIsOnboardingOpen(false);
+    setIsAuthModalOpen(false);
+    const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
+    setActiveTab(savedTab && savedTab !== 'landing' ? savedTab : 'dashboard');
+  };
+
+  const handleUpdateProfile = async (updates: {
+    displayName?: string;
+    photoURL?: string;
+    avatarId?: string;
+    targetDialect?: string;
+  }) => {
+    if (!authUser) return;
+
+    // Update local state immediately for snappy UI
+    setUserProgress(prev => ({
+      ...prev,
+      avatarId: updates.avatarId !== undefined ? updates.avatarId : prev.avatarId,
+      photoURL: updates.photoURL !== undefined ? updates.photoURL : prev.photoURL,
+      targetDialect: updates.targetDialect !== undefined ? updates.targetDialect : prev.targetDialect,
+    }));
+
+    if (updates.displayName !== undefined || updates.photoURL !== undefined) {
+      setAuthUser(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          displayName: updates.displayName !== undefined ? updates.displayName : prev.displayName,
+          photoURL: updates.photoURL !== undefined ? updates.photoURL : prev.photoURL
+        } as unknown as User;
+      });
+    }
+
+    await updateUserProfileData(authUser, updates);
   };
 
   const handleLogout = async () => {
@@ -200,9 +350,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsPlacementTestOpen,
         isOnboardingOpen,
         setIsOnboardingOpen,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        authModalMode,
+        setAuthModalMode,
+        openAuthModal,
         dailyGoalToast,
         setDailyGoalToast,
-        handleGoogleSignIn,
+        handleEmailSignIn,
+        handleEmailSignUp,
+        handleGuestSignIn,
+        handleUpdateProfile,
         handleLogout,
         handleLessonCompleted,
         grammarPracticeTopic,
@@ -221,3 +379,4 @@ export const useApp = (): AppContextType => {
   }
   return context;
 };
+

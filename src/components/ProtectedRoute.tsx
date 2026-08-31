@@ -18,12 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     activeTab,
     setActiveTab,
     setIsOnboardingOpen,
-    handleGoogleSignIn,
-    isPlacementTestOpen,
-    setIsPlacementTestOpen,
-    isOnboardingOpen,
-    userProgress,
-    setUserProgress,
+    openAuthModal,
     setAuthUser
   } = useApp();
 
@@ -99,41 +94,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         <LandingPage
           authUser={authUser}
           onStartOnboarding={() => setIsOnboardingOpen(true)}
-          onGoogleSignIn={handleGoogleSignIn}
+          onOpenAuthModal={openAuthModal}
           onExploreDemo={() => {
             if (!authUser) {
               const fallback = createFallbackUserSession();
               setAuthUser(fallback);
             }
-            setActiveTab('dashboard');
-          }}
-        />
-
-        {/* Placement Test Modal */}
-        {isPlacementTestOpen && (
-          <PlacementTestModal
-            onClose={() => setIsPlacementTestOpen(false)}
-            userProgress={userProgress}
-            setUserProgress={setUserProgress}
-          />
-        )}
-
-        {/* Goal Setup Onboarding Modal */}
-        <OnboardingModal
-          isOpen={isOnboardingOpen}
-          onClose={() => setIsOnboardingOpen(false)}
-          onGoogleSignIn={handleGoogleSignIn}
-          onCompleteGuest={(goalData) => {
-            setUserProgress(prev => ({
-              ...prev,
-              currentLevel: (goalData.level as any) || prev.currentLevel,
-              dailyGoalMinutes: goalData.dailyMinutes || prev.dailyGoalMinutes
-            }));
-            let user = authUser;
-            if (!user) {
-              user = createFallbackUserSession();
-              setAuthUser(user);
-            }
+            setIsOnboardingOpen(false);
             setActiveTab('dashboard');
           }}
         />
