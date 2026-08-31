@@ -34,7 +34,8 @@ import {
   Send,
   Check,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import {
   AreaChart,
@@ -97,7 +98,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onOpenPlacementTest,
   isAuthLoading = false
 }) => {
-  const { handleUpdateProfile, openAuthModal } = useApp();
+  const { handleUpdateProfile, openAuthModal, handleDeleteAllAccounts } = useApp();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [customName, setCustomName] = useState(
     authUser?.displayName || userProgress.userInterests?.[0] || 'Spanish Learner'
@@ -107,6 +108,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [selectedDialect, setSelectedDialect] = useState(userProgress.targetDialect || 'spain');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
+  const [isPurgingAccounts, setIsPurgingAccounts] = useState(false);
+  const [purgeFeedback, setPurgeFeedback] = useState<string | null>(null);
   const [chartViewMode, setChartViewMode] = useState<'timeline' | 'radar'>('timeline');
   const [testReminderToast, setTestReminderToast] = useState<{ show: boolean; message: string; channel: string } | null>(null);
 
@@ -1164,6 +1167,46 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <p className="text-xs text-stone-400 italic">
             Enable reminders to receive daily push or email study prompts tailored to your preferred times and days of the week.
           </p>
+        )}
+      </div>
+
+      {/* Danger Zone: System Accounts Purge & Reset */}
+      <div className="bg-red-500/5 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-3xl p-6 sm:p-8 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black text-sm">
+              <Trash2 className="w-4 h-4" />
+              <span>Danger Zone: Complete System Account Wipe</span>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-stone-400 max-w-xl">
+              Permanently purges all user accounts from the Firestore database and local storage, restoring a complete zero-state fresh start.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={isPurgingAccounts}
+            onClick={async () => {
+              if (window.confirm('Are you sure you want to delete ALL accounts in the system? This deletes all Firestore user records and local storage.')) {
+                setIsPurgingAccounts(true);
+                const res = await handleDeleteAllAccounts();
+                setIsPurgingAccounts(false);
+                setPurgeFeedback(`Purged ${res.deletedCount} Firestore documents and all local credentials.`);
+                setTimeout(() => setPurgeFeedback(null), 5000);
+              }
+            }}
+            className="px-4 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50 whitespace-nowrap self-start sm:self-auto"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{isPurgingAccounts ? 'Purging All Accounts...' : 'Delete All Accounts in System'}</span>
+          </button>
+        </div>
+
+        {purgeFeedback && (
+          <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 text-xs font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+            <span>{purgeFeedback}</span>
+          </div>
         )}
       </div>
 

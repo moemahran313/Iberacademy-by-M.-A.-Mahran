@@ -10,7 +10,16 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  deleteDoc
+} from 'firebase/firestore';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 import { UserProgress } from '../types';
 import { sendWelcomeEmail } from '../utils/welcomeEmail';
@@ -267,14 +276,98 @@ export const signUpWithEmail = async (
 };
 
 /**
+ * Delete ALL accounts across the system (Firestore users collection, mail, and local storage).
+ */
+export const deleteAllAccountsInSystem = async (): Promise<{ deletedCount: number; success: boolean }> => {
+  let deletedCount = 0;
+
+  // 1. Delete all user profile documents from Firestore
+  try {
+    const usersCollection = collection(db, 'users');
+    const usersSnapshot = await getDocs(usersCollection);
+    const deleteDocPromises = usersSnapshot.docs.map(async (docSnap) => {
+      try {
+        await deleteDoc(doc(db, 'users', docSnap.id));
+        deletedCount++;
+      } catch (err) {
+        console.warn(`Could not delete user document ${docSnap.id}:`, err);
+      }
+    });
+    await Promise.all(deleteDocPromises);
+    console.info(`Successfully deleted ${deletedCount} user documents from Firestore.`);
+  } catch (err) {
+    console.warn('Error querying/deleting Firestore users collection:', err);
+  }
+
+  // 2. Delete all welcome / verification emails in Firestore mail collection
+  try {
+    const mailCollection = collection(db, 'mail');
+    const mailSnapshot = await getDocs(mailCollection);
+    const deleteMailPromises = mailSnapshot.docs.map(async (docSnap) => {
+      try {
+        await deleteDoc(doc(db, 'mail', docSnap.id));
+      } catch (err) {
+        console.warn(`Could not delete mail document ${docSnap.id}:`, err);
+      }
+    });
+    await Promise.all(deleteMailPromises);
+  } catch (err) {
+    console.warn('Error clearing Firestore mail collection:', err);
+  }
+
+  // 3. Clear ALL local storage account repositories and cached credentials
+  try {
+    const keysToPurge = [
+      'iberio_registered_accounts',
+      'iberio_fallback_user',
+      'iberacademy_fallback_user',
+      'iberio_uid',
+      'iberacademy_uid',
+      'hispano_academy_user_progress',
+      'iberacademy_user_progress',
+      'iberio_welcome_emails_sent',
+      'iberio_user_interests',
+      'iberio_custom_imported_texts',
+      'iberio_active_tab',
+      'iberio_last_verified_check'
+    ];
+
+    keysToPurge.forEach((key) => localStorage.removeItem(key));
+
+    // Remove any per-user verification sent or cached key
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach((key) => {
+      if (
+        key.startsWith('iberio_') ||
+        key.startsWith('iberacademy_') ||
+        key.startsWith('hispano_') ||
+        key.startsWith('firebase:authUser:')
+      ) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    sessionStorage.clear();
+  } catch (err) {
+    console.warn('Error clearing browser storage during account purge:', err);
+  }
+
+  // 4. Sign out from Firebase Auth
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.warn('Firebase signOut warning during account purge:', err);
+  }
+
+  return { deletedCount, success: true };
+};
+
+/**
  * Purge legacy demo / test user records from Firestore and local storage.
  */
 export const purgeLegacyDemoRecords = async (): Promise<void> => {
   try {
-    localStorage.removeItem('hispano_academy_user_progress');
-    localStorage.removeItem('iberacademy_user_progress');
-    localStorage.removeItem('iberio_registered_accounts');
-    localStorage.removeItem('iberio_welcome_emails_sent');
+    await deleteAllAccountsInSystem();
     console.info('Legacy test and demo records purged.');
   } catch (e) {
     console.warn('Error purging demo records:', e);

@@ -11,7 +11,8 @@ import {
   loadUserDataFromFirestore,
   getStoredFallbackUser,
   createFallbackUserSession,
-  updateUserProfileData
+  updateUserProfileData,
+  deleteAllAccountsInSystem
 } from '../lib/firebase';
 
 interface AppContextType {
@@ -47,6 +48,7 @@ interface AppContextType {
   handleGuestSignIn: (displayName?: string, email?: string, avatarId?: string, photoURL?: string, chosenLevel?: 'A1' | 'A2' | 'B1' | 'B2') => void;
   handleUpdateProfile: (updates: { displayName?: string; photoURL?: string; avatarId?: string; targetDialect?: string }) => Promise<void>;
   handleLogout: () => Promise<void>;
+  handleDeleteAllAccounts: () => Promise<{ deletedCount: number; success: boolean }>;
   handleLessonCompleted: (lessonId: string) => void;
   grammarPracticeTopic: { id: string; title_es: string; title_en: string; formula?: string } | null;
   setGrammarPracticeTopic: (topic: { id: string; title_es: string; title_en: string; formula?: string } | null) => void;
@@ -336,6 +338,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const handleDeleteAllAccounts = async (): Promise<{ deletedCount: number; success: boolean }> => {
+    try {
+      const result = await deleteAllAccountsInSystem();
+      setAuthUser(null);
+      const zeroProgress = createZeroUserProgress('A1', 'sun', '', 'castilian');
+      setUserProgress(zeroProgress);
+      saveUserProgress(zeroProgress);
+      setActiveTabState('landing');
+      localStorage.removeItem(ACTIVE_TAB_KEY);
+      return result;
+    } catch (err) {
+      console.error('Delete all accounts error:', err);
+      return { deletedCount: 0, success: false };
+    }
+  };
+
+  // Run full system account deletion once to guarantee 0 accounts in database & storage
+  useEffect(() => {
+    const PURGE_FLAG = 'iberio_system_accounts_purged_v2';
+    if (!localStorage.getItem(PURGE_FLAG)) {
+      deleteAllAccountsInSystem().then(() => {
+        localStorage.setItem(PURGE_FLAG, 'true');
+        setAuthUser(null);
+        setActiveTabState('landing');
+      }).catch(e => console.warn('Purge all accounts initialization note:', e));
+    }
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -362,6 +392,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleGuestSignIn,
         handleUpdateProfile,
         handleLogout,
+        handleDeleteAllAccounts,
         handleLessonCompleted,
         grammarPracticeTopic,
         setGrammarPracticeTopic,
