@@ -713,7 +713,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               fact: string;
               title?: string;
               icon?: React.ReactNode;
-            }> = ({ keyword, fact, title = "Fast Fact", icon }) => {
+              customStyle?: React.CSSProperties;
+            }> = ({ keyword, fact, title = "Fast Fact", icon, customStyle }) => {
               const [show, setShow] = useState(false);
               return (
                 <span 
@@ -721,7 +722,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onMouseEnter={() => setShow(true)}
                   onMouseLeave={() => setShow(false)}
                 >
-                  <span className="underline decoration-dashed decoration-amber-500/80 hover:decoration-amber-500 dark:hover:decoration-amber-400 cursor-help font-black text-stone-950 dark:text-stone-50 transition-colors bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                  <span 
+                    style={customStyle}
+                    className="underline decoration-dashed decoration-amber-500/80 hover:decoration-amber-500 dark:hover:decoration-amber-400 cursor-help font-black text-stone-950 dark:text-stone-50 transition-colors bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md"
+                  >
                     {keyword}
                   </span>
                   <AnimatePresence>
@@ -852,6 +856,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             fact="Roughly 3.5x the average entry salary. Unlocks fast-track promotions in firms like Vodafone and Concentrix."
                             title="Local Salary Estimate"
                             icon={<Zap className="w-3.5 h-3.5 text-amber-400" />}
+                            customStyle={{ backgroundColor: '#ff9c00' }}
                           />{' '}
                           monthly, matching executive roles.
                         </p>
@@ -866,6 +871,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             fact="Opens direct pathways to Erasmus Mundus and Spanish Foreign Ministry (AECID) postgraduate entries with stipends."
                             title="Scholarship Access"
                             icon={<GraduationCap className="w-3.5 h-3.5 text-sky-400" />}
+                            customStyle={{ backgroundColor: '#ffa000' }}
                           />{' '}
                           offering living stipends and waived tuitions.
                         </p>

@@ -1733,34 +1733,6 @@ export const HispanosphereGlobe: React.FC<HispanosphereGlobeProps> = ({
         </motion.div>
       )}
 
-      {/* US High-Percentage States Quick-Selector Pills */}
-      <div className="w-full mt-3 bg-stone-900/60 backdrop-blur-sm border border-stone-800/80 p-3 rounded-2xl">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-bold text-yellow-400 flex items-center gap-1.5 font-mono uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-yellow-400" /> Top Spoken Spanish US States
-            (US Census Map)
-          </span>
-          <span className="text-[10px] text-stone-400">Click any state to focus</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {US_SPANISH_STATES.filter(s => s.isAboveTenPercent).map(state => (
-            <button
-              key={state.id}
-              onClick={() => focusOnTerritory(state, 2.2)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                selectedTerritory?.id === state.id
-                  ? 'bg-yellow-400 text-stone-950 border-yellow-300 shadow-md font-black scale-105'
-                  : 'bg-stone-800/80 hover:bg-stone-700 text-stone-300 border-stone-700'
-              }`}
-            >
-              <span>{state.name_es}</span>
-              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-stone-950/40 rounded-full text-yellow-300">
-                {state.spanishPercent}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Global Hispanosphere Metrics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-3">
