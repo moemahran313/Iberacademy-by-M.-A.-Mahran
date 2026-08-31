@@ -95,6 +95,7 @@ function AppContent() {
                     }}
                     onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
                     onSwitchToPath={() => setActiveTab('path')}
+                    onOpenVocabulary={() => setActiveTab('vocabulary')}
                   />
                 )}
 

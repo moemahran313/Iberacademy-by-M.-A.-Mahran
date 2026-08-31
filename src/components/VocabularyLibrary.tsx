@@ -161,11 +161,29 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
     e?.stopPropagation();
     setUserProgress(prev => {
       const isSaved = prev.savedWordIds.includes(id);
+      const today = getTodayDateString();
+      const updatedSrs = { ...(prev.srsData || {}) };
+
+      if (!isSaved && !updatedSrs[id]) {
+        updatedSrs[id] = {
+          wordId: id,
+          interval: 1,
+          repetitions: 0,
+          easeFactor: 2.5,
+          nextReviewDate: today,
+          streak: 0,
+          successCount: 0,
+          failCount: 0,
+          history: []
+        };
+      }
+
       return {
         ...prev,
         savedWordIds: isSaved
           ? prev.savedWordIds.filter(wId => wId !== id)
-          : [...prev.savedWordIds, id]
+          : [...prev.savedWordIds, id],
+        srsData: updatedSrs
       };
     });
   };
@@ -178,9 +196,32 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
       const newMastered = isMastered
         ? prev.masteredWordIds.filter(wId => wId !== id)
         : [...prev.masteredWordIds, id];
+
+      const today = getTodayDateString();
+      const updatedSrs = { ...(prev.srsData || {}) };
+
+      if (!isMastered) {
+        // Set mature SRS parameters for mastered word
+        const nextDateObj = new Date();
+        nextDateObj.setDate(nextDateObj.getDate() + 21);
+        updatedSrs[id] = {
+          wordId: id,
+          interval: 21,
+          repetitions: 4,
+          easeFactor: 2.6,
+          nextReviewDate: nextDateObj.toISOString().split('T')[0],
+          lastReviewedDate: today,
+          streak: 4,
+          successCount: (updatedSrs[id]?.successCount || 0) + 1,
+          failCount: updatedSrs[id]?.failCount || 0,
+          history: [...(updatedSrs[id]?.history || []), { date: today, grade: 4 as SRSGrade }]
+        };
+      }
+
       return {
         ...prev,
         masteredWordIds: newMastered,
+        srsData: updatedSrs,
         xp: prev.xp + (isMastered ? -5 : 10)
       };
     });

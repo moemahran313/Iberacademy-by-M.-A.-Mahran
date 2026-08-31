@@ -21,6 +21,7 @@ import { UserProgress, ImportedContent, CEFRLevel } from '../types';
 import { RecommendedReadingModule } from './RecommendedReadingModule';
 import { ReadingProgressTracker } from './ReadingProgressTracker';
 import { StreakCounterWidget } from './StreakCounterWidget';
+import { SRSDailyReviewWidget } from './SRSDailyReviewWidget';
 import { GlobalLeague } from './GlobalLeague';
 import { soundEffects } from '../utils/audio';
 
@@ -30,6 +31,7 @@ interface ReadingDashboardProps {
   onOpenStory: (content: ImportedContent) => void;
   onOpenPlacementTest?: () => void;
   onSwitchToPath?: () => void;
+  onOpenVocabulary?: () => void;
 }
 
 export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
@@ -37,7 +39,8 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
   setUserProgress,
   onOpenStory,
   onOpenPlacementTest,
-  onSwitchToPath
+  onSwitchToPath,
+  onOpenVocabulary
 }) => {
   const [mobileTab, setMobileTab] = React.useState<'reading' | 'stats'>('reading');
 
@@ -229,6 +232,15 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
         
         {/* --- TAB 1: ACTIVE READING & PATHWAYS --- */}
         <div className={`${mobileTab === 'reading' ? 'block' : 'hidden'} sm:block space-y-6 sm:space-y-10`}>
+          {/* Daily Spaced Repetition (SRS) Review Cards Deck */}
+          <motion.div variants={bentoItemVariants}>
+            <SRSDailyReviewWidget
+              userProgress={userProgress}
+              setUserProgress={setUserProgress}
+              onOpenVocabularyLibrary={onOpenVocabulary}
+            />
+          </motion.div>
+
           {/* Visual Duolingo-Style Streak Counter Widget */}
           <motion.div variants={bentoItemVariants}>
             <StreakCounterWidget
