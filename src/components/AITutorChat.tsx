@@ -15,7 +15,14 @@ import {
   GraduationCap,
   Headphones,
   Radio,
-  Check
+  Check,
+  Target,
+  Award,
+  Briefcase,
+  Users,
+  Plane,
+  Play,
+  ArrowRight
 } from 'lucide-react';
 import { UserProgress, TutorPersona } from '../types';
 import { speakSpanish, soundEffects } from '../utils/audio';
@@ -78,7 +85,104 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   const [currentlyPlayingId, setCurrentlyPlayingId] = useState<string | null>(null);
   const [autoPlayTTS, setAutoPlayTTS] = useState(true);
 
-  const chatBottomRef = useRef<HTMLDivElement>(null);
+  // Mode & Skill Challenge State
+  const [activeTab, setActiveTab] = useState<'tutor' | 'skill_challenge'>('tutor');
+  const [challengeDomain, setChallengeDomain] = useState<'professional' | 'social' | 'travel'>('professional');
+  const [currentScenario, setCurrentScenario] = useState<any>(null);
+  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false);
+  const [challengeUserText, setChallengeUserText] = useState('');
+  const [isEvaluatingChallenge, setIsEvaluatingChallenge] = useState(false);
+  const [challengeResult, setChallengeResult] = useState<any>(null);
+
+  // Fetch or generate a situational B2 role-play challenge scenario
+  const handleLoadChallengeScenario = async (domain = challengeDomain) => {
+    setChallengeDomain(domain);
+    setIsGeneratingScenario(true);
+    setChallengeResult(null);
+    setChallengeUserText('');
+
+    try {
+      const res = await fetch('/api/ai/skill-challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate_scenario',
+          domain,
+          userLevel: userProgress.currentLevel || 'B2',
+          nativeLang: userProgress.settings.explanationLanguage || 'en'
+        })
+      });
+      const data = await res.json();
+      if (data.scenario) {
+        setCurrentScenario(data.scenario);
+        if (autoPlayTTS && data.scenario.audioText) {
+          speakSpanish(data.scenario.audioText, userProgress.settings.audioSpeed);
+        }
+      }
+    } catch (e) {
+      console.error('Error generating challenge scenario:', e);
+    } finally {
+      setIsGeneratingScenario(false);
+    }
+  };
+
+  // Submit learner response for B2 multi-skill AI evaluation
+  const handleSubmitChallengeResponse = async () => {
+    if (!challengeUserText.trim() || !currentScenario || isEvaluatingChallenge) return;
+    setIsEvaluatingChallenge(true);
+    soundEffects.playPop();
+
+    try {
+      const res = await fetch('/api/ai/skill-challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'evaluate_response',
+          scenario: currentScenario,
+          userResponse: challengeUserText,
+          userLevel: userProgress.currentLevel || 'B2',
+          nativeLang: userProgress.settings.explanationLanguage || 'en'
+        })
+      });
+      const data = await res.json();
+      setChallengeResult(data);
+
+      soundEffects.playLevelUp();
+      const missedVocab = data.vocabUsageCheck?.filter((v: any) => !v.used).map((v: any) => v.word) || [];
+      const newEval = {
+        id: `eval-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        domain: challengeDomain,
+        title: currentScenario.title_es || 'B2 Challenge',
+        overallScore: data.overallScore || 75,
+        listeningRelevanceScore: data.listeningRelevanceScore || 75,
+        writingFluencyScore: data.writingFluencyScore || 75,
+        vocabularyUsageScore: data.vocabularyUsageScore || 75,
+        weaknessCategory: data.vocabularyUsageScore < 75 ? 'Target B2 Vocabulary Application' : data.writingFluencyScore < 75 ? 'Grammatical Fluency & Connectors' : 'Listening Comprehension Nuance',
+        missedVocabulary: missedVocab,
+        feedback_es: data.feedback_es || '',
+        feedback_en: data.feedback_en || ''
+      };
+
+      setUserProgress(prev => ({
+        ...prev,
+        xp: (prev.xp || 0) + (data.xpEarned || 25),
+        roleplayEvaluations: [newEval, ...(prev.roleplayEvaluations || [])].slice(0, 10)
+      }));
+    } catch (e) {
+      console.error('Error evaluating challenge response:', e);
+    } finally {
+      setIsEvaluatingChallenge(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'skill_challenge' && !currentScenario) {
+      handleLoadChallengeScenario('professional');
+    }
+  }, [activeTab]);
+
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
   const personas = [
@@ -96,9 +200,11 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     { id: 'restaurant_roleplay', label: '🥘 Roleplay: Restaurante', prompt: 'Hagamos una inmersión comunicativa pidiendo tapas en un restaurante en Madrid. Corrige mis errores.' }
   ];
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat container to bottom (inner container only, no window jump)
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, isLoading, isListening]);
 
   // Read response aloud using Text-To-Speech with visual playback indicator
@@ -387,8 +493,73 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         </div>
       </div>
 
-      {/* Main Chat Interface */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[680px]">
+      {/* Mode Navigation Bar: 5-Phase Tutor Chat vs B2 Skill Challenge */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-stone-100 dark:bg-stone-900/80 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 gap-2">
+        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+          <button
+            onClick={() => setActiveTab('tutor')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition cursor-pointer ${
+              activeTab === 'tutor'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
+                : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>💬 5-Phase AI Tutor Chat</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('skill_challenge')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition cursor-pointer ${
+              activeTab === 'skill_challenge'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
+                : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+            }`}
+          >
+            <Target className="w-4 h-4 text-stone-950" />
+            <span>🎯 Skill Challenge: Role-Play Scenarios</span>
+          </button>
+        </div>
+
+        {activeTab === 'skill_challenge' && (
+          <div className="flex items-center gap-1 bg-stone-200/60 dark:bg-stone-800/80 p-1 rounded-xl">
+            <button
+              onClick={() => handleLoadChallengeScenario('professional')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                challengeDomain === 'professional'
+                  ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              }`}
+            >
+              <Briefcase className="w-3 h-3" /> Professional
+            </button>
+            <button
+              onClick={() => handleLoadChallengeScenario('social')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                challengeDomain === 'social'
+                  ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              }`}
+            >
+              <Users className="w-3 h-3" /> Social & Debate
+            </button>
+            <button
+              onClick={() => handleLoadChallengeScenario('travel')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                challengeDomain === 'travel'
+                  ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              }`}
+            >
+              <Plane className="w-3 h-3" /> Travel & Dispute
+            </button>
+          </div>
+        )}
+      </div>
+
+      {activeTab === 'tutor' ? (
+        /* Main Chat Interface */
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[680px]">
         {/* Quick Lesson Launch Bar */}
         <div className="bg-stone-50 dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 px-4 py-2.5 flex items-center justify-between overflow-x-auto no-scrollbar gap-2">
           <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
@@ -416,7 +587,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         </div>
 
         {/* Messages Stream */}
-        <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-stone-50/40 dark:bg-stone-950/40">
+        <div ref={messagesContainerRef} className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-stone-50/40 dark:bg-stone-950/40">
           {messages.map(msg => {
             const isUser = msg.sender === 'user';
             const isPlayingThisMsg = currentlyPlayingId === msg.id;
@@ -630,8 +801,6 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
               </div>
             </div>
           )}
-
-          <div ref={chatBottomRef} />
         </div>
 
         {/* Input Bar & Voice Status */}
@@ -690,6 +859,296 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           </form>
         </div>
       </div>
+      ) : (
+        /* Skill Challenge Mode View */
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+          {isGeneratingScenario ? (
+            <div className="py-20 flex flex-col items-center justify-center space-y-4 text-center">
+              <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+              <p className="text-base font-black text-stone-900 dark:text-white">
+                Generating B2 Role-Play Scenario ({challengeDomain.toUpperCase()})...
+              </p>
+              <p className="text-xs text-stone-500 max-w-md">
+                Synthesizing realistic situational prompt, audio listening material, and targeted B2 CEFR vocabulary checklist.
+              </p>
+            </div>
+          ) : currentScenario ? (
+            <div className="space-y-6">
+              {/* Challenge Scenario Header */}
+              <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-5 sm:p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="px-3 py-1 rounded-lg bg-amber-500 text-stone-950 text-xs font-black uppercase tracking-wider">
+                    CEFR B2 Role-Play Scenario • {challengeDomain.toUpperCase()}
+                  </span>
+                  <button
+                    onClick={() => handleLoadChallengeScenario(challengeDomain)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 hover:bg-amber-100 transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Next Scenario
+                  </button>
+                </div>
+
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
+                    {currentScenario.title_es}
+                  </h2>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 font-semibold">
+                    {currentScenario.title_en} • {currentScenario.title_ar}
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-2">
+                  <p className="text-sm sm:text-base leading-relaxed text-stone-900 dark:text-stone-100 font-medium">
+                    {currentScenario.prompt_es}
+                  </p>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 border-t border-stone-100 dark:border-stone-800 pt-2 italic">
+                    {currentScenario.prompt_en}
+                  </p>
+                </div>
+
+                {/* Listening Comprehension Audio Monologue */}
+                {currentScenario.audioText && (
+                  <div className="bg-stone-900 text-white rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold shrink-0">
+                        <Headphones className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-extrabold text-amber-400">
+                          🎧 Step 1: Listening Comprehension Prompt
+                        </p>
+                        <p className="text-xs text-stone-300 line-clamp-1">
+                          "{currentScenario.audioText}"
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => speakSpanish(currentScenario.audioText, userProgress.settings.audioSpeed)}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 transition shrink-0 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-stone-950" /> Play Spanish Audio
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Target B2 Vocabulary Checklist */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-sm font-black text-stone-900 dark:text-white uppercase tracking-wider">
+                    Step 2: Required B2 Vocabulary Targets to Apply
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {currentScenario.requiredVocabulary?.map((item: any) => {
+                    const isUsed = challengeUserText.toLowerCase().includes((item.word || '').toLowerCase());
+                    return (
+                      <div
+                        key={item.word}
+                        className={`p-3 rounded-xl border text-xs flex items-center justify-between transition ${
+                          isUsed
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200'
+                            : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200'
+                        }`}
+                      >
+                        <div>
+                          <span className="font-black text-sm">{item.word}</span>
+                          <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                            {item.en} • {item.ar}
+                          </p>
+                        </div>
+                        {isUsed ? (
+                          <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <span className="w-2.5 h-2.5 rounded-full bg-stone-300 dark:bg-stone-600 shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Suggested Response Starters */}
+              {currentScenario.suggestedStarters?.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                    Click a Starter to Begin Writing:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {currentScenario.suggestedStarters.map((starter: string, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => setChallengeUserText(starter + ' ')}
+                        className="text-left text-xs bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-800 dark:text-stone-200 transition cursor-pointer"
+                      >
+                        💡 {starter}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Response Input Area */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-amber-500" />
+                    Step 3: Write Your B2 Spanish Response:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleToggleMic}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      isListening
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    {isListening ? 'Listening...' : 'Voice Input'}
+                  </button>
+                </div>
+
+                <textarea
+                  rows={4}
+                  value={challengeUserText}
+                  onChange={e => setChallengeUserText(e.target.value)}
+                  placeholder="Escribe tu respuesta en español aplicando el vocabulario B2 requerido..."
+                  className="w-full p-4 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl text-sm text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
+                />
+
+                <button
+                  onClick={handleSubmitChallengeResponse}
+                  disabled={!challengeUserText.trim() || isEvaluatingChallenge}
+                  className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isEvaluatingChallenge ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Profesor Mateo is Evaluating Your Response...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Award className="w-4 h-4" />
+                      <span>Submit Response for AI Evaluation & Earn XP</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Evaluation Results Card */}
+              {challengeResult && (
+                <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6 border border-stone-800 shadow-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center text-xl font-black">
+                        🏆
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-white">B2 Performance Assessment</h3>
+                        <p className="text-xs text-amber-400">
+                          Overall Proficiency Score: {challengeResult.overallScore}/100 • +{challengeResult.xpEarned} XP Earned!
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black">
+                        CEFR Level B2 Evaluated
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Sub-scores */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-stone-800/80 border border-stone-700/60 rounded-2xl p-4 text-center">
+                      <p className="text-xs text-stone-400 font-bold">🎧 Listening Relevance</p>
+                      <p className="text-2xl font-black text-sky-400 mt-1">{challengeResult.listeningRelevanceScore}/100</p>
+                    </div>
+
+                    <div className="bg-stone-800/80 border border-stone-700/60 rounded-2xl p-4 text-center">
+                      <p className="text-xs text-stone-400 font-bold">✍️ Writing Fluency</p>
+                      <p className="text-2xl font-black text-emerald-400 mt-1">{challengeResult.writingFluencyScore}/100</p>
+                    </div>
+
+                    <div className="bg-stone-800/80 border border-stone-700/60 rounded-2xl p-4 text-center">
+                      <p className="text-xs text-stone-400 font-bold">📚 B2 Vocabulary Usage</p>
+                      <p className="text-2xl font-black text-amber-400 mt-1">{challengeResult.vocabularyUsageScore}/100</p>
+                    </div>
+                  </div>
+
+                  {/* Vocabulary Itemized Checks */}
+                  {challengeResult.vocabUsageCheck?.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-black uppercase tracking-wider text-stone-400">
+                        Target Vocabulary Audit:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {challengeResult.vocabUsageCheck.map((v: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className={`p-2.5 rounded-xl border text-xs font-semibold ${
+                              v.used
+                                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
+                                : 'bg-rose-950/30 border-rose-800/60 text-rose-300'
+                            }`}
+                          >
+                            {v.feedback}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Profesor Mateo Feedback */}
+                  <div className="bg-stone-800/90 border border-stone-700 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-400 font-black text-sm">
+                      👨‍🏫 <span>Profesor Mateo's Pedagogical Feedback:</span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-stone-200">{challengeResult.feedback_es}</p>
+                    <p className="text-xs italic text-stone-400">{challengeResult.feedback_en}</p>
+                    {challengeResult.feedback_ar && (
+                      <p className="text-xs font-arabic text-right text-stone-300" dir="rtl">
+                        {challengeResult.feedback_ar}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Native Speaker Model Version */}
+                  {challengeResult.correctedResponse && (
+                    <div className="bg-amber-950/30 border border-amber-800/60 rounded-2xl p-5 space-y-2">
+                      <div className="flex items-center gap-2 text-amber-400 font-black text-xs uppercase tracking-wider">
+                        ✨ Polished B2 Native Speaker Version:
+                      </div>
+                      <p className="text-sm font-medium text-amber-100 leading-relaxed italic">
+                        "{challengeResult.correctedResponse}"
+                      </p>
+                      <button
+                        onClick={() => speakSpanish(challengeResult.correctedResponse, userProgress.settings.audioSpeed)}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 text-stone-950 text-xs font-black flex items-center gap-1.5 mt-2 cursor-pointer"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" /> Listen to Native Version
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Next Challenge Button */}
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => handleLoadChallengeScenario(challengeDomain)}
+                      className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <span>Try Another B2 Challenge</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };

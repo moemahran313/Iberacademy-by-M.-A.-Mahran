@@ -6,6 +6,9 @@
   body {
     font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+  h1, h2, h3, h4, h5, h6, .font-header {
+    font-family: 'Outfit', sans-serif;
+  }
   .font-arabic {
     font-family: 'Cairo', 'Noto Sans Arabic', Tahoma, sans-serif;
   }

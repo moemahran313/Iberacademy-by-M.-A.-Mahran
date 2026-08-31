@@ -29,7 +29,16 @@ export const DEFAULT_USER_PROGRESS: UserProgress = {
     audioSpeed: 0.9,
     theme: 'light',
     dailyGoalMinutes: 15,
-    dailyWordsGoal: 250
+    dailyWordsGoal: 250,
+    reminderSettings: {
+      enabled: false,
+      channel: 'push',
+      preferredTime: '18:00',
+      daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      emailAddress: '',
+      focusArea: 'vocabulary',
+      customMessage: '¡Hora de practicar español! Maintain your streak and practice today.'
+    }
   }
 };
 

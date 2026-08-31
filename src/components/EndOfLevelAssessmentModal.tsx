@@ -27,7 +27,7 @@ import {
 import { CEFRLevel, UserProgress, VocabularyItem } from '../types';
 import { generateLevelAssessment, AssessmentQuestion } from '../utils/levelAssessmentGenerator';
 import { speakSpanish, soundEffects } from '../utils/audio';
-import { IberacademyLogo } from './IberacademyLogo';
+import { IberioLogo } from './IberacademyLogo';
 import { autoEnrollLessonWordsInSRS } from '../utils/srs';
 
 interface EndOfLevelAssessmentModalProps {
@@ -879,32 +879,32 @@ export const EndOfLevelAssessmentModal: React.FC<EndOfLevelAssessmentModalProps>
           )}
 
           {/* ============================================================ */}
-          {/* TAB 3: OFFICIAL IBERACADEMY CEFR MASTERY DIPLOMA             */}
+          {/* TAB 3: OFFICIAL IBERIO CEFR MASTERY DIPLOMA                  */}
           {/* ============================================================ */}
           {activeTab === 'certificate' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Certificate Paper Canvas */}
-              <div className="relative bg-gradient-to-b from-amber-50/50 via-white to-amber-50/30 border-8 border-double border-amber-600/40 rounded-3xl p-8 sm:p-12 text-center text-stone-900 shadow-2xl max-w-2xl mx-auto space-y-6">
+              <div className="relative bg-gradient-to-b from-emerald-50/50 via-white to-emerald-50/30 border-8 border-double border-emerald-600/40 rounded-3xl p-8 sm:p-12 text-center text-slate-900 shadow-2xl max-w-2xl mx-auto space-y-6">
                 
                 {/* Decorative Corner Seals */}
                 <div className="flex justify-between items-center">
-                  <IberacademyLogo variant="icon" className="w-12 h-12 shadow-md" />
+                  <IberioLogo variant="icon" className="w-12 h-12 shadow-md" />
                   <div className="text-right">
-                    <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest block">
+                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block">
                       CEFR DIPLOMA OF MASTERY
                     </span>
-                    <span className="text-xs font-mono text-stone-400">
+                    <span className="text-xs font-mono text-slate-400">
                       ID: IBR-{level}-{new Date().getFullYear()}-001
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-xs uppercase tracking-widest text-stone-500 font-black">
+                  <span className="text-xs uppercase tracking-widest text-slate-500 font-black">
                     Official Certificate of Spanish Language Fluency
                   </span>
-                  <h3 className="text-2xl sm:text-3xl font-black text-stone-950 font-serif">
-                    Iberacademy Diploma
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-950 font-serif">
+                    Iberio Diploma
                   </h3>
                   <p className="text-xs text-stone-600 max-w-md mx-auto">
                     This certifies that the learner has demonstrated proven linguistic competence and vocabulary retention exceeding the CEFR standard.

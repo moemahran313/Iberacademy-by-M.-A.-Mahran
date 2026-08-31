@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import {
   CheckCircle2,
   XCircle,
@@ -27,6 +28,7 @@ import { speakSpanish, soundEffects } from '../utils/audio';
 import { getLessonVocabulary, autoEnrollLessonWordsInSRS } from '../utils/srs';
 import { generate3ContextClozeExercises } from '../utils/lingqEngine';
 import { recordLessonCompletionInProgress } from '../utils/streak';
+import { SuccessCheckmark } from './SuccessCheckmark';
 
 interface LessonModalProps {
   lesson: Lesson;
@@ -570,16 +572,18 @@ export const LessonModal: React.FC<LessonModalProps> = ({
               <span className="text-xs font-bold text-stone-500 dark:text-stone-400">
                 {lessonVocabulary.length} words calibrated for {lesson.cefr} proficiency
               </span>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => {
                   handleEnrollWordsInSRS();
                   setCurrentPhase(1);
                 }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 Enroll {lessonVocabulary.length} Words & Continue
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </div>
         )}
@@ -652,19 +656,22 @@ export const LessonModal: React.FC<LessonModalProps> = ({
             )}
 
             <div className="flex justify-between items-center pt-2">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentPhase(0)}
-                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
               >
                 Back to Flashcards
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setCurrentPhase(2)}
-                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
               >
                 Grammar Blueprint
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </div>
         )}
@@ -719,19 +726,22 @@ export const LessonModal: React.FC<LessonModalProps> = ({
             )}
 
             <div className="flex justify-between items-center pt-2">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentPhase(1)}
-                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
               >
                 Back to Dialogue
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setCurrentPhase(3)}
-                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
               >
                 Start Active Drills
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </div>
         )}
@@ -869,29 +879,34 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
             {/* Check / Next Drill Button */}
             <div className="flex justify-between items-center pt-2">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentPhase(2)}
-                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
               >
                 Back to Grammar
-              </button>
-
+              </motion.button>
+ 
               {!isDrillChecked ? (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   disabled={!selectedOpt}
                   onClick={handleCheckDrill}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 font-extrabold text-sm shadow-md transition"
+                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 font-extrabold text-sm shadow-md transition cursor-pointer"
                 >
                   Check Answer
-                </button>
+                </motion.button>
               ) : (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   onClick={handleNextDrill}
-                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
                   {currentDrillIdx + 1 < totalDrills ? 'Next Drill' : 'Go to Mastery Quiz'}
                   <ArrowRight className="w-4 h-4" />
-                </button>
+                </motion.button>
               )}
             </div>
           </div>
@@ -1022,8 +1037,13 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                     : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100'
                 }`}
               >
+                {hasPassedQuiz && (
+                  <div className="mb-2">
+                    <SuccessCheckmark message="Lesson Mastered!" size={72} />
+                  </div>
+                )}
                 <div className="text-3xl font-black flex items-center justify-center gap-2">
-                  <span>{hasPassedQuiz ? '🎉' : '⚠️'}</span>
+                  <span>{!hasPassedQuiz && '⚠️'}</span>
                   <span>{quizScore}% Score</span>
                 </div>
                 <p className="text-sm font-extrabold">
@@ -1075,40 +1095,47 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
             {/* Quiz Submit / Finish Controls */}
             <div className="flex justify-between items-center pt-2">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentPhase(3)}
-                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
               >
                 Back to Drills
-              </button>
+              </motion.button>
 
               {!quizSubmitted ? (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   disabled={Object.keys(quizAnswers).length === 0}
                   onClick={handleSubmitQuiz}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition disabled:opacity-40"
+                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition disabled:opacity-40 cursor-pointer"
                 >
                   Submit Mastery Quiz
-                </button>
+                </motion.button>
               ) : hasPassedQuiz ? (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md transition flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   Complete & Return to Path
-                </button>
+                </motion.button>
               ) : (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   onClick={() => {
                     setQuizSubmitted(false);
                     setQuizAnswers({});
                   }}
-                  className="px-6 py-2.5 rounded-xl bg-stone-800 text-amber-400 hover:bg-stone-700 font-extrabold text-sm shadow-md transition flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-stone-800 text-amber-400 hover:bg-stone-700 font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Retry Quiz
-                </button>
+                </motion.button>
               )}
             </div>
           </div>

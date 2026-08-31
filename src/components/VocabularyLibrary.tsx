@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion } from 'motion/react';
 import {
   Search,
   Volume2,
@@ -49,6 +50,58 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
   // Standard flashcard state
   const [flashcardIdx, setFlashcardIdx] = useState(0);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
+
+  // Audio Challenge Mode states
+  const [isAudioChallenge, setIsAudioChallenge] = useState(false);
+  const [audioChallengeInput, setAudioChallengeInput] = useState('');
+  const [audioChallengeFeedback, setAudioChallengeFeedback] = useState('');
+  const [audioChallengeStatus, setAudioChallengeStatus] = useState<'idle' | 'correct' | 'incorrect' | 'accent-mismatch'>('idle');
+
+  // Text normalization to compare typed response and Spanish word fairly
+  const normalizeTextForComparison = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // strip accents
+  };
+
+  // Check pronunciation input spelling accuracy
+  const handleCheckAudioChallenge = () => {
+    if (!currentFlashcard || !audioChallengeInput) return;
+    
+    const typedClean = audioChallengeInput.trim().toLowerCase();
+    const correctClean = currentFlashcard.spanish.trim().toLowerCase();
+    
+    if (typedClean === correctClean) {
+      setAudioChallengeFeedback("Perfect spelling! 🎉 (+2 XP)");
+      setAudioChallengeStatus('correct');
+      soundEffects.playCorrect();
+      setIsCardFlipped(true); // reveal translation card
+      setUserProgress(prev => ({
+        ...prev,
+        xp: prev.xp + 2
+      }));
+    } else {
+      const typedNormalized = normalizeTextForComparison(typedClean);
+      const correctNormalized = normalizeTextForComparison(correctClean);
+      
+      if (typedNormalized === correctNormalized) {
+        setAudioChallengeFeedback(`Almost! Correct letters, but check your accents: "${currentFlashcard.spanish}". (+1 XP)`);
+        setAudioChallengeStatus('accent-mismatch');
+        soundEffects.playCorrect();
+        setIsCardFlipped(true); // reveal translation card
+        setUserProgress(prev => ({
+          ...prev,
+          xp: prev.xp + 1
+        }));
+      } else {
+        setAudioChallengeFeedback("Not quite! Listen carefully and try again, or click 'Skip' to see the translation.");
+        setAudioChallengeStatus('incorrect');
+        soundEffects.playIncorrect();
+      }
+    }
+  };
 
   // SRS Review session state
   const [srsDeckLevel, setSrsDeckLevel] = useState<string>('all');
@@ -140,13 +193,29 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
     setIsCardFlipped(false);
     setFlashcardIdx(prev => (prev + 1) % (filteredWords.length || 1));
     soundEffects.playFlip();
+    setAudioChallengeInput('');
+    setAudioChallengeFeedback('');
+    setAudioChallengeStatus('idle');
   };
 
   const handlePrevFlashcard = () => {
     setIsCardFlipped(false);
     setFlashcardIdx(prev => (prev - 1 + filteredWords.length) % (filteredWords.length || 1));
     soundEffects.playFlip();
+    setAudioChallengeInput('');
+    setAudioChallengeFeedback('');
+    setAudioChallengeStatus('idle');
   };
+
+  // Auto-play word in Audio Challenge Mode when card or mode changes
+  useEffect(() => {
+    if (viewMode === 'flashcards' && isAudioChallenge && currentFlashcard) {
+      const timer = setTimeout(() => {
+        speakSpanish(currentFlashcard.spanish);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [flashcardIdx, isAudioChallenge, viewMode, currentFlashcard]);
 
   // ================= SRS REVIEW LOGIC =================
 
@@ -829,13 +898,46 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
 
       {/* ================= VIEW 2: STANDARD FLASHCARD MODE ================= */}
       {viewMode === 'flashcards' && (
-        <div className="max-w-xl mx-auto space-y-4">
+        <div className="max-w-xl mx-auto space-y-5">
           {filteredWords.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
               <p className="text-stone-500 dark:text-stone-400 font-medium">No words match your current filters.</p>
             </div>
           ) : (
             <>
+              {/* Audio Challenge Toggle Panel */}
+              <div className="flex justify-between items-center bg-stone-100 dark:bg-stone-800/80 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700/60 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl transition-all duration-300 ${isAudioChallenge ? 'bg-amber-500 text-stone-950 scale-105' : 'bg-stone-200 dark:bg-stone-700 text-stone-500'}`}>
+                    <Volume2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-stone-900 dark:text-white uppercase tracking-wider">Audio Challenge Mode</p>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400">Listen, spell the Spanish word, and earn bonus XP.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsAudioChallenge(!isAudioChallenge);
+                    setIsCardFlipped(false);
+                    setAudioChallengeInput('');
+                    setAudioChallengeFeedback('');
+                    setAudioChallengeStatus('idle');
+                    soundEffects.playPop();
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    isAudioChallenge ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-700'
+                  }`}
+                  aria-label="Toggle Audio Challenge Mode"
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      isAudioChallenge ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
               <div className="flex justify-between items-center text-xs font-semibold text-stone-500 dark:text-stone-400 px-1">
                 <span>Card {flashcardIdx + 1} of {filteredWords.length}</span>
                 <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold">
@@ -846,10 +948,14 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
               {/* The Interactive Card */}
               <div
                 onClick={() => {
+                  if (isAudioChallenge && !isCardFlipped) {
+                    speakSpanish(currentFlashcard.spanish);
+                    return;
+                  }
                   setIsCardFlipped(!isCardFlipped);
                   soundEffects.playFlip();
                 }}
-                className="cursor-pointer bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500 rounded-2xl p-8 min-h-[300px] flex flex-col justify-between shadow-lg hover:shadow-xl transition-all duration-300 relative group"
+                className="cursor-pointer bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500 rounded-2xl p-8 min-h-[320px] flex flex-col justify-between shadow-lg hover:shadow-xl transition-all duration-300 relative group"
               >
                 {/* Header buttons */}
                 <div className="flex justify-between items-center">
@@ -880,21 +986,126 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
                 {/* Main Content */}
                 <div className="my-auto text-center py-6">
                   {!isCardFlipped ? (
-                    <div>
-                      <h2 className="text-4xl font-extrabold text-stone-900 dark:text-white tracking-tight">
-                        {currentFlashcard.gender ? `${currentFlashcard.gender} ` : ''}{currentFlashcard.spanish}
-                      </h2>
-                      {currentFlashcard.phonetic && (
-                        <p className="text-sm font-mono text-stone-400 dark:text-stone-500 mt-2">
-                          /{currentFlashcard.phonetic}/
+                    // Front of Card
+                    !isAudioChallenge ? (
+                      // Standard mode front
+                      <div>
+                        <h2 className="text-4xl font-extrabold text-stone-900 dark:text-white tracking-tight">
+                          {currentFlashcard.gender ? `${currentFlashcard.gender} ` : ''}{currentFlashcard.spanish}
+                        </h2>
+                        {currentFlashcard.phonetic && (
+                          <p className="text-sm font-mono text-stone-400 dark:text-stone-500 mt-2">
+                            /{currentFlashcard.phonetic}/
+                          </p>
+                        )}
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-4">
+                          Click card or press Space to reveal translation
                         </p>
-                      )}
-                      <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-4">
-                        Click card or press Space to reveal translation
-                      </p>
-                    </div>
+                      </div>
+                    ) : (
+                      // Audio Challenge mode front
+                      <div className="space-y-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          {/* Audio Wave Button */}
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              speakSpanish(currentFlashcard.spanish);
+                              soundEffects.playPop();
+                            }}
+                            className="w-20 h-20 bg-amber-500/10 hover:bg-amber-500/20 border-2 border-amber-500 text-amber-500 rounded-full flex items-center justify-center relative group/listen cursor-pointer"
+                          >
+                            <Volume2 className="w-8 h-8 group-hover/listen:scale-110 transition duration-200" />
+                            <span className="absolute -inset-1 rounded-full bg-amber-500/20 animate-ping opacity-60 group-hover/listen:opacity-100 duration-1000" />
+                          </motion.button>
+                          
+                          <div className="text-center space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 font-mono">
+                              🎧 AUDIO CHALLENGE
+                            </p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm">
+                              Listen to the word spoken by the AI and type the correct spelling.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Spelling Input */}
+                        <div className="max-w-xs mx-auto space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Type Spanish word..."
+                            value={audioChallengeInput}
+                            onChange={(e) => setAudioChallengeInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleCheckAudioChallenge();
+                              }
+                            }}
+                            className={`w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/80 border text-center font-bold text-lg rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all ${
+                              audioChallengeStatus === 'correct' || audioChallengeStatus === 'accent-mismatch'
+                                ? 'border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                : audioChallengeStatus === 'incorrect'
+                                ? 'border-rose-500 ring-2 ring-rose-500/20 text-rose-600 dark:text-rose-400'
+                                : 'border-stone-200 dark:border-stone-700/80 text-stone-900 dark:text-white font-sans'
+                            }`}
+                            autoFocus
+                          />
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleCheckAudioChallenge}
+                              disabled={!audioChallengeInput.trim()}
+                              className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-xs uppercase tracking-wider shadow-sm transition disabled:opacity-40"
+                            >
+                              Check Spelling
+                            </button>
+                            <button
+                              onClick={() => {
+                                setIsCardFlipped(true);
+                                soundEffects.playFlip();
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 font-bold text-xs uppercase transition"
+                            >
+                              Reveal
+                            </button>
+                          </div>
+
+                          {audioChallengeFeedback && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`text-xs font-bold text-center mt-1.5 ${
+                                audioChallengeStatus === 'correct' || audioChallengeStatus === 'accent-mismatch'
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-rose-600 dark:text-rose-400'
+                              }`}
+                            >
+                              {audioChallengeFeedback}
+                            </motion.p>
+                          )}
+                        </div>
+                      </div>
+                    )
                   ) : (
+                    // Back of Card (Always reveals details)
                     <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                      {/* Spanish word revealed on back if in audio mode */}
+                      {isAudioChallenge && (
+                        <div className="pb-3 border-b border-stone-100 dark:border-stone-800 text-center">
+                          <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500">SPANISH</p>
+                          <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+                            {currentFlashcard.gender ? <span className="text-lg font-light text-stone-400 mr-1">{currentFlashcard.gender}</span> : ''}
+                            {currentFlashcard.spanish}
+                          </p>
+                          {currentFlashcard.phonetic && (
+                            <p className="text-xs font-mono text-stone-400 dark:text-stone-500 mt-1">
+                              /{currentFlashcard.phonetic}/
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       <div>
                         <p className="text-xs font-semibold text-stone-400 dark:text-stone-500">ENGLISH</p>
                         <p className="text-2xl font-bold text-stone-900 dark:text-white">{currentFlashcard.english}</p>
@@ -921,7 +1132,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
 
                 {/* Card footer */}
                 <div className="text-center text-xs text-stone-400 dark:text-stone-500 font-medium">
-                  {isCardFlipped ? 'Tap to flip back' : 'Tap to show answer'}
+                  {isCardFlipped ? 'Tap to flip back' : isAudioChallenge ? 'Use spelling input above to check your spelling' : 'Tap to show answer'}
                 </div>
               </div>
 
@@ -968,15 +1179,40 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
             <span>Click any card to play native audio</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <motion.div
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.08
+                }
+              }
+            }}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
             {filteredWords.map((item) => {
               const isMastered = userProgress.masteredWordIds.includes(item.id);
               const isSaved = userProgress.savedWordIds.includes(item.id);
               const srsRecord = userProgress.srsData?.[item.id];
 
               return (
-                <div
+                <motion.div
                   key={item.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 24 },
+                    show: { 
+                      opacity: 1, 
+                      y: 0, 
+                      transition: { 
+                        duration: 0.8,
+                        ease: [0.16, 1, 0.3, 1] 
+                      } 
+                    }
+                  }}
+                  whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 20 } }}
                   onClick={() => speakSpanish(item.spanish)}
                   className={`group relative bg-white dark:bg-stone-900 border rounded-xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer ${
                     isMastered
@@ -1044,10 +1280,10 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
                   {/* Example Sentence */}
                   {item.examples?.[0] && (
                     <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-stone-800 text-xs">
-                      <p className="font-medium text-stone-700 dark:text-stone-300 leading-snug">
+                      <p className="font-medium text-stone-700 dark:text-stone-300 leading-relaxed">
                         "{item.examples[0].es}"
                       </p>
-                      <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
                         {item.examples[0].en}
                       </p>
                     </div>
@@ -1065,10 +1301,10 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
                       <span>Rank #{item.frequencyRank}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       )}
     </div>

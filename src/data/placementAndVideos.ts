@@ -127,7 +127,7 @@ export const VIDEO_COURSES: VideoCourse[] = [
   {
     id: 'playlist-1',
     title: 'Spanish Comprehensive Input & Foundations (Playlist 1)',
-    creator: 'Iberacademy Spanish Masterclasses',
+    creator: 'Iberio Spanish Masterclasses',
     youtubeId: 'PLkF0tPwXKUwDYkJ49riGfN1opbe-lvQTp',
     playlistId: 'PLkF0tPwXKUwDYkJ49riGfN1opbe-lvQTp',
     playlistUrl: 'https://www.youtube.com/playlist?list=PLkF0tPwXKUwDYkJ49riGfN1opbe-lvQTp',
@@ -147,7 +147,7 @@ export const VIDEO_COURSES: VideoCourse[] = [
   {
     id: 'playlist-2',
     title: 'Immersive Natural Conversations & Dialogues (Playlist 2)',
-    creator: 'Iberacademy Spanish Masterclasses',
+    creator: 'Iberio Spanish Masterclasses',
     youtubeId: 'PLkF0tPwXKUwBi67XY7x8xbTMfGVdsg-4z',
     playlistId: 'PLkF0tPwXKUwBi67XY7x8xbTMfGVdsg-4z',
     playlistUrl: 'https://www.youtube.com/playlist?list=PLkF0tPwXKUwBi67XY7x8xbTMfGVdsg-4z',
@@ -167,7 +167,7 @@ export const VIDEO_COURSES: VideoCourse[] = [
   {
     id: 'playlist-3',
     title: 'Advanced Spanish Syntax & Cultural Immersion (Playlist 3)',
-    creator: 'Iberacademy Spanish Masterclasses',
+    creator: 'Iberio Spanish Masterclasses',
     youtubeId: 'PLkF0tPwXKUwBSWQSDjoAxe_plLfPTRjQB',
     playlistId: 'PLkF0tPwXKUwBSWQSDjoAxe_plLfPTRjQB',
     playlistUrl: 'https://www.youtube.com/playlist?list=PLkF0tPwXKUwBSWQSDjoAxe_plLfPTRjQB',

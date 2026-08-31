@@ -476,6 +476,289 @@ Return ONLY a valid JSON object:
     }
   });
 
+  // AI B2 Skill Challenge & Role-Play Evaluator Endpoint
+  app.post('/api/ai/skill-challenge', async (req, res) => {
+    const {
+      action = 'generate_scenario',
+      userLevel = 'B2',
+      domain = 'professional',
+      scenario,
+      userResponse = '',
+      nativeLang = 'en'
+    } = req.body;
+
+    const isArabic = nativeLang === 'ar';
+
+    if (action === 'generate_scenario') {
+      const scenariosByDomain: Record<string, any[]> = {
+        professional: [
+          {
+            id: 'scen-b2-prof-1',
+            domain: 'professional',
+            title_es: 'Reunión Ejecutiva: Estrategia de Sostenibilidad y Transformación Digital',
+            title_en: 'Executive Meeting: Sustainability & Digital Strategy',
+            title_ar: 'اجتماع تنفيذي: استراتيجية الاستدامة والتحول الرقمي',
+            prompt_es: 'Eres el Director Estratégico de una corporación hispana. El Director General te plantea la siguiente situación: "Enfrentamos un gran desafío económico. No obstante, debemos implementar una perspectiva sostenible y fomentar la innovación tecnológica sin comprometer la rentabilidad." Responde exponiendo tu estrategia.',
+            prompt_en: 'You are the Strategic Director of a Hispanic corporation. The CEO presents this situation: "We face a major economic challenge. Nevertheless, we must implement a sustainable perspective and foster technological innovation without compromising profitability." Respond outlining your strategy.',
+            prompt_ar: 'أنت المدير الاستراتيجي لشركة إسبانية. يعرض عليك الرئيس التنفيذي الموقف التالي: "نواجه تحدياً اقتصادياً كبيراً. مع ذلك، يجب أن نطبق منظوراً مستداماً ونعزز الابتكار التكنولوجي دون الإخلال بالربحية." أجب بعرض استراتيجيتك.',
+            audioText: 'Estimado Director, enfrentamos un desafío económico sustancial. No obstante, a la luz de los datos actuales, propongo implementar una perspectiva de sostenibilidad que fomente la transformación digital y fortalezca nuestro compromiso con el mercado.',
+            requiredVocabulary: [
+              { word: 'desafío', en: 'challenge', ar: 'تحدٍ' },
+              { word: 'perspectiva', en: 'perspective / outlook', ar: 'منظور / وجهة نظر' },
+              { word: 'fomentar', en: 'to foster / promote', ar: 'تعزيز / تشجيع' },
+              { word: 'no obstante', en: 'nevertheless / however', ar: 'مع ذلك / على الرغم من' },
+              { word: 'a la luz de', en: 'in light of', ar: 'في ضوء' }
+            ],
+            suggestedStarters: [
+              'En mi opinión, a la luz de los resultados actuales, debemos fomentar...',
+              'Reconozco que es un gran desafío; no obstante, propongo adoptar una perspectiva...',
+              'Para superar esta situación, propongo implementar una estrategia que...'
+            ]
+          },
+          {
+            id: 'scen-b2-prof-2',
+            domain: 'professional',
+            title_es: 'Negociación Comercial: Adquisición y Alianza Internacional',
+            title_en: 'Business Negotiation: Acquisition & International Alliance',
+            title_ar: 'تفاوض تجاري: استحواذ وتحالف دولي',
+            prompt_es: 'Estás negociando los términos de una alianza comercial en Barcelona. El socio español duda sobre la viabilidad del proyecto. Debes evaluar sus preocupaciones, ofrecer un compromiso justo y resaltar la factibilidad del acuerdo a largo plazo.',
+            prompt_en: 'You are negotiating the terms of a business alliance in Barcelona. The Spanish partner doubts the project viability. You must evaluate their concerns, offer a fair compromise, and highlight the long-term feasibility of the deal.',
+            prompt_ar: 'تتفاوض على شروط تحالف تجاري في برصلونة. الشريك الإسباني يشكك في جدوى المشروع. يجب عليك تقييم مخاوفه، وتقديم التزام عادل، وإبراز مدى إمكانية تطبيق الاتفاقية على المدى الطويل.',
+            audioText: 'Comprendo sus reservas respecto a la factibilidad del acuerdo. Sin embargo, tras evaluar el mercado laboral y negociar las condiciones, este compromiso resulta sustancial para ambas partes a largo plazo.',
+            requiredVocabulary: [
+              { word: 'evaluar', en: 'to evaluate / assess', ar: 'تقييم' },
+              { word: 'factible', en: 'feasible / viable', ar: 'قابل للتطبيق / مجدٍ' },
+              { word: 'negociar', en: 'to negotiate', ar: 'يتفاوض' },
+              { word: 'compromiso', en: 'commitment / agreement', ar: 'التزام / تسوية' },
+              { word: 'a largo plazo', en: 'in the long term', ar: 'على المدى الطويل' }
+            ],
+            suggestedStarters: [
+              'Tras evaluar detenidamente la situación, considero que el proyecto es factible...',
+              'Estamos dispuestos a negociar un compromiso equitativo a largo plazo...',
+              'Entiendo su postura; no obstante, si analizamos los beneficios a largo plazo...'
+            ]
+          }
+        ],
+        social: [
+          {
+            id: 'scen-b2-soc-1',
+            domain: 'social',
+            title_es: 'Debate Cultural: El Impacto de las Redes Sociales y la Sociedad Abierta',
+            title_en: 'Cultural Debate: Social Media & Open Society',
+            title_ar: 'نقاش ثقافي: أثر وسائل التواصل الاجتماعي والمجتمع المفتوح',
+            prompt_es: 'Estás en una tertulia en un café cultural de Madrid. Un amigo argumenta que la tecnología aísla a las personas. Expresa tu punto de vista con matices, señalando que la tecnología es un arma de doble filo pero que puede potenciar la cohesión social.',
+            prompt_en: 'You are at a cultural gathering in a Madrid café. A friend argues technology isolates people. Express your nuanced viewpoint, noting technology is a double-edged sword that can boost social cohesion if used wisely.',
+            prompt_ar: 'أنت في جلسة ثقافية في مقهى بمدريد. يزعم أحد الأصدقاء أن التكنولوجيا تعزل الناس. عبّر عن وجهة نظرك مع إبراز الفروق الدقيقة، موضحاً أن التكنولوجيا سلاح ذو حدين يمكنه تعزيز التماسك الاجتماعي.',
+            audioText: 'Entiendo tu argumento, al fin y al cabo la tecnología es un arma de doble filo. Sin embargo, hay matices importantes: si la utilizamos adecuadamente, puede potenciar la comunicación y conectar personas de diversas culturas.',
+            requiredVocabulary: [
+              { word: 'matiz', en: 'nuance / subtle distinction', ar: 'فارق دقيق' },
+              { word: 'un arma de doble filo', en: 'a double-edged sword', ar: 'سلاح ذو حدين' },
+              { word: 'potenciar', en: 'to boost / strengthen', ar: 'تعزيز / تقوية' },
+              { word: 'al fin y al cabo', en: 'after all / when all is said and done', ar: 'في نهاية المطاف' },
+              { word: 'discrepancia', en: 'discrepancy / disagreement', ar: 'تباين / خلاف' }
+            ],
+            suggestedStarters: [
+              'Al fin y al cabo, considero que la tecnología es un arma de doble filo...',
+              'Aunque entiendo tu discrepancia, creo que hay un matiz fundamental...',
+              'Para potenciar la comunicación real, debemos considerar que...'
+            ]
+          }
+        ],
+        travel: [
+          {
+            id: 'scen-b2-trav-1',
+            domain: 'travel',
+            title_es: 'Gestión Diplomática y Logística de Incidencias de Viaje',
+            title_en: 'Diplomatic Logistics & Flight Dispute Resolution',
+            title_ar: 'إدارة أزمات السفر وحل نزاعات الطيران',
+            prompt_es: 'Llegas al aeropuerto de Madrid y descubres que tu vuelo de conexión ha sido cancelado sin previo aviso. Debes exigir amablemente a la encargada de la aerolínea una compensación factible, haciendo valer el marco jurídico del pasajero y resolviendo la incertidumbre.',
+            prompt_en: 'You arrive at Madrid airport and find your connecting flight cancelled without notice. You must politely demand feasible compensation from the airline representative, invoking passenger legal rights and resolving the uncertainty.',
+            prompt_ar: 'تصل إلى مطار مدريد وتكتشف إلغاء رحلتك دون إشعار مسبق. يجب عليك مطالبة ممثلة شركة الطيران بلباقة بتعويض مناسب، بالاستناد إلى الأطر القانونية لحقوق المسافرين وحل حالة عدم اليقين.',
+            audioText: 'Lamento la interrupción en su viaje. A la luz de las regulaciones europeas, analizaremos la situación para ofrecerle una compensación factible y alojamiento sin incertidumbre.',
+            requiredVocabulary: [
+              { word: 'incertidumbre', en: 'uncertainty', ar: 'عدم يقين' },
+              { word: 'marco jurídico', en: 'legal framework', ar: 'إطار قانوني' },
+              { word: 'sustancial', en: 'substantial / significant', ar: 'جوهري / هائل' },
+              { word: 'recalcar', en: 'to emphasize / highlight', ar: 'التأكيد على' },
+              { word: 'en última instancia', en: 'ultimately / in the final analysis', ar: 'في نهاية المطاف' }
+            ],
+            suggestedStarters: [
+              'Quisiera recalcar que, de conformidad con el marco jurídico...',
+              'Esta situación genera una gran incertidumbre, por lo que exijo...',
+              'En última instancia, espero que la aerolínea me proporcione una solución sustancial...'
+            ]
+          }
+        ]
+      };
+
+      const domainScenarios = scenariosByDomain[domain] || scenariosByDomain.professional;
+      const selectedScenario = domainScenarios[Math.floor(Math.random() * domainScenarios.length)];
+
+      const ai = getAIClient();
+      if (!ai) {
+        return res.json({ scenario: selectedScenario });
+      }
+
+      try {
+        const prompt = `Generate a creative B2 Spanish situational role-play challenge for a learner at B2 CEFR level in the context domain "${domain}".
+Return strict JSON:
+{
+  "id": "scen-gen-${Date.now()}",
+  "domain": "${domain}",
+  "title_es": "Descriptive Spanish Title",
+  "title_en": "English Title",
+  "title_ar": "Arabic Title",
+  "prompt_es": "Situational role-play scenario in Spanish asking the student to act or respond in an upper-intermediate context.",
+  "prompt_en": "English translation of prompt",
+  "prompt_ar": "Arabic translation of prompt",
+  "audioText": "Natural Spanish monologue or dialogue prompt for audio listening comprehension.",
+  "requiredVocabulary": [
+    { "word": "Spanish B2 word", "en": "English translation", "ar": "Arabic translation" },
+    { "word": "Spanish B2 word 2", "en": "English translation 2", "ar": "Arabic translation 2" },
+    { "word": "Spanish B2 word 3", "en": "English translation 3", "ar": "Arabic translation 3" },
+    { "word": "Spanish B2 word 4", "en": "English translation 4", "ar": "Arabic translation 4" }
+  ],
+  "suggestedStarters": [
+    "Suggested opening sentence 1...",
+    "Suggested opening sentence 2...",
+    "Suggested opening sentence 3..."
+  ]
+}`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.7
+          }
+        });
+
+        const parsed = JSON.parse(response.text || '{}');
+        return res.json({
+          scenario: {
+            id: parsed.id || selectedScenario.id,
+            domain: parsed.domain || domain,
+            title_es: parsed.title_es || selectedScenario.title_es,
+            title_en: parsed.title_en || selectedScenario.title_en,
+            title_ar: parsed.title_ar || selectedScenario.title_ar,
+            prompt_es: parsed.prompt_es || selectedScenario.prompt_es,
+            prompt_en: parsed.prompt_en || selectedScenario.prompt_en,
+            prompt_ar: parsed.prompt_ar || selectedScenario.prompt_ar,
+            audioText: parsed.audioText || selectedScenario.audioText,
+            requiredVocabulary: parsed.requiredVocabulary || selectedScenario.requiredVocabulary,
+            suggestedStarters: parsed.suggestedStarters || selectedScenario.suggestedStarters
+          }
+        });
+      } catch (e) {
+        return res.json({ scenario: selectedScenario });
+      }
+    }
+
+    if (action === 'evaluate_response') {
+      const requiredWords: any[] = scenario?.requiredVocabulary || [];
+      const textLower = userResponse.toLowerCase();
+
+      const vocabUsageCheck = requiredWords.map(item => {
+        const w = (item.word || '').toLowerCase();
+        const used = textLower.includes(w);
+        return {
+          word: item.word,
+          en: item.en,
+          ar: item.ar,
+          used,
+          feedback: used
+            ? `🟢 Aplicaste correctamente '${item.word}'`
+            : `🔴 Faltó incluir '${item.word}' (${item.en})`
+        };
+      });
+
+      const usedCount = vocabUsageCheck.filter(v => v.used).length;
+      const vocabScore = Math.min(100, Math.round((usedCount / (requiredWords.length || 1)) * 70 + (userResponse.length > 50 ? 30 : 10)));
+      const listeningScore = Math.min(100, Math.max(60, Math.round(75 + (userResponse.length > 80 ? 20 : 5))));
+      const writingScore = Math.min(100, Math.max(50, Math.round(70 + (userResponse.length > 100 ? 25 : 10))));
+      const overallScore = Math.round((listeningScore + writingScore + vocabScore) / 3);
+
+      const ai = getAIClient();
+      if (!ai) {
+        return res.json({
+          overallScore,
+          listeningRelevanceScore: listeningScore,
+          writingFluencyScore: writingScore,
+          vocabularyUsageScore: vocabScore,
+          vocabUsageCheck,
+          feedback_es: `¡Excelente esfuerzo en este desafío B2! Lograste incorporar ${usedCount} de las palabras requeridas y tu redacción muestra buena coherencia gramatical.`,
+          feedback_en: `Great effort on this B2 challenge! You successfully applied ${usedCount} required vocabulary words with clear grammatical structure.`,
+          feedback_ar: `جهد ممتاز في هذا التحدي لمستوى B2! نجحت في تضمين ${usedCount} من المفردات المطلوبة وتظهر كتابتك تماسكاً لغوياً جيداً.`,
+          correctedResponse: userResponse,
+          xpEarned: Math.round(overallScore * 0.5)
+        });
+      }
+
+      try {
+        const evalPrompt = `You are Profesor Mateo, master SLA pedagogue.
+Evaluate this student's response for a B2 Spanish roleplay scenario:
+
+Scenario Title: ${scenario?.title_es}
+Scenario Prompt: ${scenario?.prompt_es}
+Required Vocabulary: ${requiredWords.map((w: any) => w.word).join(', ')}
+
+Student Response in Spanish:
+"${userResponse}"
+
+Evaluate and return strict JSON:
+{
+  "overallScore": number (0-100),
+  "listeningRelevanceScore": number (0-100),
+  "writingFluencyScore": number (0-100),
+  "vocabularyUsageScore": number (0-100),
+  "feedback_es": "Constructive Spanish pedagogical critique focusing on B2 fluency and nuance.",
+  "feedback_en": "English explanation of feedback.",
+  "feedback_ar": "Arabic explanation of feedback.",
+  "correctedResponse": "A polished, natural B2 native speaker version of the student's text improving grammar and vocabulary."
+}`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: evalPrompt }] }],
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.3
+          }
+        });
+
+        const parsed = JSON.parse(response.text || '{}');
+        return res.json({
+          overallScore: parsed.overallScore || overallScore,
+          listeningRelevanceScore: parsed.listeningRelevanceScore || listeningScore,
+          writingFluencyScore: parsed.writingFluencyScore || writingScore,
+          vocabularyUsageScore: parsed.vocabularyUsageScore || vocabScore,
+          vocabUsageCheck,
+          feedback_es: parsed.feedback_es || '¡Gran trabajo expresando tu postura!',
+          feedback_en: parsed.feedback_en || 'Great job expressing your perspective!',
+          feedback_ar: parsed.feedback_ar || 'عمل رائع في التعبير عن موقفك!',
+          correctedResponse: parsed.correctedResponse || userResponse,
+          xpEarned: Math.max(25, Math.round((parsed.overallScore || overallScore) * 0.5))
+        });
+      } catch (e) {
+        return res.json({
+          overallScore,
+          listeningRelevanceScore: listeningScore,
+          writingFluencyScore: writingScore,
+          vocabularyUsageScore: vocabScore,
+          vocabUsageCheck,
+          feedback_es: `¡Excelente desempeño B2! Lograste incorporar ${usedCount} palabras clave.`,
+          feedback_en: `Great B2 performance! You incorporated ${usedCount} key words.`,
+          feedback_ar: `أداء ممتاز لمستوى B2! قمت بتضمين ${usedCount} كلمات رئيسية.`,
+          correctedResponse: userResponse,
+          xpEarned: 35
+        });
+      }
+    }
+
+    return res.status(400).json({ error: 'Invalid action' });
+  });
+
   // AI-Powered Word Contextual Translation and Image Association
   app.post('/api/ai/translate-word', async (req, res) => {
     const { word = '', sentence = '', nativeLang = 'en' } = req.body;

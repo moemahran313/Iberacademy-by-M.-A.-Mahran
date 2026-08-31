@@ -41,7 +41,7 @@ let pendingSignInPromise: Promise<User | null> | null = null;
 
 export const getStoredFallbackUser = (): User | null => {
   try {
-    const stored = localStorage.getItem('iberacademy_fallback_user');
+    const stored = localStorage.getItem('iberio_fallback_user') || localStorage.getItem('iberacademy_fallback_user');
     if (stored) {
       return JSON.parse(stored) as User;
     }
@@ -52,20 +52,20 @@ export const getStoredFallbackUser = (): User | null => {
 };
 
 export const createFallbackUserSession = (): User => {
-  let existingUid = localStorage.getItem('iberacademy_uid');
+  let existingUid = localStorage.getItem('iberio_uid') || localStorage.getItem('iberacademy_uid');
   if (!existingUid) {
     existingUid = 'user_ver_' + Math.random().toString(36).substring(2, 9);
-    localStorage.setItem('iberacademy_uid', existingUid);
+    localStorage.setItem('iberio_uid', existingUid);
   }
   const fallbackUser = {
     uid: existingUid,
     displayName: 'Learner',
-    email: 'learner@iberacademy.app',
+    email: 'learner@iberio.app',
     photoURL: '',
     emailVerified: true,
     isAnonymous: true,
   } as unknown as User;
-  localStorage.setItem('iberacademy_fallback_user', JSON.stringify(fallbackUser));
+  localStorage.setItem('iberio_fallback_user', JSON.stringify(fallbackUser));
   return fallbackUser;
 };
 
@@ -77,6 +77,7 @@ export const signInWithGoogle = async (): Promise<User | null> => {
   pendingSignInPromise = (async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      localStorage.removeItem('iberio_fallback_user');
       localStorage.removeItem('iberacademy_fallback_user');
       return result.user;
     } catch (error: any) {
@@ -99,6 +100,7 @@ export { getRedirectResult };
 
 export const logoutUser = async () => {
   try {
+    localStorage.removeItem('iberio_fallback_user');
     localStorage.removeItem('iberacademy_fallback_user');
     await signOut(auth);
   } catch (error) {

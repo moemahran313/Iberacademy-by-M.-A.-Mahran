@@ -415,6 +415,31 @@ export interface ImportedContent {
   isCompleted?: boolean;
 }
 
+export interface ReminderSettings {
+  enabled: boolean;
+  channel: 'push' | 'email' | 'both';
+  preferredTime: string;
+  daysOfWeek: ('Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun')[];
+  emailAddress?: string;
+  focusArea?: 'vocabulary' | 'tutor' | 'stories' | 'grammar' | 'custom';
+  customMessage?: string;
+}
+
+export interface RoleplayEvaluationRecord {
+  id: string;
+  timestamp: string;
+  domain: 'professional' | 'social' | 'travel';
+  title: string;
+  overallScore: number;
+  listeningRelevanceScore: number;
+  writingFluencyScore: number;
+  vocabularyUsageScore: number;
+  weaknessCategory?: string;
+  missedVocabulary?: string[];
+  feedback_es: string;
+  feedback_en: string;
+}
+
 export interface UserProgress {
   currentLevel: CEFRLevel;
   streakDays: number;
@@ -430,6 +455,7 @@ export interface UserProgress {
   savedWordIds: string[];
   masteredWordIds: string[];
   srsData: Record<string, SRSItem>;
+  roleplayEvaluations?: RoleplayEvaluationRecord[];
   // LingQ & Comprehensible Input Acquisition Engine
   knownWords?: string[];
   lingqs?: Record<string, LingQItem>;
@@ -448,5 +474,6 @@ export interface UserProgress {
     theme: 'light' | 'dark';
     dailyGoalMinutes: number;
     dailyWordsGoal?: number;
+    reminderSettings?: ReminderSettings;
   };
 }

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import {
   Compass,
   Sparkles,
@@ -185,13 +186,31 @@ export const RecommendedReadingModule: React.FC<RecommendedReadingModuleProps> =
 
       {/* Recommended Content Cards */}
       {recommendations.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <motion.div
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.04
+              }
+            }
+          }}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+        >
           {recommendations.slice(0, 6).map(item => {
             const estimatedMins = Math.ceil(item.wordCount / 100);
 
             return (
-              <div
+              <motion.div
                 key={item.id}
+                variants={{
+                  hidden: { opacity: 0, y: 15 },
+                  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+                }}
+                whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 20 } }}
                 className="bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 rounded-3xl p-5 hover:border-amber-500 dark:hover:border-amber-500/80 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-2.5">
@@ -230,10 +249,10 @@ export const RecommendedReadingModule: React.FC<RecommendedReadingModuleProps> =
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       ) : (
         <div className="p-8 text-center bg-stone-50 dark:bg-stone-800/40 border-2 border-dashed border-stone-200 dark:border-stone-800 rounded-3xl space-y-2">
           <p className="text-sm font-bold text-stone-600 dark:text-stone-300">

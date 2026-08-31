@@ -227,12 +227,14 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
 
   const [savedLingQToast, setSavedLingQToast] = useState<string | null>(null);
 
-  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat container to bottom (inner container only)
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, isLoading]);
 
   // When persona changes, append introductory greeting
@@ -619,7 +621,7 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-stone-50/50 dark:bg-stone-950/50">
+            <div ref={messagesContainerRef} className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-stone-50/50 dark:bg-stone-950/50">
               {messages.map(msg => {
                 const isUser = msg.sender === 'user';
                 const isPlayingThis = currentlyPlayingId === msg.id;
@@ -778,8 +780,6 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
                   <span>{activePersona.name} is formulating a comprehensible response...</span>
                 </div>
               )}
-
-              <div ref={chatBottomRef} />
             </div>
 
             {/* Input & Voice Controls Bar */}
