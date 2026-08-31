@@ -102,6 +102,15 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'profile', label_en: 'Profile', label_ar: 'الحساب', icon: UserIcon }
   ];
 
+  const handleNavClick = (tabId: string) => {
+    soundEffects.playPop();
+    setActiveTab(tabId);
+    setIsMobileMenuOpen(false);
+    setIsProfileDropdownOpen(false);
+    setOpenDropdown(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleLanguageToggle = () => {
     soundEffects.playPop();
     setUserProgress(prev => {
@@ -149,11 +158,10 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Logo & Level Tag */}
             <button
               onClick={() => {
-                soundEffects.playPop();
                 if (authUser) {
-                  setActiveTab('dashboard');
+                  handleNavClick('dashboard');
                 } else {
-                  setActiveTab('landing');
+                  handleNavClick('landing');
                 }
               }}
               className="flex items-center gap-2 cursor-pointer select-none group focus:outline-none shrink-0"
@@ -199,11 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
                         return (
                           <button
                             key={item.id}
-                            onClick={() => {
-                              soundEffects.playPop();
-                              setActiveTab(item.id);
-                              setOpenDropdown(null);
-                            }}
+                            onClick={() => handleNavClick(item.id)}
                             className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
                               isActive
                                 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
@@ -261,11 +265,7 @@ export const Header: React.FC<HeaderProps> = ({
                         return (
                           <button
                             key={item.id}
-                            onClick={() => {
-                              soundEffects.playPop();
-                              setActiveTab(item.id);
-                              setOpenDropdown(null);
-                            }}
+                            onClick={() => handleNavClick(item.id)}
                             className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
                               isActive
                                 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
@@ -293,10 +293,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* 3. Progress Direct Tab */}
               <button
-                onClick={() => {
-                  soundEffects.playPop();
-                  setActiveTab('planner');
-                }}
+                onClick={() => handleNavClick('planner')}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'planner'
                     ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
@@ -309,10 +306,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* 4. Profile Direct Tab */}
               <button
-                onClick={() => {
-                  soundEffects.playPop();
-                  setActiveTab('profile');
-                }}
+                onClick={() => handleNavClick('profile')}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'profile'
                     ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
@@ -598,11 +592,7 @@ export const Header: React.FC<HeaderProps> = ({
                       return (
                         <button
                           key={item.id}
-                          onClick={() => {
-                            soundEffects.playPop();
-                            setActiveTab(item.id);
-                            setIsMobileMenuOpen(false);
-                          }}
+                          onClick={() => handleNavClick(item.id)}
                           className={`flex items-center justify-between p-3 rounded-xl text-xs font-extrabold transition text-left border ${
                             isActive
                               ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-xs'
@@ -640,11 +630,7 @@ export const Header: React.FC<HeaderProps> = ({
                       return (
                         <button
                           key={item.id}
-                          onClick={() => {
-                            soundEffects.playPop();
-                            setActiveTab(item.id);
-                            setIsMobileMenuOpen(false);
-                          }}
+                          onClick={() => handleNavClick(item.id)}
                           className={`flex items-center justify-between p-3 rounded-xl text-xs font-extrabold transition text-left border ${
                             isActive
                               ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-xs'
@@ -716,6 +702,35 @@ export const Header: React.FC<HeaderProps> = ({
           </>
         )}
       </AnimatePresence>
+
+      {/* Sticky Mobile Bottom Navigation Bar */}
+      <nav 
+        aria-label="Mobile Bottom Navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-t border-stone-200/80 dark:border-stone-800/80 md:hidden flex items-center justify-around px-2 py-1.5 shadow-lg select-none"
+      >
+        {mobileBottomTabs.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleNavClick(tab.id)}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                isActive
+                  ? 'text-amber-600 dark:text-amber-400 font-extrabold scale-105'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-medium'
+              }`}
+            >
+              <div className={`p-1 rounded-xl transition ${isActive ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' : ''}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] leading-tight mt-0.5">
+                {userProgress.settings.nativeLanguage === 'ar' ? tab.label_ar : tab.label_en}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
     </>
   );
 };

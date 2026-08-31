@@ -2,6 +2,15 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

@@ -19,6 +19,12 @@ export const Footer: React.FC<FooterProps> = ({
   userEmail,
   userName,
 }) => {
+  const handleFooterClick = (tabId: string) => {
+    soundEffects.playPop();
+    setActiveTab(tabId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <footer className="w-full bg-stone-900 text-stone-300 border-t border-stone-800/80 mt-16 pb-24 md:pb-12 pt-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -26,10 +32,7 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Brand Emblem & Philosophy */}
           <div className="space-y-3 md:col-span-1">
             <div 
-              onClick={() => {
-                soundEffects.playPop();
-                setActiveTab('dashboard');
-              }}
+              onClick={() => handleFooterClick('dashboard')}
               className="flex items-center gap-2.5 cursor-pointer group w-fit"
             >
               <IberioLogo variant="icon" className="w-8 h-8 shadow-md" />
@@ -56,7 +59,7 @@ export const Footer: React.FC<FooterProps> = ({
             <ul className="space-y-1.5 text-xs text-stone-400">
               <li>
                 <button 
-                  onClick={() => setActiveTab('dashboard')} 
+                  onClick={() => handleFooterClick('dashboard')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Reading & Input Dashboard
@@ -64,7 +67,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
-                  onClick={() => setActiveTab('stories')} 
+                  onClick={() => handleFooterClick('stories')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Interactive Krashen Reader
@@ -72,7 +75,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
-                  onClick={() => setActiveTab('path')} 
+                  onClick={() => handleFooterClick('path')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Curriculum Path ({currentLevel})
@@ -80,7 +83,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
-                  onClick={() => setActiveTab('vocabulary')} 
+                  onClick={() => handleFooterClick('vocabulary')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Frequency Vocabulary Vault
@@ -97,7 +100,7 @@ export const Footer: React.FC<FooterProps> = ({
             <ul className="space-y-1.5 text-xs text-stone-400">
               <li>
                 <button 
-                  onClick={() => setActiveTab('verbs')} 
+                  onClick={() => handleFooterClick('verbs')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Verb Conjugation Matrix
@@ -105,7 +108,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
-                  onClick={() => setActiveTab('grammar')} 
+                  onClick={() => handleFooterClick('grammar')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Grammar Encyclopedia
@@ -113,7 +116,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
-                  onClick={() => setActiveTab('videos')} 
+                  onClick={() => handleFooterClick('videos')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   Curated YouTube Playlists
@@ -121,7 +124,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
-                  onClick={() => setActiveTab('linglooper')} 
+                  onClick={() => handleFooterClick('linglooper')} 
                   className="hover:text-amber-400 transition cursor-pointer"
                 >
                   AI Juan Conversation Partner

@@ -125,24 +125,44 @@ export const PLACEMENT_QUESTIONS: PlacementQuestion[] = [
 
 export const VIDEO_COURSES: VideoCourse[] = [
   {
-    id: 'playlist-1',
-    title: 'Spanish Comprehensive Input & Foundations (Playlist 1)',
+    id: 'playlist-cartoons',
+    title: 'Learn Spanish with Cartoons',
     creator: 'Iberio Spanish Masterclasses',
     youtubeId: 'PLkF0tPwXKUwDYkJ49riGfN1opbe-lvQTp',
     playlistId: 'PLkF0tPwXKUwDYkJ49riGfN1opbe-lvQTp',
     playlistUrl: 'https://www.youtube.com/playlist?list=PLkF0tPwXKUwDYkJ49riGfN1opbe-lvQTp',
     cefr: 'A1',
-    topic: 'Comprehensible Input & Vocabulary',
+    topic: 'Comprehensible Input & Cartoons',
     duration: 'Full Playlist',
-    description_en: 'Structured Spanish playlist providing step-by-step comprehensible input, essential vocabulary building, and conversational foundations for beginners.',
-    description_ar: 'قائمة تشغيل إسبانية متكاملة توفر مدخلات مفهومة خطوة بخطوة، وبناء المفردات الأساسية، والمحادثات للمبتدئين.',
+    description_en: 'Learn Spanish naturally through engaging cartoons with clear pronunciation, visual storytelling, and high-frequency vocabulary designed for effective comprehensible input.',
+    description_ar: 'تعلم الإسبانية بشكل طبيعي وممتع من خلال الرسوم المتحركة والكرتون مع نطق واضح وقصص مرئية ومفردات أساسية.',
     timestamps: [
-      { time: 'Part 1', seconds: 0, title: 'Foundational Grammar & Listening Input', grammarOrVocab: 'A1 Foundations' },
-      { time: 'Part 2', seconds: 0, title: 'High-Frequency Conversational Patterns', grammarOrVocab: 'A1-A2 Immersion' },
-      { time: 'Part 3', seconds: 0, title: 'Interactive Vocabulary Building', grammarOrVocab: 'Core Vocab' }
+      { time: 'Part 1', seconds: 0, title: 'Animated Dialogues & Visual Context', grammarOrVocab: 'Visual Comprehension' },
+      { time: 'Part 2', seconds: 0, title: 'Everyday Vocabulary in Motion', grammarOrVocab: 'Contextual Acquisition' },
+      { time: 'Part 3', seconds: 0, title: 'Listening Comprehension & Repetition', grammarOrVocab: 'Ear Training' }
     ],
-    keyVocab: ['comprensible', 'vocabulario', 'escuchar', 'conversación'],
-    grammarNote: 'Listen without stress; focus on general meaning, high-frequency word clusters, and natural rhythmic flow.'
+    keyVocab: ['dibujos animados', 'historia', 'personajes', 'comprender'],
+    grammarNote: 'Visual context and character expressions make acquiring natural conversational Spanish intuitive and effortless.'
+  },
+  {
+    id: 'playlist-tv-series',
+    title: 'Learn Spanish with TV Series',
+    creator: 'Iberio Spanish Masterclasses',
+    youtubeId: 'PLkF0tPwXKUwA4TZzliZjLWhNBi30UcH63',
+    playlistId: 'PLkF0tPwXKUwA4TZzliZjLWhNBi30UcH63',
+    playlistUrl: 'https://www.youtube.com/playlist?list=PLkF0tPwXKUwA4TZzliZjLWhNBi30UcH63',
+    cefr: 'B1',
+    topic: 'Authentic TV Series & Dialogues',
+    duration: 'Full Playlist',
+    description_en: 'Immerse yourself in authentic Spanish spoken in real TV series. Learn native speed dialogues, cultural humor, colloquial expressions, and conversational idioms.',
+    description_ar: 'انغمس في الإسبانية الحقيقية من خلال المسلسلات التلفزيونية الإسبانية، وتعلم سرعة الكلام الأصلية، والتعابير الدارجة، والفكاهة الثقافية.',
+    timestamps: [
+      { time: 'Part 1', seconds: 0, title: 'Real TV Dialogues & Native Cadence', grammarOrVocab: 'Authentic Spanish' },
+      { time: 'Part 2', seconds: 0, title: 'Colloquial Expressions & Street Slang', grammarOrVocab: 'Colloquial & Idioms' },
+      { time: 'Part 3', seconds: 0, title: 'Cultural Context & Dramatic Nuance', grammarOrVocab: 'Cultural Immersion' }
+    ],
+    keyVocab: ['serie', 'diálogo', 'expresiones', 'personaje'],
+    grammarNote: 'Pay attention to native contractions, intonational stress, and pragmatic cues used in real television scenes.'
   },
   {
     id: 'playlist-2',
