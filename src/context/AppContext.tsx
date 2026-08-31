@@ -35,6 +35,8 @@ interface AppContextType {
   handleGoogleSignIn: () => Promise<void>;
   handleLogout: () => Promise<void>;
   handleLessonCompleted: (lessonId: string) => void;
+  grammarPracticeTopic: { id: string; title_es: string; title_en: string; formula?: string } | null;
+  setGrammarPracticeTopic: (topic: { id: string; title_es: string; title_en: string; formula?: string } | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -74,6 +76,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     streak: number;
     message: string;
   } | null>(null);
+
+  const [grammarPracticeTopic, setGrammarPracticeTopic] = useState<{ id: string; title_es: string; title_en: string; formula?: string } | null>(null);
 
   const handleLessonCompleted = (_lessonId: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -201,6 +205,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleGoogleSignIn,
         handleLogout,
         handleLessonCompleted,
+        grammarPracticeTopic,
+        setGrammarPracticeTopic,
       }}
     >
       {children}

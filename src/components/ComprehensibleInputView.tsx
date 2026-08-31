@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
   Volume2,
@@ -19,7 +20,8 @@ import {
   Check,
   TrendingUp,
   Globe,
-  UploadCloud
+  UploadCloud,
+  X
 } from 'lucide-react';
 import { ComprehensibleStory, CEFRLevel, UserProgress, ImportedContent } from '../types';
 import { COMPREHENSIBLE_STORIES } from '../data/comprehensibleStories';
@@ -47,6 +49,16 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isImporterOpen, setIsImporterOpen] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Popover state for instant library card preview definitions
   const [activePopover, setActivePopover] = useState<{
@@ -470,54 +482,127 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
         />
       )}
 
-      {/* Floating Interactive Word Dictionary Popover */}
-      {activePopover && (
-        <>
-          {/* Translucent click-away background backdrop handler */}
-          <div 
-            className="fixed inset-0 z-40 bg-transparent cursor-default" 
-            onClick={() => setActivePopover(null)}
-          />
-          <div
-            className="fixed z-50 bg-stone-900 dark:bg-stone-800 text-stone-100 p-4 rounded-2xl shadow-xl border border-stone-800 dark:border-stone-700 max-w-xs animate-fadeIn text-xs space-y-2 pointer-events-auto"
-            style={{
-              left: `${activePopover.x}px`,
-              top: `${activePopover.y}px`,
-              transform: 'translate(-50%, -100%) translateY(-8px)',
-            }}
-          >
-            <div className="flex items-center justify-between gap-4 border-b border-stone-800 dark:border-stone-700 pb-1.5">
-              <span className="font-extrabold text-amber-400 capitalize">{activePopover.word}</span>
-              {activePopover.pos && (
-                <span className="text-[10px] bg-stone-800 dark:bg-stone-700 px-1.5 py-0.5 rounded text-stone-300 font-mono">
-                  {activePopover.pos}
-                </span>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-start gap-1.5">
-                <span className="text-stone-400 font-extrabold select-none">EN:</span>
-                <span className="font-semibold text-stone-200">{activePopover.translation_en}</span>
-              </div>
-              <div className="flex items-start gap-1.5 justify-between">
-                <span className="text-stone-400 font-extrabold select-none">AR:</span>
-                <span className="font-semibold text-stone-200 text-right dir-rtl font-arabic flex-1 pl-2">{activePopover.translation_ar}</span>
-              </div>
-            </div>
-            <div className="pt-1 flex justify-end">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActivePopover(null);
-                }}
-                className="text-[10px] text-stone-400 hover:text-white font-bold underline cursor-pointer"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Floating Interactive Word Dictionary Popover / Mobile Slide-up Bottom Sheet */}
+      <AnimatePresence>
+        {activePopover && (
+          <>
+            {isMobile ? (
+              <>
+                {/* Backdrop Overlay */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.5 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setActivePopover(null)}
+                  className="fixed inset-0 bg-black z-50 cursor-default"
+                />
+
+                {/* Slide-up Bottom Sheet */}
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 26, stiffness: 210 }}
+                  className="fixed bottom-0 left-0 right-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl shadow-2xl z-50 flex flex-col max-h-[85vh] outline-none p-6 space-y-4 font-sans text-stone-900 dark:text-stone-100"
+                >
+                  {/* Handle & Header */}
+                  <div className="relative pb-2 border-b border-stone-150 dark:border-stone-800 flex items-center justify-between">
+                    <div className="w-12 h-1 bg-stone-300 dark:bg-stone-700 rounded-full absolute top-[-12px] left-1/2 -translate-x-1/2" />
+                    
+                    <span className="font-extrabold text-base text-amber-600 dark:text-amber-400 capitalize">
+                      {activePopover.word}
+                    </span>
+
+                    {activePopover.pos && (
+                      <span className="text-[10px] bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded text-stone-500 font-mono font-bold">
+                        {activePopover.pos}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black uppercase text-stone-400 tracking-wider">🇬🇧 English Translation</span>
+                      <p className="text-base font-black text-stone-900 dark:text-white capitalize leading-relaxed">
+                        {activePopover.translation_en}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 pt-3 border-t border-stone-100 dark:border-stone-800">
+                      <span className="text-[10px] font-black uppercase text-stone-400 tracking-wider">🇦🇪 الترجمة العربية</span>
+                      <p className="text-base font-bold text-amber-700 dark:text-amber-300 font-arabic text-right leading-relaxed" dir="rtl">
+                        {activePopover.translation_ar}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Footer Action */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setActivePopover(null);
+                    }}
+                    className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950 text-xs font-black hover:opacity-90 transition text-center"
+                  >
+                    Close
+                  </button>
+                </motion.div>
+              </>
+            ) : (
+              <>
+                {/* Desktop Popover */}
+                <div 
+                  className="fixed inset-0 z-40 bg-transparent cursor-default" 
+                  onClick={() => setActivePopover(null)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.15 }}
+                  className="fixed z-50 bg-stone-900 dark:bg-stone-800 text-stone-100 p-4 rounded-2xl shadow-xl border border-stone-800 dark:border-stone-700 max-w-xs text-xs space-y-2 pointer-events-auto"
+                  style={{
+                    left: `${activePopover.x}px`,
+                    top: `${activePopover.y}px`,
+                    transform: 'translate(-50%, -100%) translateY(-8px)',
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-4 border-b border-stone-800 dark:border-stone-700 pb-1.5">
+                    <span className="font-extrabold text-amber-400 capitalize">{activePopover.word}</span>
+                    {activePopover.pos && (
+                      <span className="text-[10px] bg-stone-800 dark:bg-stone-700 px-1.5 py-0.5 rounded text-stone-300 font-mono">
+                        {activePopover.pos}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-stone-400 font-extrabold select-none">EN:</span>
+                      <span className="font-semibold text-stone-200">{activePopover.translation_en}</span>
+                    </div>
+                    <div className="flex items-start gap-1.5 justify-between">
+                      <span className="text-stone-400 font-extrabold select-none">AR:</span>
+                      <span className="font-semibold text-stone-200 text-right dir-rtl font-arabic flex-1 pl-2">{activePopover.translation_ar}</span>
+                    </div>
+                  </div>
+                  <div className="pt-1 flex justify-end">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePopover(null);
+                      }}
+                      className="text-[10px] text-stone-400 hover:text-white font-bold underline cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

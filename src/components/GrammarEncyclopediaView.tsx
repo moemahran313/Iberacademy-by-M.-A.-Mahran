@@ -20,7 +20,12 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Play
+  Play,
+  MapPin,
+  ChevronRight,
+  Lock,
+  Compass,
+  ListOrdered
 } from 'lucide-react';
 import { GrammarTopic, UserProgress, MinedSentence } from '../types';
 import { GRAMMAR_ENCYCLOPEDIA } from '../data';
@@ -28,11 +33,7 @@ import {
   PATTERN_DISCOVERY_ITEMS,
   MINIMAL_PAIR_CARDS,
   PROCESSING_INSTRUCTION_DRILLS,
-  SYNTAX_REPAIR_CHALLENGES,
-  PatternDiscoveryItem,
-  MinimalPairCard,
-  ProcessingInstructionDrill,
-  SyntaxRepairChallenge
+  SYNTAX_REPAIR_CHALLENGES
 } from '../data/slaGrammarEngine';
 import { speakSpanish, soundEffects } from '../utils/audio';
 
@@ -46,10 +47,10 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   setUserProgress
 }) => {
   const [activeTabMode, setActiveTabMode] = useState<
-    'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'encyclopedia'
-  >('pattern_discovery');
+    'path' | 'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'encyclopedia'
+  >('path');
 
-  // Topic Selection for Reference
+  // Selected lesson/topic
   const [selectedTopicId, setSelectedTopicId] = useState<string>(GRAMMAR_ENCYCLOPEDIA[0].id);
 
   // 1. Pattern Discovery State
@@ -62,7 +63,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   const [mpIndex, setMpIndex] = useState(0);
   const [minedToast, setMinedToast] = useState<string | null>(null);
 
-  // 3. Processing Instruction (Output Prompting) State
+  // 3. Processing Instruction State
   const [piIndex, setPiIndex] = useState(0);
   const [piSelectedTiles, setPiSelectedTiles] = useState<string[]>([]);
   const [piChecked, setPiChecked] = useState(false);
@@ -83,6 +84,19 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
 
   const selectedTopic = GRAMMAR_ENCYCLOPEDIA.find(t => t.id === selectedTopicId) || GRAMMAR_ENCYCLOPEDIA[0];
 
+  // 9 StudySpanish Units Definition
+  const STUDY_SPANISH_UNITS = [
+    { number: 1, title: 'Foundations & Basics', desc_ar: 'الأساسيات والمبادئ الأولى' },
+    { number: 2, title: 'Essential Sentences', desc_ar: 'الجمل الضرورية وبنية الكلام' },
+    { number: 3, title: 'Present Tense Mastery', desc_ar: 'إتقان الفعل المضارع البسيط والذوق' },
+    { number: 4, title: 'Object Pronouns', desc_ar: 'ضمائر المفعول المباشر وغير المباشر والمزدوج' },
+    { number: 5, title: 'Narrative Past (Preterite)', desc_ar: 'الماضي البسيط للأحداث المكتملة' },
+    { number: 6, title: 'Past Tenses II (Imperfect)', desc_ar: 'الماضي المستمر والوصف التاريخي' },
+    { number: 7, title: 'Routine & Pronouns', desc_ar: 'الأفعال الانعكاسية والعلاقات الظرفية' },
+    { number: 8, title: 'The Subjunctive Mood', desc_ar: 'صيغة المنصوب وتوجيه الأمنيات والشك' },
+    { number: 9, title: 'Advanced Compound Tenses', desc_ar: 'الأزمنة المركبة والمستقبل والمبني للمجهول' }
+  ];
+
   // Syntax Repair Game Timer
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -96,6 +110,28 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
     }
     return () => clearInterval(timer);
   }, [srActive, srTimeLeft]);
+
+  // Reset drill indexes when selected topic changes
+  useEffect(() => {
+    setPdIndex(0);
+    setPdSelectedOption(null);
+    setPdChecked(false);
+
+    setMpIndex(0);
+
+    setPiIndex(0);
+    setPiSelectedTiles([]);
+    setPiChecked(false);
+    setPiIsCorrect(false);
+
+    setSrIndex(0);
+    setSrSelectedWord(null);
+    setSrChecked(false);
+    setSrActive(false);
+
+    setQuizAnswers({});
+    setQuizChecked(false);
+  }, [selectedTopicId]);
 
   // Handle Mining Sentence from Minimal Pairs
   const handleMineSentence = (sentence_es: string, sentence_en: string, sentence_ar: string, note: string) => {
@@ -123,9 +159,24 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
     setTimeout(() => setMinedToast(null), 3000);
   };
 
-  // Pattern Discovery Handlers
-  const currentPd = PATTERN_DISCOVERY_ITEMS[pdIndex] || PATTERN_DISCOVERY_ITEMS[0];
+  // Filter Drills dynamically based on selection
+  const filteredPdItems = PATTERN_DISCOVERY_ITEMS.filter(item => item.topicId === selectedTopicId);
+  const pdItemsToUse = filteredPdItems.length > 0 ? filteredPdItems : PATTERN_DISCOVERY_ITEMS;
+  const currentPd = pdItemsToUse[pdIndex % pdItemsToUse.length] || pdItemsToUse[0];
 
+  const filteredMpCards = MINIMAL_PAIR_CARDS.filter(item => item.topicId === selectedTopicId);
+  const mpItemsToUse = filteredMpCards.length > 0 ? filteredMpCards : MINIMAL_PAIR_CARDS;
+  const currentMpCard = mpItemsToUse[mpIndex % mpItemsToUse.length] || mpItemsToUse[0];
+
+  const filteredPiDrills = PROCESSING_INSTRUCTION_DRILLS.filter(item => item.topicId === selectedTopicId);
+  const piItemsToUse = filteredPiDrills.length > 0 ? filteredPiDrills : PROCESSING_INSTRUCTION_DRILLS;
+  const currentPi = piItemsToUse[piIndex % piItemsToUse.length] || piItemsToUse[0];
+
+  const filteredSrChallenges = SYNTAX_REPAIR_CHALLENGES.filter(item => item.topicId === selectedTopicId);
+  const srItemsToUse = filteredSrChallenges.length > 0 ? filteredSrChallenges : SYNTAX_REPAIR_CHALLENGES;
+  const currentSr = srItemsToUse[srIndex % srItemsToUse.length] || srItemsToUse[0];
+
+  // Pattern Discovery Handlers
   const handleCheckPatternDiscovery = () => {
     if (pdSelectedOption === null || pdChecked) return;
     setPdChecked(true);
@@ -145,12 +196,10 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   const handleNextPatternDiscovery = () => {
     setPdSelectedOption(null);
     setPdChecked(false);
-    setPdIndex((prev) => (prev + 1) % PATTERN_DISCOVERY_ITEMS.length);
+    setPdIndex((prev) => (prev + 1) % pdItemsToUse.length);
   };
 
-  // Processing Instruction Output Prompting Handlers
-  const currentPi = PROCESSING_INSTRUCTION_DRILLS[piIndex] || PROCESSING_INSTRUCTION_DRILLS[0];
-
+  // Processing Instruction Drills Handlers
   const handleTileClick = (word: string) => {
     if (piChecked) return;
     soundEffects.playPop();
@@ -164,15 +213,15 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   const handleCheckPiSequence = () => {
     if (piChecked) return;
     setPiChecked(true);
-    const userBuilt = piSelectedTiles.join(' ');
-    const correctSeq = currentPi.correctSequence.join(' ');
-    const isMatch = userBuilt === correctSeq;
+    const userBuilt = piSelectedTiles.join(' ').replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+    const correctSeq = currentPi.correctSequence.join(' ').replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+    const isMatch = userBuilt.toLowerCase() === correctSeq.toLowerCase();
     setPiIsCorrect(isMatch);
 
     if (isMatch) {
       soundEffects.playLevelUp();
       setUserProgress(prev => ({ ...prev, xp: prev.xp + 25 }));
-      speakSpanish(correctSeq);
+      speakSpanish(currentPi.audioPrompt_es);
     } else {
       soundEffects.playIncorrect();
     }
@@ -182,12 +231,10 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
     setPiSelectedTiles([]);
     setPiChecked(false);
     setPiIsCorrect(false);
-    setPiIndex((prev) => (prev + 1) % PROCESSING_INSTRUCTION_DRILLS.length);
+    setPiIndex((prev) => (prev + 1) % piItemsToUse.length);
   };
 
-  // Syntax Repair Speed Game Handlers
-  const currentSr = SYNTAX_REPAIR_CHALLENGES[srIndex] || SYNTAX_REPAIR_CHALLENGES[0];
-
+  // Syntax Repair Game Handlers
   const handleStartSrGame = () => {
     setSrActive(true);
     setSrTimeLeft(60);
@@ -217,10 +264,10 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   const handleNextSrChallenge = () => {
     setSrSelectedWord(null);
     setSrChecked(false);
-    setSrIndex((prev) => (prev + 1) % SYNTAX_REPAIR_CHALLENGES.length);
+    setSrIndex((prev) => (prev + 1) % srItemsToUse.length);
   };
 
-  // Reference Encyclopedia Quiz Handlers
+  // Reference Quiz Handlers
   const handleSelectQuiz = (qIdx: number, optIdx: number) => {
     if (quizChecked) return;
     setQuizAnswers(prev => ({ ...prev, [qIdx]: optIdx }));
@@ -263,74 +310,86 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
-            Cognitive Grammar Acquisition Engine
+            StudySpanish Gamified Curriculum
           </h1>
           <p className="text-xs sm:text-sm text-stone-300 max-w-3xl font-arabic leading-relaxed">
-            Move beyond static rote memorization. Master Spanish syntax using Processing Instruction (Dr. VanPatten), Noticing Hypothesis, Minimal Pair contrasts, and real-time sentence construction.
+            Move beyond static rote memorization. Master Spanish syntax using StudySpanish-aligned lessons, completely gamified through Pattern Discovery, Minimal Pairs, Processing Instruction, and Speed Challenges.
           </p>
         </div>
       </div>
 
       {/* Mode Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-stone-200 dark:border-stone-800">
+        <button
+          onClick={() => setActiveTabMode('path')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+            activeTabMode === 'path'
+              ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+          }`}
+        >
+          <Compass className="w-4 h-4" />
+          <span>Curriculum Path</span>
+        </button>
+
         <button
           onClick={() => setActiveTabMode('pattern_discovery')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'pattern_discovery'
               ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
-              : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
           }`}
         >
           <Brain className="w-4 h-4" />
-          <span>Pattern Discovery (+30 XP)</span>
+          <span>Pattern Discovery</span>
         </button>
 
         <button
           onClick={() => setActiveTabMode('minimal_pairs')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'minimal_pairs'
               ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
-              : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>Minimal Pair Matrix</span>
+          <span>Minimal Pairs</span>
         </button>
 
         <button
           onClick={() => setActiveTabMode('output_drills')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'output_drills'
               ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
-              : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
           }`}
         >
           <Zap className="w-4 h-4" />
-          <span>Output-Prompting Drills</span>
+          <span>Output Drills</span>
         </button>
 
         <button
           onClick={() => setActiveTabMode('syntax_repair')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'syntax_repair'
               ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
-              : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
           }`}
         >
           <Flame className="w-4 h-4 text-orange-600" />
-          <span>60s Syntax Repair Game</span>
+          <span>Speed Repair</span>
         </button>
 
         <button
           onClick={() => setActiveTabMode('encyclopedia')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'encyclopedia'
               ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
-              : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>Rule Reference & Mnemonics</span>
+          <span>Rules & Quiz</span>
         </button>
       </div>
 
@@ -349,6 +408,269 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         )}
       </AnimatePresence>
 
+      {/* ----------------- TAB: PATH (THE ULTIMATE GAMIFIED MAP) ----------------- */}
+      {activeTabMode === 'path' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: 9 Units Path */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-black text-stone-900 dark:text-white flex items-center gap-2">
+                  <ListOrdered className="w-4 h-4 text-amber-500" />
+                  Spanish Grammar Roadmap (9 Units)
+                </h3>
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                  {GRAMMAR_ENCYCLOPEDIA.length} Lessons
+                </span>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed font-arabic">
+                تصفح الوحدات والدروس المستوحاة بالكامل من منهج StudySpanish الشهير، وافتح مسارات التدريب المعرفي لكل درس للحصول على النقاط وتثبيت القواعد.
+              </p>
+            </div>
+
+            {/* Units Map */}
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 scrollbar-thin">
+              {STUDY_SPANISH_UNITS.map(unit => {
+                const unitTopics = GRAMMAR_ENCYCLOPEDIA.filter(t => t.unit === unit.number);
+
+                return (
+                  <div
+                    key={unit.number}
+                    className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-4 sm:p-5 space-y-3 shadow-xs"
+                  >
+                    {/* Unit Title */}
+                    <div className="flex justify-between items-start border-b border-stone-100 dark:border-stone-800 pb-2">
+                      <div>
+                        <span className="text-[10px] font-mono font-black uppercase text-amber-600 dark:text-amber-400">
+                          Unit {unit.number}
+                        </span>
+                        <h4 className="text-base font-black text-stone-900 dark:text-white">
+                          {unit.title}
+                        </h4>
+                      </div>
+                      <span className="text-xs font-extrabold text-stone-400 font-arabic text-right">
+                        {unit.desc_ar}
+                      </span>
+                    </div>
+
+                    {/* Lessons list inside Unit */}
+                    <div className="space-y-2">
+                      {unitTopics.map(topic => {
+                        const isSelected = topic.id === selectedTopicId;
+                        return (
+                          <button
+                            key={topic.id}
+                            onClick={() => {
+                              soundEffects.playPop();
+                              setSelectedTopicId(topic.id);
+                            }}
+                            className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-sm font-bold'
+                                : 'bg-stone-50/60 dark:bg-stone-800/40 text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 border-stone-200/80 dark:border-stone-800'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                  isSelected ? 'bg-stone-950 text-white' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
+                                }`}>
+                                  {topic.cefr}
+                                </span>
+                                <span className="font-bold text-xs sm:text-sm line-clamp-1">
+                                  {topic.title_es}
+                                </span>
+                              </div>
+                              <p className={`text-xs mt-0.5 line-clamp-1 ${isSelected ? 'text-stone-800' : 'text-stone-500'}`}>
+                                {topic.title_en}
+                              </p>
+                            </div>
+
+                            <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'rotate-90 text-stone-950' : 'text-stone-400'}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right Column: Quest Control Board */}
+          <div className="lg:col-span-5 space-y-5">
+            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6 sticky top-6">
+              {/* Selected Lesson Header */}
+              <div className="border-b border-stone-100 dark:border-stone-800 pb-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
+                    UNIT {selectedTopic.unit} • {selectedTopic.cefr}
+                  </span>
+                  <span className="text-xs text-stone-400 font-mono">
+                    {selectedTopic.category}
+                  </span>
+                </div>
+
+                <h2 className="text-xl font-black text-stone-900 dark:text-white leading-tight">
+                  {selectedTopic.title_es}
+                </h2>
+                <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">
+                  🇬🇧 {selectedTopic.title_en}
+                </p>
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
+                  {selectedTopic.title_ar}
+                </p>
+              </div>
+
+              {/* Lesson Brief */}
+              <div className="space-y-3">
+                <div className="p-3.5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-2">
+                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-stone-400 block">
+                    Lesson Concept:
+                  </span>
+                  <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
+                    {selectedTopic.summary_en}
+                  </p>
+                  <p className="text-xs font-bold text-amber-900 dark:text-amber-300 font-arabic text-right leading-relaxed" dir="rtl">
+                    {selectedTopic.summary_ar}
+                  </p>
+                </div>
+
+                {selectedTopic.formula && (
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-mono font-black uppercase text-amber-700 dark:text-amber-400 block">
+                      🧠 Memory Anchor:
+                    </span>
+                    <p className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                      {selectedTopic.formula}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* 5 Cognitive Quests to Launch */}
+              <div className="space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-stone-400 block">
+                  Select Training Quest:
+                </span>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {/* Quest 1: Pattern Discovery */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setActiveTabMode('pattern_discovery');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-stone-50 to-stone-100/60 dark:from-stone-800/30 dark:to-stone-800/10 border border-stone-200 dark:border-stone-800 hover:border-amber-500/30 hover:scale-[1.01] transition flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0">
+                      <Brain className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs font-black text-stone-900 dark:text-white">Pattern Discovery</span>
+                        <span className="text-[9px] font-mono font-black text-amber-600 dark:text-amber-400">+30 XP</span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
+                        Observe contrasting sentence patterns and notice syntax.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Quest 2: Minimal Pair Contrast */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setActiveTabMode('minimal_pairs');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-stone-50 to-stone-100/60 dark:from-stone-800/30 dark:to-stone-800/10 border border-stone-200 dark:border-stone-800 hover:border-amber-500/30 hover:scale-[1.01] transition flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-purple-500 text-white flex items-center justify-center shrink-0">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs font-black text-stone-900 dark:text-white">Minimal Pair Matrix</span>
+                        <span className="text-[9px] font-mono font-black text-purple-600 dark:text-purple-400">Contrast</span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
+                        Compare subtle shifts of meaning side-by-side.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Quest 3: Output Drills */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setActiveTabMode('output_drills');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-stone-50 to-stone-100/60 dark:from-stone-800/30 dark:to-stone-800/10 border border-stone-200 dark:border-stone-800 hover:border-amber-500/30 hover:scale-[1.01] transition flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs font-black text-stone-900 dark:text-white">Output Drills</span>
+                        <span className="text-[9px] font-mono font-black text-emerald-600 dark:text-emerald-400">+25 XP</span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
+                        Assemble tiles to form correct Spanish output.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Quest 4: Speed Repair */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setActiveTabMode('syntax_repair');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-stone-50 to-stone-100/60 dark:from-stone-800/30 dark:to-stone-800/10 border border-stone-200 dark:border-stone-800 hover:border-amber-500/30 hover:scale-[1.01] transition flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
+                      <Flame className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs font-black text-stone-900 dark:text-white">Speed Syntax Repair</span>
+                        <span className="text-[9px] font-mono font-black text-orange-600 dark:text-orange-400">60s Sprint</span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
+                        Race against the clock to spot and fix syntax mistakes.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Quest 5: Rules & Quiz */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setActiveTabMode('encyclopedia');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-stone-50 to-stone-100/60 dark:from-stone-800/30 dark:to-stone-800/10 border border-stone-200 dark:border-stone-800 hover:border-amber-500/30 hover:scale-[1.01] transition flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs font-black text-stone-900 dark:text-white">Rules Study & Quiz</span>
+                        <span className="text-[9px] font-mono font-black text-blue-600 dark:text-blue-400">+20 XP</span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
+                        Read bilingual deep dives and complete validation quizzes.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ----------------- MODE 1: PATTERN DISCOVERY ENGINE ----------------- */}
       {activeTabMode === 'pattern_discovery' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-6">
@@ -359,30 +681,43 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                   {currentPd.cefr} Level Pattern
                 </span>
                 <span className="text-xs text-stone-400 font-mono">
-                  Module {pdIndex + 1} of {PATTERN_DISCOVERY_ITEMS.length}
+                  Module {pdIndex + 1} of {pdItemsToUse.length}
                 </span>
+                {filteredPdItems.length > 0 ? (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/10 text-green-600">Lesson Specific</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-stone-500/10 text-stone-500">General Practice</span>
+                )}
               </div>
               <h2 className="text-xl font-black text-stone-900 dark:text-white mt-1 break-words">
                 {currentPd.title}
               </h2>
             </div>
 
-            <button
-              onClick={handleNextPatternDiscovery}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <span>Next Pattern</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTabMode('path')}
+                className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-50 cursor-pointer"
+              >
+                Back to Path
+              </button>
+              <button
+                onClick={handleNextPatternDiscovery}
+                className="shrink-0 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Next Pattern</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* 3 Side-by-Side Contrasting Sentences with Syntax Tags */}
+          {/* Contrasting Sentences */}
           <div className="space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 font-arabic">
-              1. Observe the 3 Contrasting Sentence Patterns:
+              1. Observe the Contrasting Sentence Patterns:
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {currentPd.sentences.map((sent, idx) => (
                 <div
                   key={idx}
@@ -407,7 +742,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                     🇦🇪 {sent.ar}
                   </p>
 
-                  {/* Color-Coded Syntax Tags Breakdown */}
+                  {/* Syntax Tags */}
                   <div className="pt-2 border-t border-stone-200/60 dark:border-stone-700/60 space-y-1">
                     <span className="text-[10px] font-mono font-bold uppercase text-stone-400 block">
                       Syntax Analysis:
@@ -428,7 +763,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
             </div>
           </div>
 
-          {/* Pattern Test Question */}
+          {/* Test Hypothesis */}
           <div className="p-5 rounded-2xl bg-amber-50/50 dark:bg-stone-800/40 border border-amber-200 dark:border-stone-800 space-y-4">
             <div>
               <span className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
@@ -492,7 +827,6 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
               </button>
             </div>
 
-            {/* Revealed SLA Rule Explanation */}
             {pdChecked && (
               <motion.div
                 initial={{ opacity: 0, y: 5 }}
@@ -520,155 +854,165 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
             <div className="min-w-0 flex-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
-                Side-by-Side Meaning Shifts
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+                  Side-by-Side Meaning Shifts
+                </span>
+                {filteredMpCards.length > 0 ? (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/10 text-green-600">Lesson Specific</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-stone-500/10 text-stone-500">General Practice</span>
+                )}
+              </div>
               <h2 className="text-xl font-black text-stone-900 dark:text-white mt-1 break-words">
                 Minimal Pair Contrast Matrix
               </h2>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-              {MINIMAL_PAIR_CARDS.map((card, idx) => (
-                <button
-                  key={card.id}
-                  onClick={() => setMpIndex(idx)}
-                  className={`w-8 h-8 rounded-xl font-mono text-xs font-black transition cursor-pointer ${
-                    mpIndex === idx
-                      ? 'bg-amber-500 text-stone-950 shadow-sm'
-                      : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveTabMode('path')}
+                className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-50 cursor-pointer"
+              >
+                Back to Path
+              </button>
+              <div className="flex flex-wrap items-center gap-1">
+                {mpItemsToUse.map((card, idx) => (
+                  <button
+                    key={card.id}
+                    onClick={() => setMpIndex(idx)}
+                    className={`w-8 h-8 rounded-xl font-mono text-xs font-black transition cursor-pointer ${
+                      mpIndex === idx
+                        ? 'bg-amber-500 text-stone-950 shadow-sm'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Active Card Matrix */}
-          {(() => {
-            const card = MINIMAL_PAIR_CARDS[mpIndex];
-            return (
-              <div className="space-y-6">
-                <div className="text-center space-y-1">
-                  <span className="text-xs font-bold text-stone-400 uppercase tracking-widest font-mono">
-                    Topic Focus: {card.topic} • {card.cefr}
+          <div className="space-y-6">
+            <div className="text-center space-y-1">
+              <span className="text-xs font-bold text-stone-400 uppercase tracking-widest font-mono">
+                Topic Focus: {currentMpCard.topic} • {currentMpCard.cefr}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Option A */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border-2 border-blue-500/30 dark:border-blue-500/20 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black bg-blue-500 text-white uppercase">
+                    {currentMpCard.optionA.grammarTag}
+                  </span>
+                  <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                    Nuance: {currentMpCard.optionA.nuance}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Option A */}
-                  <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border-2 border-blue-500/30 dark:border-blue-500/20 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black bg-blue-500 text-white uppercase">
-                        {card.optionA.grammarTag}
-                      </span>
-                      <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
-                        Nuance: {card.optionA.nuance}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-black text-stone-900 dark:text-white">
-                          🇪🇸 {card.optionA.es}
-                        </h3>
-                        <button
-                          onClick={() => speakSpanish(card.optionA.es)}
-                          className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white transition cursor-pointer"
-                        >
-                          <Volume2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-stone-700 dark:text-stone-300 font-semibold">
-                        🇬🇧 {card.optionA.en}
-                      </p>
-                      <p className="text-xs font-bold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
-                        🇦🇪 {card.optionA.ar}
-                      </p>
-                    </div>
-
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-stone-900 dark:text-white">
+                      🇪🇸 {currentMpCard.optionA.es}
+                    </h3>
                     <button
-                      onClick={() =>
-                        handleMineSentence(
-                          card.optionA.es,
-                          card.optionA.en,
-                          card.optionA.ar,
-                          card.optionA.grammarTag
-                        )
-                      }
-                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-700 hover:text-white dark:text-blue-300 text-xs font-extrabold transition cursor-pointer"
+                      onClick={() => speakSpanish(currentMpCard.optionA.es)}
+                      className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white transition cursor-pointer"
                     >
-                      <PlusCircle className="w-3.5 h-3.5" />
-                      <span>Mine Sentence to SRS</span>
+                      <Volume2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  {/* Option B */}
-                  <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-2 border-amber-500/30 dark:border-amber-500/20 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
-                        {card.optionB.grammarTag}
-                      </span>
-                      <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400">
-                        Nuance: {card.optionB.nuance}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-black text-stone-900 dark:text-white">
-                          🇪🇸 {card.optionB.es}
-                        </h3>
-                        <button
-                          onClick={() => speakSpanish(card.optionB.es)}
-                          className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-stone-950 transition cursor-pointer"
-                        >
-                          <Volume2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-stone-700 dark:text-stone-300 font-semibold">
-                        🇬🇧 {card.optionB.en}
-                      </p>
-                      <p className="text-xs font-bold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
-                        🇦🇪 {card.optionB.ar}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        handleMineSentence(
-                          card.optionB.es,
-                          card.optionB.en,
-                          card.optionB.ar,
-                          card.optionB.grammarTag
-                        )
-                      }
-                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-stone-950 dark:text-amber-300 text-xs font-extrabold transition cursor-pointer"
-                    >
-                      <PlusCircle className="w-3.5 h-3.5" />
-                      <span>Mine Sentence to SRS</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Key Takeaway Banner */}
-                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 space-y-1">
-                  <span className="text-[10px] font-mono font-bold uppercase text-stone-400 block">
-                    💡 Key Cognitive Takeaway:
-                  </span>
-                  <p className="text-xs font-bold text-stone-900 dark:text-stone-100">
-                    {card.keyTakeaway_en}
+                  <p className="text-xs text-stone-700 dark:text-stone-300 font-semibold">
+                    🇬🇧 {currentMpCard.optionA.en}
                   </p>
-                  <p className="text-xs font-extrabold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
-                    {card.keyTakeaway_ar}
+                  <p className="text-xs font-bold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
+                    🇦🇪 {currentMpCard.optionA.ar}
                   </p>
                 </div>
+
+                <button
+                  onClick={() =>
+                    handleMineSentence(
+                      currentMpCard.optionA.es,
+                      currentMpCard.optionA.en,
+                      currentMpCard.optionA.ar,
+                      currentMpCard.optionA.grammarTag
+                    )
+                  }
+                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-700 hover:text-white dark:text-blue-300 text-xs font-extrabold transition cursor-pointer"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Mine Sentence to SRS</span>
+                </button>
               </div>
-            );
-          })()}
+
+              {/* Option B */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-2 border-amber-500/30 dark:border-amber-500/20 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
+                    {currentMpCard.optionB.grammarTag}
+                  </span>
+                  <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400">
+                    Nuance: {currentMpCard.optionB.nuance}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-stone-900 dark:text-white">
+                      🇪🇸 {currentMpCard.optionB.es}
+                    </h3>
+                    <button
+                      onClick={() => speakSpanish(currentMpCard.optionB.es)}
+                      className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-stone-950 transition cursor-pointer"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-stone-700 dark:text-stone-300 font-semibold">
+                    🇬🇧 {currentMpCard.optionB.en}
+                  </p>
+                  <p className="text-xs font-bold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
+                    🇦🇪 {currentMpCard.optionB.ar}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleMineSentence(
+                      currentMpCard.optionB.es,
+                      currentMpCard.optionB.en,
+                      currentMpCard.optionB.ar,
+                      currentMpCard.optionB.grammarTag
+                    )
+                  }
+                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-stone-950 dark:text-amber-300 text-xs font-extrabold transition cursor-pointer"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Mine Sentence to SRS</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Key Takeaway Banner */}
+            <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 space-y-1">
+              <span className="text-[10px] font-mono font-bold uppercase text-stone-400 block">
+                💡 Key Cognitive Takeaway:
+              </span>
+              <p className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                {currentMpCard.keyTakeaway_en}
+              </p>
+              <p className="text-xs font-extrabold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
+                {currentMpCard.keyTakeaway_ar}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -677,21 +1021,36 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
             <div className="min-w-0 flex-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                Processing Instruction Engine
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                  Processing Instruction Engine
+                </span>
+                {filteredPiDrills.length > 0 ? (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/10 text-green-600">Lesson Specific</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-stone-500/10 text-stone-500">General Practice</span>
+                )}
+              </div>
               <h2 className="text-xl font-black text-stone-900 dark:text-white mt-1 break-words">
                 Construct Target Spanish Output
               </h2>
             </div>
 
-            <button
-              onClick={handleNextPiDrill}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-700 dark:text-stone-300 text-xs font-bold transition cursor-pointer flex items-center gap-1 self-start sm:self-auto"
-            >
-              <span>Next Drill</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTabMode('path')}
+                className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-50 cursor-pointer"
+              >
+                Back to Path
+              </button>
+              <button
+                onClick={handleNextPiDrill}
+                className="shrink-0 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-700 dark:text-stone-300 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+              >
+                <span>Next Drill</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-5">
@@ -819,15 +1178,32 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
             <div className="min-w-0 flex-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
-                Real-Time Error Correction Game
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                  Real-Time Error Correction Game
+                </span>
+                {filteredSrChallenges.length > 0 ? (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/10 text-green-600">Lesson Specific</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-stone-500/10 text-stone-500">General Practice</span>
+                )}
+              </div>
               <h2 className="text-xl font-black text-stone-900 dark:text-white mt-1 break-words">
                 60-Second Syntax Repair Challenge
               </h2>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  setSrActive(false);
+                  setActiveTabMode('path');
+                }}
+                className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-50 cursor-pointer"
+              >
+                Back to Path
+              </button>
+
               <div className="flex items-center gap-1 px-3 py-1 rounded-xl bg-orange-500/10 text-orange-600 font-mono text-xs font-black">
                 <Clock className="w-3.5 h-3.5" />
                 <span>{srTimeLeft}s</span>
@@ -920,8 +1296,11 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                     <p className="font-bold text-emerald-600 dark:text-emerald-400">
                       ✅ Correct Sentence: {currentSr.correctSentence}
                     </p>
-                    <p className="text-stone-700 dark:text-stone-300">
-                      💡 {currentSr.explanation_en}
+                    <p className="text-stone-700 dark:text-stone-300 font-medium">
+                      🇬🇧 {currentSr.explanation_en}
+                    </p>
+                    <p className="text-amber-900 dark:text-amber-300 font-arabic text-right font-bold" dir="rtl">
+                      🇦🇪 {currentSr.explanation_ar}
                     </p>
                   </div>
 
@@ -940,15 +1319,23 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         </div>
       )}
 
-      {/* ----------------- MODE 5: ENCYCLOPEDIA & RULES REFERENCE ----------------- */}
+      {/* ----------------- MODE 5: RULES REFERENCE & QUIZ ----------------- */}
       {activeTabMode === 'encyclopedia' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Topic Sidebar */}
           <div className="lg:col-span-4 space-y-2">
-            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block px-1">
-              Grammar Master Topics
-            </span>
-            <div className="space-y-1.5">
+            <div className="flex justify-between items-baseline px-1">
+              <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block">
+                Select Lesson Topic
+              </span>
+              <button
+                onClick={() => setActiveTabMode('path')}
+                className="text-xs font-bold text-amber-500 hover:underline"
+              >
+                Back to Path
+              </button>
+            </div>
+            <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
               {GRAMMAR_ENCYCLOPEDIA.map((topic) => {
                 const isSelected = topic.id === selectedTopicId;
                 return (
@@ -958,7 +1345,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                       setSelectedTopicId(topic.id);
                       handleResetQuiz();
                     }}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
                         : 'bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 border-stone-200 dark:border-stone-800'
@@ -968,13 +1355,13 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                         isSelected ? 'bg-amber-400 text-stone-950' : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                       }`}>
-                        {topic.cefr}
+                        U{topic.unit}
                       </span>
-                      <span className="font-bold text-xs sm:text-sm line-clamp-1">
+                      <span className="font-bold text-xs line-clamp-1">
                         {topic.title_es}
                       </span>
                     </div>
-                    <p className={`text-xs mt-1 line-clamp-1 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
+                    <p className={`text-[10px] mt-0.5 line-clamp-1 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
                       {topic.title_en}
                     </p>
                   </button>
@@ -989,8 +1376,8 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
               {/* Header */}
               <div className="border-b border-stone-100 dark:border-stone-800 pb-4">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 uppercase">
-                    {selectedTopic.cefr} • {selectedTopic.category}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-100 dark:bg-stone-800 text-amber-800 dark:text-amber-400 uppercase">
+                    UNIT {selectedTopic.unit} • {selectedTopic.cefr} • {selectedTopic.category}
                   </span>
                 </div>
                 <h2 className="text-2xl font-black text-stone-900 dark:text-white mt-2">
@@ -999,12 +1386,12 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                 <p className="text-sm font-semibold text-stone-600 dark:text-stone-400 mt-0.5">
                   🇬🇧 {selectedTopic.title_en}
                 </p>
-                <p className="text-sm font-bold text-amber-800 dark:text-amber-400 font-arabic mt-0.5" dir="rtl">
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-400 font-arabic mt-0.5 text-right" dir="rtl">
                   🇦🇪 {selectedTopic.title_ar}
                 </p>
 
                 {selectedTopic.formula && (
-                  <div className="mt-4 p-3 bg-amber-50/70 dark:bg-stone-800/60 border border-amber-200 dark:border-stone-700 rounded-xl">
+                  <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
                     <span className="text-[11px] font-extrabold text-amber-900 dark:text-amber-400 uppercase tracking-wider block mb-1">
                       🧠 Memory Formula & Rule Blueprint:
                     </span>
@@ -1039,6 +1426,52 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                   </div>
                 </div>
               </div>
+
+              {/* Examples */}
+              <div className="space-y-3 pt-4 border-t border-stone-100 dark:border-stone-800">
+                <span className="text-xs font-black uppercase tracking-wider text-stone-400 block">
+                  Illustrative Sentence Patterns:
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {selectedTopic.examples.map((ex, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-xl space-y-1"
+                    >
+                      <button
+                        onClick={() => speakSpanish(ex.es)}
+                        className="text-left font-bold text-xs sm:text-sm text-stone-900 dark:text-white flex items-center gap-1 hover:text-amber-500 transition cursor-pointer"
+                      >
+                        <span>🇪🇸 {ex.es}</span>
+                        <Volume2 className="w-3.5 h-3.5" />
+                      </button>
+                      <p className="text-[11px] text-stone-500">{ex.en}</p>
+                      <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 font-arabic text-right" dir="rtl">{ex.ar}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              {selectedTopic.commonMistakes && selectedTopic.commonMistakes.length > 0 && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl space-y-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4" />
+                    Common Learner Mistakes (احذر هذه الأخطاء):
+                  </span>
+                  <div className="space-y-3">
+                    {selectedTopic.commonMistakes.map((mistake, idx) => (
+                      <div key={idx} className="space-y-1 text-xs">
+                        <p className="text-red-500 line-through">❌ {mistake.incorrect}</p>
+                        <p className="text-emerald-600 font-bold">✅ {mistake.correct}</p>
+                        <p className="text-stone-600 dark:text-stone-300 text-[11px] mt-0.5">
+                          💡 {mistake.reason_en} • <span className="font-arabic" dir="rtl">{mistake.reason_ar}</span>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Quick Practice Quiz */}
               {selectedTopic.quickQuiz && selectedTopic.quickQuiz.length > 0 && (

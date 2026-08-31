@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { ALL_VOCABULARY } from './src/data/vocabularyComprehensive1000';
+import { VOCABULARY_B2 } from './src/data/vocabularyB2';
 
 dotenv.config();
 
@@ -51,7 +52,8 @@ async function startServer() {
       userLevel = 'A1',
       persona = 'teacher',
       nativeLang = 'en',
-      currentPhase
+      currentPhase,
+      practiceTopic = null
     } = req.body;
 
     const isArabic = nativeLang === 'ar';
@@ -70,7 +72,17 @@ async function startServer() {
         'Explícame la regla gramatical con otro ejemplo.'
       ];
 
-      if (lower.includes('hola') || lower.includes('buenos') || lower.includes('saludos') || lower.includes('soy')) {
+      if (practiceTopic) {
+        es = `¡Excelente! Vamos a practicar la lección: "${practiceTopic.title_es}" (${practiceTopic.title_en}).\n\nFórmula clave: ${practiceTopic.formula || 'Práctica comunicativa'}.\n\nIntenta escribir una oración usando esta regla o traduce una frase de ejemplo para recibir XP:`;
+        en = `Excellent! Let's practice the lesson: "${practiceTopic.title_es}" (${practiceTopic.title_en}).\n\nMemory Anchor: ${practiceTopic.formula || 'Communicative practice'}.\n\nTry writing a sentence using this rule or translate an example sentence to earn XP:`;
+        arab = `ممتاز! لنبدأ التدريب على الدرس: "${practiceTopic.title_es}".\n\nصيغة القاعدة: ${practiceTopic.formula || 'تدريب تواصل حواري'}.\n\nحاول كتابة جملة باستخدام هذه القاعدة لتكسب نقاط خبرة:`;
+        corrections = [`🟢 Practice Mode Active: ${practiceTopic.title_en}`, `🎉 XP Reward: Excellent grammar focus! +15 XP`];
+        questions = [
+          `¿Me puedes dar un ejemplo de ${practiceTopic.title_es}?`,
+          `Quiero traducir una frase sobre este tema.`,
+          `Ponme un reto de nivel ${level} para esta regla.`
+        ];
+      } else if (lower.includes('hola') || lower.includes('buenos') || lower.includes('saludos') || lower.includes('soy')) {
         es = `¡Hola! Me alegra mucho saludarte. Como tu tutor de español para nivel ${level}, cuéntame: ¿Qué situación comunicativa o regla quieres practicar hoy?`;
         en = `Hello! It is a pleasure to greet you. As your Spanish tutor for level ${level}, tell me: What conversational scenario or grammar rule would you like to master today?`;
         arab = `مرحباً بك! يسعدني جداً التحدث معك. كمعلمك للإسبانية لمستوى ${level}، أخبرني: ما هو الموقف الحواري أو القاعدة التي تود إتقانها اليوم؟`;
@@ -122,6 +134,14 @@ async function startServer() {
       return res.json(generateFallbackTutorResponse(message, userLevel, isArabic));
     }
 
+    // Set custom grammar focus prompt if specified
+    const grammarFocusPrompt = practiceTopic 
+      ? `\n\n--- 🧪 HIGH PRIORITY ACTIVE RULE CHALLENGE ---
+The student has chosen to practice the grammar lesson: "${practiceTopic.title_es}" (${practiceTopic.title_en}).
+Memory Anchor: ${practiceTopic.formula || ''}.
+Your primary directive is to bypass standard diagnostics or greeting loops, and immediately generate active sentence-building drills and challenges focused exclusively on this lesson's contents. Present challenges requiring the user to produce Spanish output using this specific rule.`
+      : '';
+
     const systemPrompt = `You are "Profesor Mateo", an elite, certified Spanish language pedagogue and linguist specializing in the communicative method, comprehensible input (Krashen's hypotheses), and deliberate practice for adult second-language learners.
 
 Your mission is NOT to act like an encyclopedic chatbot or give superficial surface quizzes. Your mission is to systematically take the learner from their current level to genuine CEFR B2+ conversational and writing fluency.
@@ -145,6 +165,15 @@ Your mission is NOT to act like an encyclopedic chatbot or give superficial surf
 3. **Multi-Language Vocabulary Definitions (Comprehensible Input)**:
    STRICT RULE: For ALL key new vocabulary introduced during conversations, lessons, or story-based interactions, YOU MUST include structured multi-language (English + Arabic) definitions in the "vocabulary" array of your JSON output. Include the Spanish word, clear English definition, precise Arabic translation, and an example sentence.
 
+4. **Silent Grammar Validator & XP Rewards Mode**:
+   Analyze the user's Spanish input silently against standard rules.
+   - If they make any spelling, structural, or grammar mistakes, output clear friendly corrections in the "corrections" array (e.g. "🔴 [Correction: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']").
+   - If they successfully implement the rule they are actively studying (or show correct, high-quality grammar usage matching their level), reward them directly in the "corrections" array by adding a specialized string:
+     "🎉 XP Reward: Excellent implementation of [Grammar Rule Name]! +15 XP"
+     Make sure to include this exact phrase to trigger their client-side XP celebration!
+
+${grammarFocusPrompt}
+
 ---
 
 ### Response Format (Strict JSON)
@@ -157,6 +186,7 @@ You must ALWAYS respond with a valid JSON object strictly formatted as:
   "corrections": [
     "🟢 [Highlight correct usage]",
     "🔴 [Point out error: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']",
+    "🎉 XP Reward: Excellent implementation of [Grammar Rule Name]! +15 XP",
     "💡 [Native tip / natural idiom alternative]"
   ],
   "vocabulary": [
@@ -1115,6 +1145,299 @@ Return JSON:
     } catch (error: any) {
       console.warn('Gemini generate-story error, returning fallback:', error?.message || error);
       return res.json(fallbackStory);
+    }
+  });
+
+  // ==========================================
+  // FLUENCY ASSESSMENT INTERVIEW ENDPOINTS
+  // ==========================================
+
+  // 1. Start Fluency Assessment Interview
+  app.post('/api/ai/fluency-assessment/start', async (req, res) => {
+    // Select 5 random words from VOCABULARY_B2
+    const b2Words = (VOCABULARY_B2 && VOCABULARY_B2.length > 0 ? VOCABULARY_B2 : [
+      { id: 'b2-1', spanish: 'desafío', word: 'desafío', english: 'challenge', translation_en: 'challenge', arabic: 'تحدٍ', translation_ar: 'تحدٍ' },
+      { id: 'b2-2', spanish: 'perspectiva', word: 'perspectiva', english: 'perspective', translation_en: 'perspective', arabic: 'منظور', translation_ar: 'منظور' },
+      { id: 'b2-3', spanish: 'fomentar', word: 'fomentar', english: 'to foster', translation_en: 'to foster', arabic: 'تعزيز', translation_ar: 'تعزيز' },
+      { id: 'b2-4', spanish: 'factible', word: 'factible', english: 'feasible', translation_en: 'feasible', arabic: 'قابل للتطبيق', translation_ar: 'قابل للتطبيق' },
+      { id: 'b2-5', spanish: 'compromiso', word: 'compromiso', english: 'commitment', translation_en: 'commitment', arabic: 'التزام', translation_ar: 'التزام' }
+    ]) as any[];
+    
+    // Shuffle and pick 5
+    const shuffled = [...b2Words].sort(() => 0.5 - Math.random());
+    const targetWords = shuffled.slice(0, 5).map(w => ({
+      spanish: w.spanish || w.word,
+      english: w.english || w.translation_en,
+      arabic: w.arabic || w.translation_ar,
+      id: w.id || 'b2-mock'
+    }));
+
+    const defaultFirstQuestion = '¡Hola! Bienvenido a tu Evaluación de Fluidez Iberio de nivel B2. Soy Elena, tu evaluadora de Inteligencia Artificial para el marco de lingüística aplicada. Para comenzar este examen de 5 minutos, me gustaría que me hables de un desafío profesional o personal reciente que hayas superado. ¿Qué estrategias implementaste para resolverlo?';
+
+    const ai = getAIClient();
+    if (!ai) {
+      return res.json({
+        targetWords,
+        firstQuestion: defaultFirstQuestion,
+        interviewerPersona: 'Elena, Iberio Senior SLA Evaluator',
+        contextScenario: 'Hablar sobre desafíos profesionales y crecimiento personal utilizando estructuras del nivel B2.'
+      });
+    }
+
+    try {
+      const prompt = `You are Elena, an elite Senior SLA (Second Language Acquisition) Evaluator for the Iberio Academy.
+You are initiating a highly professional, 5-minute timed CEFR B2 Fluency Assessment interview.
+Your goal is to evaluate the user's upper-intermediate Spanish conversational capabilities.
+
+The 5 B2 Spanish vocabulary words targeted in this assessment are:
+${targetWords.map((tw, i) => `${i + 1}. ${tw.spanish} (${tw.english})`).join('\n')}
+
+Please generate a warm, professional, authentic opening interview question in Spanish (CEFR B2 level). The question should naturally elicit discussion related to professional growth, technology, sustainability, or personal achievement, inviting the student to express nuanced viewpoints. Keep it engaging, natural, and limit it to 2-3 sentences. Do not mention the targeted words directly or say "you must use these words" in your greeting, keep the instructions implicit.
+
+Return JSON format:
+{
+  "firstQuestion": "Opening Spanish question...",
+  "contextScenario": "A descriptive phrase in Spanish summarizing the interview's main situational context."
+}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.7
+        }
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      return res.json({
+        targetWords,
+        firstQuestion: parsed.firstQuestion || defaultFirstQuestion,
+        interviewerPersona: 'Elena, Iberio Senior SLA Evaluator',
+        contextScenario: parsed.contextScenario || 'Diálogo profesional y reflexivo sobre resolución de retos y planes futuros.'
+      });
+    } catch (e) {
+      console.warn('Gemini start fluency assessment error, using fallback:', e);
+      return res.json({
+        targetWords,
+        firstQuestion: defaultFirstQuestion,
+        interviewerPersona: 'Elena, Iberio Senior SLA Evaluator',
+        contextScenario: 'Diálogo profesional y reflexivo sobre resolución de retos y planes futuros.'
+      });
+    }
+  });
+
+  // 2. Next Question during the interview
+  app.post('/api/ai/fluency-assessment/next-question', async (req, res) => {
+    const { chatHistory = [], targetWords = [], userResponse = '' } = req.body;
+
+    const ai = getAIClient();
+    if (!ai) {
+      const fallbackQuestions = [
+        'Interesante perspectiva. ¿Cómo crees que este tipo de experiencias impactan en la toma de decisiones a largo plazo?',
+        'Excelente explicación. Si tuvieras que negociar un compromiso similar con socios internacionales, ¿cómo fomentarías la confianza?',
+        'Comprendo perfectamente. En última instancia, ¿cuál consideras que es el factor clave para garantizar la factibilidad de un proyecto?',
+        'Muchas gracias por compartir eso. ¿Qué matices crees que diferencian este desafío de otros que has enfrentado en el pasado?'
+      ];
+      const nextQ = fallbackQuestions[Math.min(chatHistory.length, fallbackQuestions.length - 1)];
+      return res.json({ nextQuestion: nextQ });
+    }
+
+    try {
+      const systemPrompt = `You are Elena, an elite Iberio Senior SLA Evaluator conducting a 5-minute timed B2 Fluency Assessment interview.
+You must maintain a supportive, professional, and natural conversational flow in Spanish at the CEFR B2 level.
+
+The targeted vocabulary words for this assessment are:
+${targetWords.map((tw: any) => `- ${tw.spanish} (${tw.english})`).join('\n')}
+
+Analyze the chat history so far and the user's latest response. Generate the next logical, engaging follow-up question in Spanish. Keep your follow-up short (2-3 sentences max) and natural. Ensure your questions naturally guide the learner to talk about related B2-level conceptual themes (strategy, challenges, plans, culture) without explicitly demanding they use the words. Just be a natural, conversational, skilled interviewer.`;
+
+      const contents = [
+        ...chatHistory.slice(-6).map((msg: any) => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.text || '' }]
+        })),
+        {
+          role: 'user',
+          parts: [{ text: `User latest response: "${userResponse}"` }]
+        }
+      ];
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7
+        }
+      });
+
+      return res.json({ nextQuestion: response.text?.trim() || '¿Qué otras estrategias consideras cruciales?' });
+    } catch (e) {
+      console.warn('Gemini next question assessment error, using fallback:', e);
+      return res.json({ nextQuestion: '¿Cómo crees que estas decisiones afectarán tus planes futuros a largo plazo?' });
+    }
+  });
+
+  // 3. Evaluate the completed 5-minute timed interview and return a high-impact Fluency Report
+  app.post('/api/ai/fluency-assessment/evaluate', async (req, res) => {
+    const { chatHistory = [], targetWords = [] } = req.body;
+
+    // Helper for robust offline fallback Fluency Report
+    const generateFallbackReport = () => {
+      const userMsgs = chatHistory.filter((msg: any) => msg.role === 'user').map((msg: any) => msg.text || '');
+      const fullText = userMsgs.join(' ').toLowerCase();
+      
+      const usedWords = targetWords.filter((tw: any) => {
+        const word = (tw.spanish || '').toLowerCase();
+        return fullText.includes(word);
+      });
+
+      const unusedWords = targetWords.filter((tw: any) => {
+        const word = (tw.spanish || '').toLowerCase();
+        return !fullText.includes(word);
+      });
+
+      const vocabularyScore = Math.min(100, Math.max(50, Math.round(50 + (usedWords.length * 10))));
+      const grammarScore = Math.min(100, Math.max(55, Math.round(60 + (fullText.length > 100 ? 15 : 0))));
+      const lexicalVarietyScore = Math.min(100, Math.max(50, Math.round(55 + (userMsgs.length * 8))));
+      const overallScore = Math.round((grammarScore + vocabularyScore + lexicalVarietyScore) / 3);
+
+      return {
+        overallScore,
+        grammarScore,
+        vocabularyScore,
+        lexicalVarietyScore,
+        coherenceScore: 82,
+        strengths: [
+          'Comprensión auditiva excelente de las preguntas complejas formuladas por el evaluador.',
+          'Intención comunicativa constante y capacidad de mantener la interacción bajo la presión del tiempo.',
+          usedWords.length > 0 
+            ? `Uso correcto de vocabulario avanzado de nivel B2, incluyendo palabras como: ${usedWords.map((w: any) => `'${w.spanish}'`).join(', ')}.`
+            : 'Formulación estructurada de frases con verbos conjugados correctamente en tiempos simples.'
+        ],
+        weaknesses: [
+          unusedWords.length > 0 
+            ? `Oportunidad para incorporar más vocabulario específico del examen (no se detectaron términos como ${unusedWords.map((w: any) => `'${w.spanish}'`).join(', ')}).`
+            : 'Falta de vocabulario técnico e idiomático para expresar ideas más abstractas.',
+          'Poca variedad en las conjunciones y conectores discursivos (dependencia de "y", "pero", "porque").'
+        ],
+        grammarAnalysis: 'Tu estructura gramatical muestra un dominio intermedio adecuado. Se observa buena concordancia de género y número en oraciones simples. Sin embargo, para consolidar el nivel B2, es imperativo dominar el uso de los pronombres relativos y el modo subjuntivo para expresar hipótesis y opiniones matizadas.',
+        vocabularyAnalysis: `Has demostrado un esfuerzo por comunicar ideas abstractas. Lograste aplicar ${usedWords.length} de los 5 vocablos B2 objetivo. Para mejorar tu variedad léxica, te recomendamos practicar sinónimos de verbos comunes (por ejemplo, usar 'fomentar' en lugar de 'hacer' o 'promover').`,
+        grammarSuggestions: [
+          'Uso del Subjuntivo en oraciones concesivas y condicionales (ej. "Aunque sea un desafío...", "Si yo tuviera que negociar...")',
+          'Diferenciación de conectores discursivos avanzados (ej. "No obstante", "Por consiguiente", "A fin de cuentas")'
+        ],
+        wordSuggestions: targetWords.map((tw: any) => ({
+          word: tw.spanish,
+          en: tw.english,
+          ar: tw.arabic,
+          reason: 'Consolidar su uso activo en oraciones compuestas de alta complejidad.'
+        })),
+        correctedSentences: [
+          {
+            original: 'Es un gran desafío que tengo que hacer hoy.',
+            corrected: 'Representa un desafío sustancial que debo abordar hoy.',
+            explanation: 'Sustituye "hacer" por "abordar" y añade el adjetivo "sustancial" para elevar el nivel léxico al estándar CEFR B2.'
+          }
+        ]
+      };
+    };
+
+    const ai = getAIClient();
+    if (!ai) {
+      return res.json(generateFallbackReport());
+    }
+
+    try {
+      const userConversation = chatHistory
+        .map((msg: any) => `${msg.role === 'user' ? 'Student' : 'Evaluator'}: ${msg.text}`)
+        .join('\n');
+
+      const evalPrompt = `You are Elena, an elite Iberio Senior SLA Evaluator and DELE exam board member.
+Evaluate the following 5-minute timed Spanish interview chat transcript for a CEFR B2 Fluency Assessment.
+The target B2 Spanish vocabulary list for this student was:
+${targetWords.map((tw: any) => `- ${tw.spanish} (${tw.english} - ${tw.arabic})`).join('\n')}
+
+---
+Transcript:
+${userConversation}
+---
+
+Your evaluation must be rigorous, precise, and highly constructive. Analyze:
+1. Grammatical Accuracy (Use of past tenses, subjunctive mood, relative pronouns, prepositions, gender/number agreement).
+2. Lexical Variety (Presence of B2 vocabulary, usage of target words, avoiding simple repetition, using advanced verbs instead of 'hacer'/'tener'/'decir').
+3. Coherence & Conversational Flow.
+
+Provide a highly detailed Fluency Report in strict JSON format. Ensure all suggestions and analysis are extremely polished, encouraging, and useful.
+Provide suggestions in Spanish, English, and Arabic if appropriate, but keep the core analysis in Spanish.
+
+Return JSON format:
+{
+  "overallScore": number (0-100),
+  "grammarScore": number (0-100),
+  "vocabularyScore": number (0-100),
+  "lexicalVarietyScore": number (0-100),
+  "coherenceScore": number (0-100),
+  "strengths": [
+    "Strength 1 in Spanish",
+    "Strength 2 in Spanish",
+    "Strength 3 in Spanish"
+  ],
+  "weaknesses": [
+    "Weakness 1 in Spanish",
+    "Weakness 2 in Spanish"
+  ],
+  "grammarAnalysis": "Thorough paragraphs analyzing grammatical accuracy in Spanish.",
+  "vocabularyAnalysis": "Thorough paragraphs analyzing vocabulary and lexical variety in Spanish.",
+  "grammarSuggestions": [
+    "Specific grammar rule or pattern to practice (e.g., 'El pretérito imperfecto de subjuntivo para expresar hipótesis')",
+    "Another specific grammar rule (e.g., 'Uso de conectores concesivos como no obstante y sin embargo')"
+  ],
+  "wordSuggestions": [
+    {
+      "word": "Spanish word",
+      "en": "English meaning",
+      "ar": "Arabic meaning",
+      "reason": "Specific reason why they need to practice this word based on their performance."
+    }
+  ],
+  "correctedSentences": [
+    {
+      "original": "The student's original flawed sentence",
+      "corrected": "Corrected standard B2 Spanish version",
+      "explanation": "Brief explanation of the grammar rule or lexical upgrade."
+    }
+  ]
+}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: [{ role: 'user', parts: [{ text: evalPrompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      return res.json({
+        overallScore: parsed.overallScore || 70,
+        grammarScore: parsed.grammarScore || 70,
+        vocabularyScore: parsed.vocabularyScore || 70,
+        lexicalVarietyScore: parsed.lexicalVarietyScore || 70,
+        coherenceScore: parsed.coherenceScore || 75,
+        strengths: parsed.strengths || ['Esfuerzo constante para expresarse bajo límites de tiempo.'],
+        weaknesses: parsed.weaknesses || ['Oportunidad de elevar la complejidad sintáctica.'],
+        grammarAnalysis: parsed.grammarAnalysis || 'Gramática intermedia adecuada.',
+        vocabularyAnalysis: parsed.vocabularyAnalysis || 'Vocabulario intermedio adecuado.',
+        grammarSuggestions: parsed.grammarSuggestions || ['Uso regular de conectores discursivos avanzados.'],
+        wordSuggestions: parsed.wordSuggestions || [],
+        correctedSentences: parsed.correctedSentences || []
+      });
+    } catch (e) {
+      console.warn('Gemini evaluate assessment error, returning fallback:', e);
+      return res.json(generateFallbackReport());
     }
   });
 

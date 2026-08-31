@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Volume2,
   Play,
@@ -763,7 +764,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
         </div>
 
         {/* Right: Floating Word & Sentence Mining Inspector */}
-        <div className="lg:col-span-4 sticky top-6 space-y-5">
+        <div className="hidden lg:block lg:col-span-4 sticky top-6 space-y-5">
           {selectedToken && wordDef ? (
             <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-xl space-y-5 animate-fadeIn">
               {/* Header & Pronunciation */}
@@ -833,7 +834,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
                     <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider">
                       الترجمة العربية
                     </span>
-                    <p className="text-sm font-bold text-amber-700 dark:text-amber-300 font-arabic" dir="rtl">
+                    <p className="text-sm font-bold text-amber-700 dark:text-amber-300 font-arabic text-right" dir="rtl">
                       {wordDef.translation_ar}
                     </p>
                   </div>
@@ -972,6 +973,243 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Mobile/Tablet Popup Sliding Drawer Sheet for Word Inspector */}
+      <AnimatePresence>
+        {selectedToken && wordDef && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setSelectedToken(null);
+                setWordDef(null);
+              }}
+              className="fixed inset-0 bg-black z-50 lg:hidden"
+            />
+
+            {/* Slide-up Bottom Drawer */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 26, stiffness: 210 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl shadow-2xl z-50 lg:hidden flex flex-col max-h-[85vh] outline-none"
+            >
+              {/* Drag Handle Indicator & Controls */}
+              <div className="relative py-3.5 border-b border-stone-100 dark:border-stone-800/80 flex items-center justify-between px-6 shrink-0">
+                <div className="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full absolute top-2 left-1/2 -translate-x-1/2" />
+                
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 font-mono mt-1.5">
+                  Word Lookup
+                </span>
+
+                <button
+                  onClick={() => {
+                    setSelectedToken(null);
+                    setWordDef(null);
+                  }}
+                  className="mt-1.5 px-3 py-1 text-xs font-black bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+
+              {/* Scrollable Content Pane */}
+              <div className="p-6 overflow-y-auto space-y-5 pb-12">
+                {/* Word details */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-black text-stone-900 dark:text-white capitalize">
+                        {selectedToken.clean}
+                      </h3>
+                      <button
+                        onClick={() => speakSpanish(selectedToken.clean, playbackSpeed)}
+                        className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-200 transition cursor-pointer"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {wordDef.phonetic && (
+                      <span className="text-xs font-mono text-stone-400">
+                        /{wordDef.phonetic}/
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                    {wordDef.partOfSpeech || 'Word'}
+                  </span>
+                </div>
+
+                {/* Imagery context if present */}
+                {(wordDef.imageUrl || isAiTranslating) && (
+                  <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700/60 flex items-center justify-center shadow-inner">
+                    {isAiTranslating && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-stone-50/80 dark:bg-stone-900/80 z-10 animate-pulse">
+                        <Sparkles className="w-5 h-5 text-amber-500 animate-spin" />
+                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                          Enhancing with AI...
+                        </span>
+                      </div>
+                    )}
+                    
+                    {wordDef.imageUrl && (
+                      <img
+                        src={wordDef.imageUrl}
+                        alt={wordDef.word}
+                        className="w-full h-full object-cover rounded-xl"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Translation results */}
+                <div className="space-y-2 p-4 bg-stone-50 dark:bg-stone-800/60 rounded-2xl border border-stone-200/80 dark:border-stone-700/60">
+                  <div>
+                    <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider">
+                      English Meaning
+                    </span>
+                    <p className="text-sm font-black text-stone-900 dark:text-white capitalize">
+                      {wordDef.translation_en}
+                    </p>
+                  </div>
+
+                  {wordDef.translation_ar && (
+                    <div className="pt-2 border-t border-stone-200 dark:border-stone-700">
+                      <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider">
+                        الترجمة العربية
+                      </span>
+                      <p className="text-sm font-bold text-amber-700 dark:text-amber-300 font-arabic text-right" dir="rtl">
+                        {wordDef.translation_ar}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Context Insight */}
+                {(wordDef.explanation_en || wordDef.explanation_ar) && (
+                  <div className="p-3.5 bg-amber-50/40 dark:bg-amber-950/20 rounded-2xl border border-amber-100/60 dark:border-amber-900/30 space-y-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>AI Context Insight</span>
+                    </span>
+                    {wordDef.explanation_en && (
+                      <p className="text-xs text-stone-600 dark:text-stone-300 leading-normal">
+                        {wordDef.explanation_en}
+                      </p>
+                    )}
+                    {wordDef.explanation_ar && (
+                      <p className="text-xs text-stone-500 dark:text-stone-400 font-arabic leading-normal text-right" dir="rtl">
+                        {wordDef.explanation_ar}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Interactive status configuration */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-extrabold text-stone-400 uppercase tracking-wider">
+                    Update Word Status
+                  </span>
+
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <button
+                      onClick={() => handleMarkAsKnown(selectedToken.clean)}
+                      className="p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-emerald-500 hover:text-white border border-stone-200 dark:border-stone-700 text-xs font-black text-stone-700 dark:text-stone-300 transition flex flex-col items-center gap-0.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Known</span>
+                    </button>
+
+                    {([1, 2, 3, 4] as LingQStatus[]).map(st => (
+                      <button
+                        key={st}
+                        onClick={() => handleSetLingQStatus(selectedToken.clean, st)}
+                        className={`p-2.5 rounded-xl border text-xs font-black transition flex flex-col items-center gap-0.5 cursor-pointer ${
+                          userProgress.lingqs?.[selectedToken.clean.toLowerCase()]?.status === st
+                            ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-sm'
+                            : 'bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
+                        }`}
+                      >
+                        <Bookmark className="w-3.5 h-3.5 text-amber-500" />
+                        <span>L{st}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sentence mining */}
+                <div className="pt-2 border-t border-stone-200 dark:border-stone-800 space-y-2">
+                  <button
+                    onClick={handleMineSentence}
+                    className="w-full py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-md transition transform active:scale-95 cursor-pointer"
+                  >
+                    <BookmarkPlus className="w-4 h-4" />
+                    <span>Mine Sentence to Cloze SRS</span>
+                  </button>
+
+                  {minedSuccessMessage && (
+                    <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold text-center">
+                      {minedSuccessMessage}
+                    </div>
+                  )}
+                </div>
+
+                {/* Corpus contexts list */}
+                <div className="pt-2 border-t border-stone-200 dark:border-stone-800 space-y-2">
+                  <button
+                    onClick={() => setShowCorpusExamples(!showCorpusExamples)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold text-xs flex items-center justify-between transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-amber-500" />
+                      <span>See "{selectedToken.clean}" in {multiContexts.length} Other Contexts</span>
+                    </span>
+                    <span>{showCorpusExamples ? '▲' : '▼'}</span>
+                  </button>
+
+                  {showCorpusExamples && (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
+                      {multiContexts.length === 0 ? (
+                        <p className="text-stone-400 text-center py-2">No other instances found in active corpus.</p>
+                      ) : (
+                        multiContexts.map((ctx, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 bg-stone-50 dark:bg-stone-800/80 rounded-xl border border-stone-200 dark:border-stone-700 space-y-1"
+                          >
+                            <div className="flex items-center justify-between text-[10px] text-stone-400 font-mono">
+                              <span>{ctx.source}</span>
+                              <button
+                                onClick={() => speakSpanish(ctx.es, playbackSpeed)}
+                                className="text-amber-500 hover:underline cursor-pointer"
+                              >
+                                ▶ Listen
+                              </button>
+                            </div>
+                            <p className="font-bold text-stone-900 dark:text-white">
+                              {ctx.es}
+                            </p>
+                            <p className="text-stone-500 dark:text-stone-400 text-[11px]">
+                              {ctx.en}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

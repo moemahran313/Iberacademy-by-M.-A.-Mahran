@@ -719,7 +719,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8"
               >
                 {/* 1. The Cognitive Edge Card (Span 5 cols) */}
                 <motion.div 
@@ -763,12 +763,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-stone-400">
+                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-rose-500">
                     PREVENT COGNITIVE DECLINE
                   </div>
                 </motion.div>
 
-                {/* 2. Multinational Careers Card (Span 7 cols) */}
+                {/* 2. Career & Growth Card (Span 7 cols) */}
                 <motion.div 
                   variants={bentoItemVariants}
                   whileHover={{ scale: 1.015, y: -4 }}
@@ -781,120 +781,98 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                     <div className="space-y-1">
                       <h3 className="text-xl font-black text-white font-header">
-                        Multinational Careers
+                        Career & Growth
                       </h3>
                       <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest font-mono">
-                        High-Income Global Recruiting
+                        Global Corporate Placements & Scholarships
                       </p>
                     </div>
 
                     <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-medium">
-                      Spanish is a rare, elite skill with massive operational supply deficits. Multi-industry giants (e.g., Vodafone, Sutherland, Concentrix) actively target bilingual talent in{' '}
-                      <InteractiveFactTooltip 
-                        keyword="strategic regions" 
-                        fact="Global technology and outsourcing companies have set up critical EMEA service hubs in Egypt, Poland, and India, facing massive shortages of Spanish speakers."
-                        title="Workforce Fact"
-                        icon={<Globe className="w-3.5 h-3.5 text-amber-400" />}
-                      />{' '}
-                      to spearhead international accounts.
-                      
-                      <span className="block mt-3 text-stone-100 font-bold bg-amber-500/10 border border-amber-500/25 rounded-2xl p-3.5">
-                        💼 Certified Spanish representatives in Egypt secure starting packages ranging from{' '}
-                        <InteractiveFactTooltip 
-                          keyword="EGP 25,000 to 45,000+" 
-                          fact="This is roughly 3.5x the average local entry salary. Bilingual specialists also unlock fast-track management promotions and global relocation visas."
-                          title="Local Salary Estimate"
-                          icon={<Zap className="w-3.5 h-3.5 text-amber-400" />}
-                        />{' '}
-                        monthly, directly matching mid-level corporate executive salaries.
-                      </span>
+                      Spanish is an elite skill with massive supply deficits. Multi-industry giants actively target bilingual talent for international accounts.
                     </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                        <span className="text-[9px] uppercase tracking-widest text-amber-400 font-bold font-mono block">Corporate Pathways</span>
+                        <p className="text-[11px] sm:text-xs text-stone-300 leading-relaxed font-medium">
+                          Bilingual representatives in Egypt secure starting packages from{' '}
+                          <InteractiveFactTooltip 
+                            keyword="EGP 25K to 45K+" 
+                            fact="Roughly 3.5x the average entry salary. Unlocks fast-track promotions in firms like Vodafone and Concentrix."
+                            title="Local Salary Estimate"
+                            icon={<Zap className="w-3.5 h-3.5 text-amber-400" />}
+                          />{' '}
+                          monthly, matching executive roles.
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                        <span className="text-[9px] uppercase tracking-widest text-sky-400 font-bold font-mono block">European Fellowships</span>
+                        <p className="text-[11px] sm:text-xs text-stone-300 leading-relaxed font-medium">
+                          Leverage proficiency to secure{' '}
+                          <InteractiveFactTooltip 
+                            keyword="fully-funded grants" 
+                            fact="Opens direct pathways to Erasmus Mundus and Spanish Foreign Ministry (AECID) postgraduate entries with stipends."
+                            title="Scholarship Access"
+                            icon={<GraduationCap className="w-3.5 h-3.5 text-sky-400" />}
+                          />{' '}
+                          offering living stipends and waived tuitions.
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="pt-3 border-t border-stone-800 text-[10px] font-mono font-bold text-amber-400">
-                    EXCEPTIONAL SALARY ESTIMATES & CORPORATE PLACEMENT
+                    EXCEPTIONAL RECRUITMENT & MOBILITY MULTIPLIERS
                   </div>
                 </motion.div>
 
-                {/* 3. European Scholarships Card (Span 7 cols) */}
+                {/* 3. Cultural Exchange Card (Span 12 cols) */}
                 <motion.div 
                   variants={bentoItemVariants}
-                  whileHover={{ scale: 1.015, y: -4 }}
-                  className="lg:col-span-7 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col justify-between space-y-6 hover:border-amber-400/40 transition-colors"
+                  whileHover={{ scale: 1.01, y: -4 }}
+                  className="lg:col-span-12 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-emerald-400/40 transition-colors"
                 >
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 bg-sky-500/10 border border-sky-500/20 text-sky-500 rounded-2xl flex items-center justify-center shadow-inner">
-                      <GraduationCap className="w-6 h-6" />
-                    </div>
-
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-black text-stone-950 dark:text-white font-header">
-                        European Scholarships
-                      </h3>
-                      <p className="text-[10px] text-stone-400 dark:text-stone-500 font-black uppercase tracking-widest font-mono">
-                        Erasmus+ & Fully-Funded EU Grants
-                      </p>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-medium">
-                      Leverage Spanish proficiency to secure fully-funded undergraduate, postgraduate, and postdoctoral research degrees. The European Commission allocates extensive funding annually for{' '}
-                      <InteractiveFactTooltip 
-                        keyword="international students" 
-                        fact="Spanish is an official UN and EU language. Certification opens doors to prestigious grants like Erasmus Mundus and Spanish Ministry of Foreign Affairs (AECID) awards."
-                        title="Scholarship Access"
-                        icon={<GraduationCap className="w-3.5 h-3.5 text-sky-500" />}
-                      />{' '}
-                      fluent in the language.
-                      
-                      <span className="block mt-3 text-stone-800 dark:text-stone-200 font-bold bg-sky-500/5 dark:bg-sky-500/10 border border-sky-500/20 rounded-2xl p-3">
-                        🇪🇺 Enjoy premium tuition waivers, monthly living stipends, and travel grants. Over <span className="text-sky-600 dark:text-sky-400 font-extrabold">2,500 students</span> receive fully-funded research entries to Spain and Latin American academic networks each cycle.
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-sky-500">
-                    ACADEMIC AND RESEARCH MOBILITY
-                  </div>
-                </motion.div>
-
-                {/* 4. Cultural & Teaching Exchanges Card (Span 5 cols) */}
-                <motion.div 
-                  variants={bentoItemVariants}
-                  whileHover={{ scale: 1.015, y: -4 }}
-                  className="lg:col-span-5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col justify-between space-y-6 hover:border-amber-400/40 transition-colors"
-                >
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-w-2xl">
                     <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner">
                       <Globe className="w-6 h-6" />
                     </div>
 
                     <div className="space-y-1">
                       <h3 className="text-xl font-black text-stone-950 dark:text-white font-header">
-                        Cultural & Teaching Exchanges
+                        Cultural Exchange
                       </h3>
                       <p className="text-[10px] text-stone-400 dark:text-stone-500 font-black uppercase tracking-widest font-mono">
-                        Global Relocation Programs
+                        Global Visa & Relocation Pathways
                       </p>
                     </div>
 
                     <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-medium">
-                      Secure streamlined visa pathways and work placements. State cultural programs like{' '}
+                      Secure streamlined visa pathways and work placements abroad. State cultural assistantship initiatives like{' '}
                       <InteractiveFactTooltip 
                         keyword="NALCAP" 
-                        fact="North American Language and Culture Assistants Program (also open globally). It offers fully supported teaching assistant positions in schools throughout Spain."
+                        fact="North American Language and Culture Assistants Program. Provides official teaching assistantships directly in Spain for global candidates."
                         title="Program Info"
                         icon={<Sparkles className="w-3.5 h-3.5 text-emerald-500" />}
                       />{' '}
-                      provide paid language assistant roles directly in Spain.
-                      
-                      <span className="block mt-3 text-stone-800 dark:text-stone-200 font-bold bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3">
-                        ✈️ Earn monthly stipends between <span className="text-emerald-600 dark:text-emerald-400 font-extrabold font-mono">€700 and €1,000+</span>, full medical insurance coverage, and official EU residence permits.
-                      </span>
+                      place you as language assistant within Spanish academic boards.
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-emerald-500">
-                    CULTURAL AMBASSADORS & WORK TRAVEL
+                  <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/15 rounded-2xl p-5 md:max-w-xs w-full space-y-3 shrink-0">
+                    <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-black font-mono block">Exchange Benefits</span>
+                    <ul className="text-xs text-stone-700 dark:text-stone-300 space-y-2 font-bold">
+                      <li className="flex items-center gap-2">
+                        <span className="text-emerald-500 font-black">✓</span> €700 to €1,000+ monthly stipends
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-emerald-500 font-black">✓</span> Full medical insurance coverage
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-emerald-500 font-black">✓</span> Official EU residence permits
+                      </li>
+                    </ul>
                   </div>
                 </motion.div>
               </motion.div>

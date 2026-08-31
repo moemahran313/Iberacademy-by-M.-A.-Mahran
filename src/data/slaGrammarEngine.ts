@@ -24,6 +24,7 @@ export interface PatternDiscoveryItem {
 export interface MinimalPairCard {
   id: string;
   topic: string;
+  topicId: string;
   cefr: 'A1' | 'A2' | 'B1' | 'B2';
   optionA: {
     es: string;
@@ -45,12 +46,13 @@ export interface MinimalPairCard {
 
 export interface ProcessingInstructionDrill {
   id: string;
+  topicId: string;
   topic: string;
   cefr: 'A1' | 'A2' | 'B1' | 'B2';
   audioPrompt_es: string;
   targetTranslation_en: string;
   targetTranslation_ar: string;
-  grammarMarkerFocus: string; // e.g., "Preterite vs Imperfect (-é vs -aba)"
+  grammarMarkerFocus: string;
   wordTiles: string[];
   correctSequence: string[];
   explanation: string;
@@ -58,10 +60,11 @@ export interface ProcessingInstructionDrill {
 
 export interface SyntaxRepairChallenge {
   id: string;
+  topicId: string;
   brokenSentence: string;
   errorWord: string;
   correctedWord: string;
-  wordTiles: string[]; // Options to pick for the swap
+  wordTiles: string[];
   correctSentence: string;
   translation_en: string;
   translation_ar: string;
@@ -70,6 +73,65 @@ export interface SyntaxRepairChallenge {
 }
 
 export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
+  {
+    id: 'pd-noun-gender-plural',
+    topicId: 'g-noun-gender-plural',
+    title: 'Noun Gender & Plurals: Recognizing Irregular -ma Nouns',
+    cefr: 'A1',
+    sentences: [
+      {
+        es: 'El problema es difícil.',
+        en: 'The problem is difficult.',
+        ar: 'المشكلة صعبة (اسم مذكر ينتهي بـ -ma).',
+        highlightWord: 'El',
+        syntaxTags: [
+          { word: 'El', tag: 'Masculine Article', color: 'bg-blue-100 text-blue-900 font-bold' },
+          { word: 'problema', tag: 'Masculine Noun (-ma ending)', color: 'bg-blue-50 text-blue-800' }
+        ]
+      },
+      {
+        es: 'El idioma es interesante.',
+        en: 'The language is interesting.',
+        ar: 'اللغة ممتعة (اسم مذكر ينتهي بـ -ma).',
+        highlightWord: 'El',
+        syntaxTags: [
+          { word: 'El', tag: 'Masculine Article', color: 'bg-blue-100 text-blue-900' },
+          { word: 'idioma', tag: 'Masculine Noun (-ma ending)', color: 'bg-blue-50 text-blue-800' }
+        ]
+      },
+      {
+        es: 'Las lecciones son largas.',
+        en: 'The lessons are long.',
+        ar: 'الدروس طويلة (اسم مؤنث جمع ينتهي بـ -ción).',
+        highlightWord: 'Las',
+        syntaxTags: [
+          { word: 'Las', tag: 'Feminine Plural Article', color: 'bg-rose-100 text-rose-900' },
+          { word: 'lecciones', tag: 'Feminine Plural Noun (-ción)', color: 'bg-rose-50 text-rose-800' }
+        ]
+      }
+    ],
+    question: 'Why do nouns like "problema" and "idioma" take the masculine article "el"?',
+    question_ar: 'لماذا تأخذ الأسماء مثل "problema" و "idioma" أداة التعريف المذكر "el"؟',
+    options: [
+      {
+        text: 'Nouns of Greek origin ending in "-ma" are masculine despite ending in "-a".',
+        text_ar: 'الأسماء ذات الأصل اليوناني المنتهية بـ "-ma" هي أسماء مذكرة على الرغم من انتهائها بـ "-a".',
+        isCorrect: true
+      },
+      {
+        text: 'Because all Spanish nouns are masculine by default.',
+        text_ar: 'لأن جميع الأسماء في اللغة الإسبانية مذكرة بشكل تلقائي.',
+        isCorrect: false
+      },
+      {
+        text: 'They are mistakes in Spanish and should use "la".',
+        text_ar: 'هي أخطاء في الإسبانية ويجب استخدام "la" معها.',
+        isCorrect: false
+      }
+    ],
+    ruleExplanation_en: 'Spanish words of Greek origin ending in "-ma" (like problema, idioma, sistema, tema, poema) are grammatically masculine.',
+    ruleExplanation_ar: 'الكلمات من أصل يوناني المنتهية بـ "-ma" (مثل problema و idioma و sistema) هي كلمات مذكرة قواعدياً وتأخذ el.'
+  },
   {
     id: 'pd-ser-estar',
     topicId: 'g-ser-vs-estar',
@@ -83,7 +145,7 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         highlightWord: 'es',
         syntaxTags: [
           { word: 'La manzana', tag: 'Subject (Noun)', color: 'bg-blue-100 text-blue-900' },
-          { word: 'es', tag: 'SER (Inherent Quality)', color: 'bg-emerald-100 text-emerald-900 border border-emerald-300' },
+          { word: 'es', tag: 'SER (Inherent Quality)', color: 'bg-emerald-100 text-emerald-900' },
           { word: 'verde', tag: 'Inherent Characteristic', color: 'bg-purple-100 text-purple-900' }
         ]
       },
@@ -94,19 +156,8 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         highlightWord: 'está',
         syntaxTags: [
           { word: 'La manzana', tag: 'Subject (Noun)', color: 'bg-blue-100 text-blue-900' },
-          { word: 'está', tag: 'ESTAR (Temporary Condition)', color: 'bg-amber-100 text-amber-900 border border-amber-300' },
+          { word: 'está', tag: 'ESTAR (Temporary Condition)', color: 'bg-amber-100 text-amber-900' },
           { word: 'verde', tag: 'Temporary State (Unripe)', color: 'bg-orange-100 text-orange-900' }
-        ]
-      },
-      {
-        es: 'El profesor está en Madrid hoy.',
-        en: 'The professor is in Madrid today.',
-        ar: 'الأستاذ موجود في مدريد اليوم.',
-        highlightWord: 'está',
-        syntaxTags: [
-          { word: 'El profesor', tag: 'Subject', color: 'bg-blue-100 text-blue-900' },
-          { word: 'está', tag: 'ESTAR (Geographical Location)', color: 'bg-amber-100 text-amber-900 border border-amber-300' },
-          { word: 'en Madrid', tag: 'Location', color: 'bg-rose-100 text-rose-900' }
         ]
       }
     ],
@@ -115,22 +166,17 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
     options: [
       {
         text: 'ESTAR is used for temporary states, locations, and variable conditions.',
-        text_ar: 'يُستخدم Estar للحالات المؤقتة والمواقع والمواقف المتغيرة.',
+        text_ar: 'يُscتخدم Estar للحالات المؤقتة والمواقع والمواقف المتغيرة.',
         isCorrect: true
       },
       {
-        text: 'ESTAR is used only for permanent personality traits.',
+        text: 'ESTAR is used only for permanent traits.',
         text_ar: 'يُستخدم Estar فقط للصفات الشخصية الدائمة.',
-        isCorrect: false
-      },
-      {
-        text: 'SER is used for locations, while ESTAR is used for professions.',
-        text_ar: 'يُستخدم Ser للمواقع بينما Estar للمهن.',
         isCorrect: false
       }
     ],
-    ruleExplanation_en: 'SER defines permanent identity, origin, and intrinsic traits. ESTAR describes variable conditions, emotions, physical states, and geographic location.',
-    ruleExplanation_ar: 'يعبر Ser عن الهوية الأصلية والصفات الثابتة. بينما يعبر Estar عن الحالات المؤقتة والمشاعر والمواقع الجغرافية.'
+    ruleExplanation_en: 'SER defines permanent identity and intrinsic traits. ESTAR describes variable conditions, emotions, physical states, and geographic location.',
+    ruleExplanation_ar: 'يعبر Ser عن الهوية والصفات الثابتة. بينما يعبر Estar عن الحالات المؤقتة والمشاعر والمواقع الجغرافية.'
   },
   {
     id: 'pd-por-para',
@@ -145,7 +191,7 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         highlightWord: 'para',
         syntaxTags: [
           { word: 'Estudio', tag: 'Action Verb', color: 'bg-blue-100 text-blue-900' },
-          { word: 'para', tag: 'PARA (Goal/Purpose)', color: 'bg-emerald-100 text-emerald-900 border border-emerald-300' },
+          { word: 'para', tag: 'PARA (Goal/Purpose)', color: 'bg-emerald-100 text-emerald-900' },
           { word: 'trabajar', tag: 'Future Purpose', color: 'bg-purple-100 text-purple-900' }
         ]
       },
@@ -156,19 +202,8 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         highlightWord: 'por',
         syntaxTags: [
           { word: 'Gracias', tag: 'Expression', color: 'bg-stone-100 text-stone-900' },
-          { word: 'por', tag: 'POR (Motive/Reason)', color: 'bg-amber-100 text-amber-900 border border-amber-300' },
+          { word: 'por', tag: 'POR (Motive/Reason)', color: 'bg-amber-100 text-amber-900' },
           { word: 'tu ayuda', tag: 'Past Cause', color: 'bg-rose-100 text-rose-900' }
-        ]
-      },
-      {
-        es: 'Este regalo es para ti.',
-        en: 'This gift is for you (Recipient).',
-        ar: 'هذه الهدية لك (المستلم والمستهدف).',
-        highlightWord: 'para',
-        syntaxTags: [
-          { word: 'Este regalo', tag: 'Object', color: 'bg-blue-100 text-blue-900' },
-          { word: 'para', tag: 'PARA (Final Recipient)', color: 'bg-emerald-100 text-emerald-900 border border-emerald-300' },
-          { word: 'ti', tag: 'Target Recipient', color: 'bg-indigo-100 text-indigo-900' }
         ]
       }
     ],
@@ -176,23 +211,18 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
     question_ar: 'كيف تميز بين PARA و POR عند التعبير عن النوايا والأهداف؟',
     options: [
       {
-        text: 'PARA points forward to future goals & recipients; POR points backward to past causes & motives.',
-        text_ar: 'تشير PARA للأمام نحو أهداف ومستلمي المستقبل؛ بينما تشير POR للخلف نحو الأسباب والدوافع.',
+        text: 'PARA points forward to future goals; POR points backward to past causes.',
+        text_ar: 'تشير PARA للأمام نحو أهداف مستهدفة؛ بينما تشير POR للخلف نحو الأسباب والدوافع.',
         isCorrect: true
       },
       {
-        text: 'POR is used for deadlines; PARA is used for duration of time.',
+        text: 'POR is used for deadlines; PARA is for duration.',
         text_ar: 'تُستخدم POR للمواعيد النهائية بينما PARA للمدة الزمنية.',
-        isCorrect: false
-      },
-      {
-        text: 'They are identical and interchangeable in all spoken contexts.',
-        text_ar: 'هما متطابقان ويمكن استبدالهما في جميع السياقات.',
         isCorrect: false
       }
     ],
-    ruleExplanation_en: 'PARA focuses on destination, deadline, recipient, and ultimate goal ("in order to"). POR focuses on motive, cause, exchange price, duration, and movement through.',
-    ruleExplanation_ar: 'تركز PARA على الوجهة، الموعد، المستلم، والهدف المستقبلي. بينما تركز POR على السبب، المدة، وسيلة التبادل، والمرور عبر.'
+    ruleExplanation_en: 'PARA focuses on destination, deadline, recipient, and ultimate goal. POR focuses on motive, cause, exchange price, duration, and movement.',
+    ruleExplanation_ar: 'تركز PARA على الوجهة، الموعد، المستلم، والهدف. بينما تركز POR على السبب، المدة، والتبادل والمرور.'
   },
   {
     id: 'pd-subjunctive-trigger',
@@ -207,7 +237,7 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         highlightWord: 'estudias',
         syntaxTags: [
           { word: 'Sé que', tag: 'Certainty Trigger', color: 'bg-sky-100 text-sky-900 font-bold' },
-          { word: 'estudias', tag: 'Indicative Mood (Fact)', color: 'bg-emerald-100 text-emerald-900 border border-emerald-300' }
+          { word: 'estudias', tag: 'Indicative Mood (Fact)', color: 'bg-emerald-100 text-emerald-900' }
         ]
       },
       {
@@ -217,17 +247,7 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         highlightWord: 'estudies',
         syntaxTags: [
           { word: 'Quiero que', tag: 'WEIRDO Wish Trigger', color: 'bg-purple-100 text-purple-900 font-bold' },
-          { word: 'estudies', tag: 'Subjunctive Mood (Desire)', color: 'bg-amber-100 text-amber-900 border border-amber-300' }
-        ]
-      },
-      {
-        es: 'Es posible que venga mañana.',
-        en: 'It is possible that he comes tomorrow (Uncertainty).',
-        ar: 'من المحتمل أن يأتي غداً (احتمال وغير مؤكد = Subjuntivo).',
-        highlightWord: 'venga',
-        syntaxTags: [
-          { word: 'Es posible que', tag: 'Impersonal Doubt Trigger', color: 'bg-rose-100 text-rose-900 font-bold' },
-          { word: 'venga', tag: 'Subjunctive Mood', color: 'bg-amber-100 text-amber-900 border border-amber-300' }
+          { word: 'estudies', tag: 'Subjunctive Mood (Desire)', color: 'bg-amber-100 text-amber-900' }
         ]
       }
     ],
@@ -243,11 +263,6 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         text: 'Because it is referring to past completed time.',
         text_ar: 'لأنها تشير إلى زمن ماضي مكتمل.',
         isCorrect: false
-      },
-      {
-        text: 'It is a past tense irregular spelling change.',
-        text_ar: 'تغير إملائي شاذ في زمن الماضي.',
-        isCorrect: false
       }
     ],
     ruleExplanation_en: 'The Subjunctive mood is triggered when the main clause expresses a wish, emotion, impersonal judgment, recommendation, doubt, or denial (WEIRDO) targeting a different subject.',
@@ -257,8 +272,31 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
 
 export const MINIMAL_PAIR_CARDS: MinimalPairCard[] = [
   {
+    id: 'mp-noun-gender',
+    topic: 'Noun Gender Meaning Shifts',
+    topicId: 'g-noun-gender-plural',
+    cefr: 'A1',
+    optionA: {
+      es: 'El cura.',
+      en: 'The priest (masculine noun).',
+      ar: 'الكاهن / القسيس (مذكر).',
+      nuance: 'Religious figure',
+      grammarTag: 'El cura (masc)'
+    },
+    optionB: {
+      es: 'La cura.',
+      en: 'The cure / treatment (feminine noun).',
+      ar: 'العلاج / الشفاء (مؤنث).',
+      nuance: 'Medical remedy',
+      grammarTag: 'La cura (fem)'
+    },
+    keyTakeaway_en: 'Changing the grammatical article changes the noun meaning from "priest" to "cure".',
+    keyTakeaway_ar: 'تغيير أداة الاسم يغير معناه بالكامل من "كاهن" إلى "علاج/شفاء".'
+  },
+  {
     id: 'mp-ser-estar-listo',
     topic: 'Ser vs Estar with Adjectives',
+    topicId: 'g-ser-vs-estar',
     cefr: 'A1',
     optionA: {
       es: 'Soy listo.',
@@ -280,6 +318,7 @@ export const MINIMAL_PAIR_CARDS: MinimalPairCard[] = [
   {
     id: 'mp-preterite-imperfect',
     topic: 'Preterite vs Imperfect Aspect Shift',
+    topicId: 'g-past-tenses',
     cefr: 'A2',
     optionA: {
       es: 'Ayer hablé con María.',
@@ -301,6 +340,7 @@ export const MINIMAL_PAIR_CARDS: MinimalPairCard[] = [
   {
     id: 'mp-direct-object-gender',
     topic: 'Direct Object Pronouns (Lo vs La)',
+    topicId: 'g-direct-objects',
     cefr: 'A2',
     optionA: {
       es: 'Compré el libro y lo leí.',
@@ -322,6 +362,7 @@ export const MINIMAL_PAIR_CARDS: MinimalPairCard[] = [
   {
     id: 'mp-subjunctive-indicative-search',
     topic: 'Subjunctive vs Indicative (Known vs Unknown)',
+    topicId: 'g-subjunctive-present',
     cefr: 'B1',
     optionA: {
       es: 'Busco un hotel que tiene piscina.',
@@ -344,7 +385,21 @@ export const MINIMAL_PAIR_CARDS: MinimalPairCard[] = [
 
 export const PROCESSING_INSTRUCTION_DRILLS: ProcessingInstructionDrill[] = [
   {
+    id: 'pi-gender',
+    topicId: 'g-noun-gender-plural',
+    topic: 'Noun Plural Accent Drops',
+    cefr: 'A1',
+    audioPrompt_es: 'La lección es fácil y las lecciones son útiles.',
+    targetTranslation_en: 'The lesson is easy and the lessons are useful.',
+    targetTranslation_ar: 'الدرس سهل والدروس مفيدة (لاحظ سقوط النبرة عند الجمع).',
+    grammarMarkerFocus: 'Notice the accent mark drop: lección -> lecciones',
+    wordTiles: ['La', 'lección', 'es', 'fácil', 'y', 'las', 'lecciones', 'son', 'útiles.'],
+    correctSequence: ['La', 'lección', 'es', 'fácil', 'y', 'las', 'lecciones', 'son', 'útiles.'],
+    explanation: 'Nouns ending in -ón drop the written accent mark in plural because the added syllable naturally moves the stress to the correct vowel.'
+  },
+  {
     id: 'pi-1',
+    topicId: 'g-past-tenses',
     topic: 'Preterite Ending Recognition (-é vs -o)',
     cefr: 'A1',
     audioPrompt_es: 'Ayer hablé con el médico.',
@@ -357,6 +412,7 @@ export const PROCESSING_INSTRUCTION_DRILLS: ProcessingInstructionDrill[] = [
   },
   {
     id: 'pi-2',
+    topicId: 'g-subjunctive-present',
     topic: 'Subjunctive Command Marker',
     cefr: 'B1',
     audioPrompt_es: 'Es importante que estudies ahora.',
@@ -369,7 +425,8 @@ export const PROCESSING_INSTRUCTION_DRILLS: ProcessingInstructionDrill[] = [
   },
   {
     id: 'pi-3',
-    topic: 'Indirect Object Position',
+    topicId: 'g-gustar',
+    topic: 'Indirect Object Position with Gustar',
     cefr: 'A2',
     audioPrompt_es: 'Me gusta la música clásica.',
     targetTranslation_en: 'Classical music pleases me (I like classical music).',
@@ -383,7 +440,21 @@ export const PROCESSING_INSTRUCTION_DRILLS: ProcessingInstructionDrill[] = [
 
 export const SYNTAX_REPAIR_CHALLENGES: SyntaxRepairChallenge[] = [
   {
+    id: 'sr-gender',
+    topicId: 'g-noun-gender-plural',
+    brokenSentence: 'El problema es difícil, pero la solución es bonita.',
+    errorWord: 'La problema',
+    correctedWord: 'El problema',
+    wordTiles: ['El problema', 'La problema', 'Un problema', 'Una problema'],
+    correctSentence: 'El problema es difícil, pero la solución es bonita.',
+    translation_en: 'The problem is difficult, but the solution is pretty.',
+    translation_ar: 'المشكلة صعبة، ولكن الحل جميل.',
+    explanation_en: '"Problema" ends in "-ma", meaning it is masculine. It must take "el", not "la".',
+    explanation_ar: 'كلمة "Problema" من الأسماء المنتهية بـ "-ma" وهي أسماء مذكرة تأخذ "el".'
+  },
+  {
     id: 'sr-1',
+    topicId: 'g-time-numbers',
     brokenSentence: 'Yo soy 20 años de edad.',
     errorWord: 'soy',
     correctedWord: 'tengo',
@@ -396,6 +467,7 @@ export const SYNTAX_REPAIR_CHALLENGES: SyntaxRepairChallenge[] = [
   },
   {
     id: 'sr-2',
+    topicId: 'g-gustar',
     brokenSentence: 'Me gusta los libros de historia.',
     errorWord: 'gusta',
     correctedWord: 'gustan',
@@ -408,6 +480,7 @@ export const SYNTAX_REPAIR_CHALLENGES: SyntaxRepairChallenge[] = [
   },
   {
     id: 'sr-3',
+    topicId: 'g-subjunctive-present',
     brokenSentence: 'Es necesario que tú estudias hoy.',
     errorWord: 'estudias',
     correctedWord: 'estudies',
@@ -420,6 +493,7 @@ export const SYNTAX_REPAIR_CHALLENGES: SyntaxRepairChallenge[] = [
   },
   {
     id: 'sr-4',
+    topicId: 'g-articles',
     brokenSentence: 'Vamos a el parque ahora.',
     errorWord: 'a el',
     correctedWord: 'al',

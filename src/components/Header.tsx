@@ -731,42 +731,6 @@ export const Header: React.FC<HeaderProps> = ({
           </>
         )}
       </AnimatePresence>
-
-      {/* Floating Bottom Navigation Bar for Mobile Phones */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-t border-stone-200/80 dark:border-stone-800/80 px-2 py-1.5 shadow-2xl">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {mobileBottomTabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  soundEffects.playPop();
-                  if (!authUser) {
-                    onGoogleSignIn();
-                  } else {
-                    setActiveTab(tab.id);
-                  }
-                }}
-                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition cursor-pointer ${
-                  isActive
-                    ? 'text-amber-600 dark:text-amber-400 font-extrabold'
-                    : 'text-stone-500 dark:text-stone-400'
-                }`}
-              >
-                <div className={`p-1 rounded-lg ${isActive ? 'bg-amber-500 text-stone-950 scale-110 shadow-xs' : ''}`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] font-bold mt-0.5 font-arabic tracking-tight whitespace-nowrap">
-                  {userProgress.settings.nativeLanguage === 'ar' ? tab.label_ar : tab.label_en}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </>
   );
 };

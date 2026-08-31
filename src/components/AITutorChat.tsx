@@ -24,8 +24,11 @@ import {
   Play,
   ArrowRight
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { UserProgress, TutorPersona } from '../types';
 import { speakSpanish, soundEffects } from '../utils/audio';
+import { useApp } from '../context/AppContext';
+import { GRAMMAR_ENCYCLOPEDIA } from '../data/grammarEncyclopedia';
 
 interface AITutorChatProps {
   userProgress: UserProgress;
@@ -56,6 +59,9 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   userProgress,
   setUserProgress
 }) => {
+  const { grammarPracticeTopic, setGrammarPracticeTopic } = useApp();
+  const [isMobileCheatSheetOpen, setIsMobileCheatSheetOpen] = useState(false);
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'mateo-init-1',
@@ -207,6 +213,28 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     }
   }, [messages, isLoading, isListening]);
 
+  // Handle custom grammar lesson practice session trigger
+  useEffect(() => {
+    if (grammarPracticeTopic) {
+      setMessages([
+        {
+          id: `practice-${Date.now()}`,
+          sender: 'ai',
+          spanishText: `¡Hola! He preparado una sesión de práctica especial para ti sobre la regla: "${grammarPracticeTopic.title_es}" (${grammarPracticeTopic.title_en}).\n\n🧠 Fórmula clave: ${grammarPracticeTopic.formula || 'Práctica comunicativa'}.\n\nIntenta escribir una frase en español usando esta regla, o pídeme un reto de traducción para comenzar.`,
+          englishExplanation: `Hi! I have customized a special practice session for you focusing on: "${grammarPracticeTopic.title_es}" (${grammarPracticeTopic.title_en}).\n\n🧠 Memory Anchor: ${grammarPracticeTopic.formula || 'Communicative practice'}.\n\nTry writing a sentence in Spanish using this rule, or ask me for a translation challenge to begin.`,
+          phase: 'Phase 1: Contextual Anchoring',
+          vocabulary: [],
+          followUpQuestions: [
+            `Dame un reto de traducción para ${grammarPracticeTopic.title_es}.`,
+            `Explícame la regla y fórmula.`,
+            `Escribiré un ejemplo para que lo verifiques.`
+          ]
+        }
+      ]);
+      setSelectedTopic(grammarPracticeTopic.id);
+    }
+  }, [grammarPracticeTopic]);
+
   // Read response aloud using Text-To-Speech with visual playback indicator
   const handleSpeakMessage = (msgId: string, text: string) => {
     setCurrentlyPlayingId(msgId);
@@ -249,7 +277,8 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           userLevel: userProgress.currentLevel,
           persona: selectedPersona,
           nativeLang: userProgress.settings.nativeLanguage,
-          history
+          history,
+          practiceTopic: grammarPracticeTopic
         })
       });
 
@@ -271,8 +300,25 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       };
 
       setMessages(prev => [...prev, aiMsg]);
-      soundEffects.playCorrect();
-      setUserProgress(prev => ({ ...prev, xp: prev.xp + 10 }));
+
+      // Check for silent validation reward
+      let xpAward = 10;
+      let hasReward = false;
+      if (data.corrections && Array.isArray(data.corrections)) {
+        const rewardMsg = data.corrections.find((c: string) => c.includes('XP Reward') || c.includes('+15 XP'));
+        if (rewardMsg) {
+          hasReward = true;
+          xpAward = 25; // 10 standard + 15 extra grammar bonus!
+        }
+      }
+
+      if (hasReward) {
+        soundEffects.playLevelUp();
+      } else {
+        soundEffects.playCorrect();
+      }
+
+      setUserProgress(prev => ({ ...prev, xp: prev.xp + xpAward }));
 
       // Trigger Audible Text-to-Speech Feedback automatically for comprehensible input
       if (autoPlayTTS) {
@@ -399,6 +445,152 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         ]
       }
     ]);
+  };
+
+  // Find current grammar rule matched in the conversation
+  const getMatchedGrammarRule = () => {
+    // If a practice topic is active, prioritize it
+    if (grammarPracticeTopic) {
+      const matched = GRAMMAR_ENCYCLOPEDIA.find(t => t.id === grammarPracticeTopic.id);
+      if (matched) return matched;
+    }
+
+    // Otherwise, scan the messages (starting from the latest) for keywords
+    const reversedMsgs = [...messages].reverse();
+    for (const msg of reversedMsgs) {
+      const text = (msg.spanishText + ' ' + (msg.englishExplanation || '')).toLowerCase();
+      if (text.includes('gender') || text.includes('genero') || text.includes('plural')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-noun-gender-plural');
+      }
+      if (text.includes('article') || text.includes('artículo') || text.includes('definite') || text.includes('indefinite')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-articles');
+      }
+      if (text.includes('adjective') || text.includes('adjetivo') || text.includes('agreement')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-adjectives-agreement');
+      }
+      if (text.includes('ser') || text.includes('estar') || text.includes('aburrido')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-ser-estar');
+      }
+      if (text.includes('preterit') || text.includes('imperfect') || text.includes('pasado') || text.includes('ayer')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-preterite-imperfect');
+      }
+      if (text.includes('subjunctive') || text.includes('subjuntivo') || text.includes('cláusula')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-subjunctive-present');
+      }
+      if (text.includes('pronoun') || text.includes('pronombre') || text.includes('object') || text.includes('directo')) {
+        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-object-pronouns');
+      }
+    }
+
+    // Default to first grammar lesson if nothing matched
+    return GRAMMAR_ENCYCLOPEDIA[0];
+  };
+
+  const matchedRule = getMatchedGrammarRule();
+
+  const renderCheatSheetContent = () => {
+    if (!matchedRule) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-stone-800 text-amber-700 dark:text-amber-400">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-mono block uppercase">
+                CEFR {matchedRule.cefr} • Unit {matchedRule.unit}
+              </span>
+              <h3 className="font-black text-sm text-stone-900 dark:text-white leading-tight">
+                {matchedRule.title_es}
+              </h3>
+            </div>
+          </div>
+          {grammarPracticeTopic?.id === matchedRule.id && (
+            <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-extrabold animate-pulse">
+              Active Drill
+            </span>
+          )}
+        </div>
+
+        {matchedRule.formula && (
+          <div className="p-3 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/10 dark:border-amber-500/20 rounded-xl space-y-1">
+            <span className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-400 block tracking-wider">
+              🧠 Memory Formula
+            </span>
+            <p className="text-xs font-bold text-stone-800 dark:text-stone-100 leading-snug">
+              {matchedRule.formula}
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <span className="text-[10px] font-extrabold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
+            Core Grammar Rules:
+          </span>
+          <div className="bg-stone-50 dark:bg-stone-950 p-3 rounded-xl border border-stone-200/60 dark:border-stone-800/80 text-xs text-stone-700 dark:text-stone-300 space-y-2 leading-relaxed">
+            <p className="font-semibold text-stone-900 dark:text-white">
+              {matchedRule.summary_en}
+            </p>
+            <ul className="list-disc pl-4 space-y-1 text-stone-600 dark:text-stone-400 font-normal">
+              {matchedRule.explanation_en.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*')).slice(0, 4).map((line, i) => (
+                <li key={i}>{line.replace(/^[-\*\s]+/, '')}</li>
+              )) || (
+                <li>Master the active structure and practice conjugations.</li>
+              )}
+            </ul>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-[10px] font-extrabold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
+            Interactive Sentence Examples:
+          </span>
+          <div className="space-y-1.5">
+            {matchedRule.quickQuiz.slice(0, 2).map((q, idx) => (
+              <div 
+                key={idx}
+                className="p-2.5 bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-900 border border-stone-200/60 dark:border-stone-800/80 rounded-xl flex items-center justify-between gap-3 transition"
+              >
+                <div className="space-y-0.5">
+                  <p className="text-xs font-extrabold text-stone-900 dark:text-stone-100">
+                    {q.question}
+                  </p>
+                  <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                    👉 Hint: Choose the correct form to complete the sentence
+                  </p>
+                </div>
+                <button
+                  onClick={() => speakSpanish(q.question, userProgress.settings.audioSpeed)}
+                  className="p-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:text-amber-500 dark:hover:text-amber-400 transition"
+                  title="Speak Example Sentence"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            soundEffects.playPop();
+            setGrammarPracticeTopic({
+              id: matchedRule.id,
+              title_es: matchedRule.title_es,
+              title_en: matchedRule.title_en,
+              formula: matchedRule.formula
+            });
+          }}
+          disabled={grammarPracticeTopic?.id === matchedRule.id}
+          className="w-full py-2.5 px-4 bg-stone-950 dark:bg-amber-500 hover:opacity-90 disabled:opacity-50 text-white dark:text-stone-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
+          <span>{grammarPracticeTopic?.id === matchedRule.id ? 'Already Practicing Rule' : 'Practice Rule with AI Mateo'}</span>
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -558,8 +750,9 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       </div>
 
       {activeTab === 'tutor' ? (
-        /* Main Chat Interface */
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[680px]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Main Chat Interface */}
+          <div className="lg:col-span-8 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[700px] relative">
         {/* Quick Lesson Launch Bar */}
         <div className="bg-stone-50 dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 px-4 py-2.5 flex items-center justify-between overflow-x-auto no-scrollbar gap-2">
           <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
@@ -858,6 +1051,72 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
             </button>
           </form>
         </div>
+
+        {/* At-a-Glance Cheat Sheet Column (Right Column - Desktop Only) */}
+        <div className="lg:col-span-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm space-y-4 h-[700px] overflow-y-auto hidden lg:flex flex-col shrink-0">
+          <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
+            <h2 className="text-xs font-black uppercase text-stone-400 tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+              <span>At-a-Glance Cheat Sheet</span>
+            </h2>
+          </div>
+          {renderCheatSheetContent()}
+        </div>
+
+        {/* Mobile Cheat Sheet floating button */}
+        <div className="lg:hidden fixed bottom-24 right-4 z-40">
+          <button
+            onClick={() => {
+              soundEffects.playPop();
+              setIsMobileCheatSheetOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-full shadow-xl text-xs active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-stone-950"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Cheat Sheet</span>
+          </button>
+        </div>
+
+        {/* Mobile Cheat Sheet Modal Bottom Sheet */}
+        <AnimatePresence>
+          {isMobileCheatSheetOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileCheatSheetOpen(false)}
+                className="fixed inset-0 bg-black z-40"
+              />
+              {/* Bottom Sheet */}
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                className="fixed inset-x-0 bottom-0 max-h-[85vh] bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl z-50 p-6 overflow-y-auto space-y-5 shadow-2xl flex flex-col"
+              >
+                <div className="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto mb-1 shrink-0" />
+                <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3 shrink-0">
+                  <h2 className="text-sm font-black uppercase text-stone-400 tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                    <span>At-a-Glance Cheat Sheet</span>
+                  </h2>
+                  <button
+                    onClick={() => setIsMobileCheatSheetOpen(false)}
+                    className="text-xs font-bold text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="flex-1">
+                  {renderCheatSheetContent()}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
       ) : (
         /* Skill Challenge Mode View */
