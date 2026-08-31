@@ -19,7 +19,10 @@ import {
   BookOpenCheck,
   Play,
   Activity,
-  ChevronRight
+  ChevronRight,
+  Brain,
+  Briefcase,
+  GraduationCap
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { soundEffects, speakSpanish } from '../utils/audio';
@@ -633,6 +636,274 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </section>
+
+      {/* ================= SECTION: CAREER & GROWTH BENTO GRID ================= */}
+      <section className="py-24 bg-stone-50 dark:bg-stone-950 border-y border-stone-200/50 dark:border-stone-800/60 px-4 sm:px-6 relative overflow-hidden">
+        {/* Subtle geometric grid background accent */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none" />
+        
+        <div className="max-w-6xl mx-auto space-y-16 relative z-10">
+          
+          <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <span className="px-3.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 uppercase tracking-widest font-mono">
+              THE IBERIO ADVANTAGE
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black text-stone-900 dark:text-white tracking-tight leading-none font-header">
+              Career & Cognitive Growth
+            </h2>
+            <p className="text-sm sm:text-base text-stone-500 dark:text-stone-400 font-medium max-w-2xl mx-auto">
+              Unlock extraordinary opportunities. Spanish is not just a language—it is a premium tool for global careers, academic grants, and mental longevity.
+            </p>
+          </div>
+
+          {/* Interactive Fast-Fact Keyword Tooltip Component Localized inside the Section */}
+          {(() => {
+            const InteractiveFactTooltip: React.FC<{
+              keyword: string;
+              fact: string;
+              title?: string;
+              icon?: React.ReactNode;
+            }> = ({ keyword, fact, title = "Fast Fact", icon }) => {
+              const [show, setShow] = useState(false);
+              return (
+                <span 
+                  className="relative inline-block cursor-help group/tooltip"
+                  onMouseEnter={() => setShow(true)}
+                  onMouseLeave={() => setShow(false)}
+                >
+                  <span className="underline decoration-dashed decoration-amber-500/80 hover:decoration-amber-500 dark:hover:decoration-amber-400 cursor-help font-black text-stone-950 dark:text-stone-50 transition-colors bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                    {keyword}
+                  </span>
+                  <AnimatePresence>
+                    {show && (
+                      <motion.span
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ type: 'spring', damping: 15, stiffness: 220 }}
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 w-64 bg-stone-950 text-stone-100 p-4 rounded-2xl shadow-2xl border border-stone-800 text-xs text-left leading-relaxed pointer-events-none block font-sans"
+                      >
+                        <span className="flex items-center gap-1.5 font-black uppercase text-[9px] tracking-widest text-amber-400 mb-1.5">
+                          {icon || <Sparkles className="w-3.5 h-3.5" />}
+                          <span>{title}</span>
+                        </span>
+                        <span className="block text-[11px] text-stone-300 font-medium">{fact}</span>
+                        <span className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-stone-950" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </span>
+              );
+            };
+
+            const bentoContainerVariants = {
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.12 }
+              }
+            };
+
+            const bentoItemVariants = {
+              hidden: { opacity: 0, y: 20 },
+              visible: { 
+                opacity: 1, 
+                y: 0,
+                transition: { type: 'spring', damping: 22, stiffness: 150 }
+              }
+            };
+
+            return (
+              <motion.div 
+                variants={bentoContainerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6"
+              >
+                {/* 1. The Cognitive Edge Card (Span 5 cols) */}
+                <motion.div 
+                  variants={bentoItemVariants}
+                  whileHover={{ scale: 1.015, y: -4 }}
+                  className="lg:col-span-5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col justify-between space-y-6 hover:border-amber-400/40 transition-colors"
+                >
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 rounded-2xl flex items-center justify-center shadow-inner">
+                      <Brain className="w-6 h-6" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black text-stone-950 dark:text-white font-header">
+                        The Cognitive Edge
+                      </h3>
+                      <p className="text-[10px] text-stone-400 dark:text-stone-500 font-black uppercase tracking-widest font-mono">
+                        Neuroplasticity & Brain Longevity
+                      </p>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-medium">
+                      Acquiring Spanish activates and structurally expands gray matter density inside the{' '}
+                      <InteractiveFactTooltip 
+                        keyword="prefrontal cortex" 
+                        fact="The brain's executive command center. Bilingual processing strengthens neural pathways here, boosting memory consolidation and logical problem-solving by up to 35%."
+                        title="Neuroscience"
+                        icon={<Activity className="w-3.5 h-3.5 text-rose-500" />}
+                      />
+                      , boosting cognitive reserves.
+                      <span className="block mt-3 text-stone-800 dark:text-stone-200 font-bold bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 rounded-2xl p-3">
+                        🧠 Scientific journals verify that mastering a second tongue delays the onset of severe{' '}
+                        <InteractiveFactTooltip 
+                          keyword="dementia symptoms" 
+                          fact="Fluent bilingualism forces constant mental mapping, acting as a cognitive barrier that offsets neural pathways decay."
+                          title="Medical Fact"
+                          icon={<Brain className="w-3.5 h-3.5 text-rose-500" />}
+                        />{' '}
+                        by an average of <span className="text-rose-500 font-extrabold text-sm font-mono">4.5 years</span>—outperforming modern pharmaceuticals.
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-stone-400">
+                    PREVENT COGNITIVE DECLINE
+                  </div>
+                </motion.div>
+
+                {/* 2. Multinational Careers Card (Span 7 cols) */}
+                <motion.div 
+                  variants={bentoItemVariants}
+                  whileHover={{ scale: 1.015, y: -4 }}
+                  className="lg:col-span-7 bg-stone-950 dark:bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between space-y-6 hover:border-amber-500/50 transition-colors"
+                >
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center shadow-inner">
+                      <Briefcase className="w-6 h-6" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black text-white font-header">
+                        Multinational Careers
+                      </h3>
+                      <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest font-mono">
+                        High-Income Global Recruiting
+                      </p>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-medium">
+                      Spanish is a rare, elite skill with massive operational supply deficits. Multi-industry giants (e.g., Vodafone, Sutherland, Concentrix) actively target bilingual talent in{' '}
+                      <InteractiveFactTooltip 
+                        keyword="strategic regions" 
+                        fact="Global technology and outsourcing companies have set up critical EMEA service hubs in Egypt, Poland, and India, facing massive shortages of Spanish speakers."
+                        title="Workforce Fact"
+                        icon={<Globe className="w-3.5 h-3.5 text-amber-400" />}
+                      />{' '}
+                      to spearhead international accounts.
+                      
+                      <span className="block mt-3 text-stone-100 font-bold bg-amber-500/10 border border-amber-500/25 rounded-2xl p-3.5">
+                        💼 Certified Spanish representatives in Egypt secure starting packages ranging from{' '}
+                        <InteractiveFactTooltip 
+                          keyword="EGP 25,000 to 45,000+" 
+                          fact="This is roughly 3.5x the average local entry salary. Bilingual specialists also unlock fast-track management promotions and global relocation visas."
+                          title="Local Salary Estimate"
+                          icon={<Zap className="w-3.5 h-3.5 text-amber-400" />}
+                        />{' '}
+                        monthly, directly matching mid-level corporate executive salaries.
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-stone-800 text-[10px] font-mono font-bold text-amber-400">
+                    EXCEPTIONAL SALARY ESTIMATES & CORPORATE PLACEMENT
+                  </div>
+                </motion.div>
+
+                {/* 3. European Scholarships Card (Span 7 cols) */}
+                <motion.div 
+                  variants={bentoItemVariants}
+                  whileHover={{ scale: 1.015, y: -4 }}
+                  className="lg:col-span-7 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col justify-between space-y-6 hover:border-amber-400/40 transition-colors"
+                >
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 bg-sky-500/10 border border-sky-500/20 text-sky-500 rounded-2xl flex items-center justify-center shadow-inner">
+                      <GraduationCap className="w-6 h-6" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black text-stone-950 dark:text-white font-header">
+                        European Scholarships
+                      </h3>
+                      <p className="text-[10px] text-stone-400 dark:text-stone-500 font-black uppercase tracking-widest font-mono">
+                        Erasmus+ & Fully-Funded EU Grants
+                      </p>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-medium">
+                      Leverage Spanish proficiency to secure fully-funded undergraduate, postgraduate, and postdoctoral research degrees. The European Commission allocates extensive funding annually for{' '}
+                      <InteractiveFactTooltip 
+                        keyword="international students" 
+                        fact="Spanish is an official UN and EU language. Certification opens doors to prestigious grants like Erasmus Mundus and Spanish Ministry of Foreign Affairs (AECID) awards."
+                        title="Scholarship Access"
+                        icon={<GraduationCap className="w-3.5 h-3.5 text-sky-500" />}
+                      />{' '}
+                      fluent in the language.
+                      
+                      <span className="block mt-3 text-stone-800 dark:text-stone-200 font-bold bg-sky-500/5 dark:bg-sky-500/10 border border-sky-500/20 rounded-2xl p-3">
+                        🇪🇺 Enjoy premium tuition waivers, monthly living stipends, and travel grants. Over <span className="text-sky-600 dark:text-sky-400 font-extrabold">2,500 students</span> receive fully-funded research entries to Spain and Latin American academic networks each cycle.
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-sky-500">
+                    ACADEMIC AND RESEARCH MOBILITY
+                  </div>
+                </motion.div>
+
+                {/* 4. Cultural & Teaching Exchanges Card (Span 5 cols) */}
+                <motion.div 
+                  variants={bentoItemVariants}
+                  whileHover={{ scale: 1.015, y: -4 }}
+                  className="lg:col-span-5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col justify-between space-y-6 hover:border-amber-400/40 transition-colors"
+                >
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner">
+                      <Globe className="w-6 h-6" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black text-stone-950 dark:text-white font-header">
+                        Cultural & Teaching Exchanges
+                      </h3>
+                      <p className="text-[10px] text-stone-400 dark:text-stone-500 font-black uppercase tracking-widest font-mono">
+                        Global Relocation Programs
+                      </p>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-medium">
+                      Secure streamlined visa pathways and work placements. State cultural programs like{' '}
+                      <InteractiveFactTooltip 
+                        keyword="NALCAP" 
+                        fact="North American Language and Culture Assistants Program (also open globally). It offers fully supported teaching assistant positions in schools throughout Spain."
+                        title="Program Info"
+                        icon={<Sparkles className="w-3.5 h-3.5 text-emerald-500" />}
+                      />{' '}
+                      provide paid language assistant roles directly in Spain.
+                      
+                      <span className="block mt-3 text-stone-800 dark:text-stone-200 font-bold bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3">
+                        ✈️ Earn monthly stipends between <span className="text-emerald-600 dark:text-emerald-400 font-extrabold font-mono">€700 and €1,000+</span>, full medical insurance coverage, and official EU residence permits.
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-[10px] font-mono font-bold text-emerald-500">
+                    CULTURAL AMBASSADORS & WORK TRAVEL
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })()}
+
+        </div>
+      </section>
+
 
       {/* Dynamic Interactive Fluency Slider */}
       <section className="py-16 px-4 sm:px-6 max-w-4xl mx-auto">
