@@ -65,38 +65,44 @@ function resolveAndCacheVoice(): { voice: SpeechSynthesisVoice | null; isMexican
     'dalia', 'sabrina', 'zari', 'lupita', 'ximena', 'female', 'woman', 'girl', 'femenino'
   ];
 
-  // 1. Search for Mexican Spanish (es-MX) that is explicitly male
+  // 1. Search for Mexican Spanish (es-MX) that is explicitly male (e.g., Jorge, Gerardo, Raul, etc.)
   let match = spanishVoices.find(v => {
     const lang = v.lang.toLowerCase().replace('_', '-');
     const name = v.name.toLowerCase();
-    const isMx = lang === 'es-mx' || lang.includes('mex');
+    const isMx = lang === 'es-mx' || lang.includes('mex') || name.includes('mexico') || name.includes('mexican');
     const isMale = maleKeywords.some(kw => name.includes(kw)) || (!femaleKeywords.some(kw => name.includes(kw)) && name.includes('male'));
     return isMx && isMale;
   });
 
-  // 2. Search for Mexican Spanish (es-MX) that is NOT female
+  // 2. Search for any Mexican Spanish (es-MX) voice including female voices (like Lupita, Sabina, Yolanda)
   if (!match) {
     match = spanishVoices.find(v => {
       const lang = v.lang.toLowerCase().replace('_', '-');
       const name = v.name.toLowerCase();
-      const isMx = lang === 'es-mx' || lang.includes('mex');
-      const isNotFemale = !femaleKeywords.some(kw => name.includes(kw));
-      return isMx && isNotFemale;
+      return lang === 'es-mx' || lang.includes('mex') || name.includes('mexico') || name.includes('mexican');
     });
   }
 
-  // 3. Search for any Latin American Spanish (es-419, es-US, es-AR, etc.) that is explicitly male
+  // 3. Search for any Latin American Spanish (es-419, es-US, etc.) that is explicitly male
   if (!match) {
     match = spanishVoices.find(v => {
       const lang = v.lang.toLowerCase().replace('_', '-');
       const name = v.name.toLowerCase();
-      const isLatam = !lang.includes('es-es');
+      const isLatam = !lang.includes('es-es') && !lang.includes('es-spain');
       const isMale = maleKeywords.some(kw => name.includes(kw));
       return isLatam && isMale;
     });
   }
 
-  // 4. Search for any Spanish (es-ES, etc.) that is explicitly male
+  // 4. Search for any other Latin American Spanish
+  if (!match) {
+    match = spanishVoices.find(v => {
+      const lang = v.lang.toLowerCase().replace('_', '-');
+      return !lang.includes('es-es') && !lang.includes('es-spain');
+    });
+  }
+
+  // 5. Search for any Spanish (es-ES, etc.) that is explicitly male
   if (!match) {
     match = spanishVoices.find(v => {
       const name = v.name.toLowerCase();
@@ -104,19 +110,10 @@ function resolveAndCacheVoice(): { voice: SpeechSynthesisVoice | null; isMexican
     });
   }
 
-  // 5. Search for any Spanish voice that is NOT female
+  // 6. Search for any Spanish voice
   if (!match) {
     match = spanishVoices.find(v => {
-      const name = v.name.toLowerCase();
-      return !femaleKeywords.some(kw => name.includes(kw));
-    });
-  }
-
-  // 6. Extreme fallback: any Mexican Spanish
-  if (!match) {
-    match = spanishVoices.find(v => {
-      const lang = v.lang.toLowerCase().replace('_', '-');
-      return lang === 'es-mx' || lang.includes('mex');
+      return true;
     });
   }
 

@@ -122,8 +122,12 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
   // Extract unique categories
   const categories = useMemo(() => {
     const set = new Set<string>();
-    ALL_VOCABULARY.forEach(w => set.add(w.category));
-    return ['all', ...Array.from(set)];
+    ALL_VOCABULARY.forEach(w => {
+      if (w.category && w.category !== 'Mexican Gastronomy') {
+        set.add(w.category);
+      }
+    });
+    return ['all', 'Mexican Gastronomy', ...Array.from(set)];
   }, []);
 
   // Filtered vocabulary for Grid & Simple Flashcard
@@ -275,6 +279,8 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
       if (queue.length === 0) queue = ALL_VOCABULARY.slice(0, 10);
     } else if (filterType === 'level') {
       queue = ALL_VOCABULARY.filter(w => levelVal === 'all' || w.cefr === levelVal).slice(0, 20);
+    } else if (filterType === 'deck' && levelVal === 'gastronomy') {
+      queue = ALL_VOCABULARY.filter(w => w.category === 'Mexican Gastronomy');
     } else {
       queue = ALL_VOCABULARY.slice(0, 20);
     }
@@ -580,7 +586,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
 
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
               <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 mr-1">Topic:</span>
-              {categories.slice(0, 8).map(cat => (
+              {categories.slice(0, 15).map(cat => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
@@ -896,6 +902,20 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={() => startSRSSession('deck', 'gastronomy')}
+                  className="sm:col-span-2 p-4 rounded-xl border-2 border-emerald-500/50 dark:border-emerald-500/30 bg-gradient-to-r from-emerald-50/55 to-amber-50/40 dark:from-emerald-950/20 dark:to-amber-950/20 hover:from-emerald-100/40 hover:to-amber-100/40 text-left transition space-y-1 relative overflow-hidden group shadow-xs"
+                >
+                  <div className="absolute top-2 right-3 text-2xl group-hover:scale-110 transition duration-300">🌮</div>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <span>🇲🇽 Special Premium Deck</span>
+                  </span>
+                  <p className="font-black text-stone-900 dark:text-white text-base">Mexican Gastronomy & Dishes</p>
+                  <p className="text-xs text-stone-600 dark:text-stone-300">
+                    Master essential vocabulary for traditional Mexican delicacies, ingredients, and dishes with native CDMX accent audio clips!
+                  </p>
+                </button>
+
                 <button
                   onClick={() => startSRSSession('due')}
                   className="p-4 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/50 text-left transition space-y-1"

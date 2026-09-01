@@ -1,185 +1,109 @@
-import { ImportedContent, CEFRLevel } from '../types';
+import { ImportedContent } from '../types';
 
 export const CURATED_AUTHENTIC_LIBRARY: ImportedContent[] = [
   {
     id: 'curated-news-1',
-    title: 'La revolución de la energía solar en el sur de España',
+    title: 'La conservación de las chinampas y canales de Xochimilco',
     category: 'News & Trends',
     cefr: 'B1',
-    wordCount: 145,
+    wordCount: 155,
     dateAdded: '2026-08-20',
-    content: `España se ha convertido en uno de los líderes europeos indiscutibles en la generación de energía fotovoltaica. Gracias a sus más de tres mil horas de sol al año en regiones como Andalucía y Extremadura, el país está transformando radicalmente su matriz energética.
+    content: `La Ciudad de México está redoblando esfuerzos para proteger Xochimilco, una de sus zonas ecológicas e históricas más emblemáticas. Declarado Patrimonio de la Humanidad, Xochimilco alberga el antiguo sistema azteca de las "chinampas": balsas cubiertas de tierra fértil que sirvieron como islas agrícolas flotantes para abastecer a la gran Tenochtitlan.
 
-Los parques solares modernos no solo reducen las emisiones de carbono de forma masiva, sino que también generan miles de empleos técnicos altamente calificados. Los expertos señalan que el gran desafío actual radica en mejorar las tecnologías de almacenamiento en baterías gigantes para garantizar el suministro eléctrico continuo durante las noches de invierno. La transición hacia una economía completamente verde parece ahora más cercana que nunca.`,
-    translation_en: `Spain has become one of the undisputed European leaders in photovoltaic energy generation. Thanks to more than three thousand hours of sunshine per year in regions like Andalusia and Extremadura, the country is radically transforming its energy matrix.
+Hoy en día, científicos locales y agricultores tradicionales trabajan juntos para limpiar los canales y salvar al ajolote (axolotl), un anfibio endémico de gran valor científico que posee la asombrosa capacidad de regenerar sus órganos. Este proyecto busca rescatar técnicas prehispánicas sostenibles para enfrentar la escasez de agua moderna en la capital del país.`,
+    translation_en: `Mexico City is redoubling efforts to protect Xochimilco, one of its most emblematic ecological and historical areas. Declared a World Heritage Site, Xochimilco houses the ancient Aztec system of "chinampas": rafts covered with fertile land that served as floating agricultural islands to supply the great Tenochtitlan.
 
-Modern solar farms not only reduce carbon emissions massively, but also generate thousands of highly skilled technical jobs. Experts point out that the current major challenge lies in improving giant battery storage technologies to ensure continuous power supply during winter nights. The transition toward a completely green economy now seems closer than ever.`,
-    translation_ar: `أصبحت إسبانيا إحدى الدول الأوروبية الرائدة بلا منازع في توليد الطاقة الكهروضوئية. بفضل أكثر من ثلاثة آلاف ساعة من سطوع الشمس سنوياً في مناطق مثل الأندلس وإكستريمادورا، يغير هذا البلد مصفوفة طاقته بشكل جذري.
-
-لا تقتصر مزارع الطاقة الشمسية الحديثة على خفض انبعاثات الكربون بشكل هائل، بل توفر أيضاً آلاف الوظائف التقنية عالية المهارة. ويشير الخبراء إلى أن التحدي الرئيسي الحالي يكمن في تحسين تقنيات تخزين البطاريات العملاقة لضمان الإمداد المستمر بالكهرباء خلال ليالي الشتاء.`
+Today, local scientists and traditional farmers work together to clean the canals and save the axolotl, an endemic amphibian of great scientific value that possesses the amazing capacity to regenerate its organs. This project seeks to rescue sustainable pre-Hispanic techniques to face modern water scarcity in the nation's capital.`,
+    translation_ar: `تبذل مدينة مكسيكو جهوداً مضاعفة لحماية زوتشيميلكو (Xochimilco)، وهي واحدة من أكثر مناطقها البيئية والتاريخية تميزاً. تضم زوتشيميلكو، المصنفة كإرث عالمي، نظام الأزتيك القديم المسمى "تشينامباس" (chinampas)، وهي جزر زراعية عائمة وفرت الغذاء لمدينة تينوتشيتيتلان العظيمة.`
   },
   {
     id: 'curated-dialogue-1',
-    title: 'Conversación real: Tapeando en una taberna tradicional de Madrid',
+    title: 'Conversación real: Almorzando en una taquería de la Ciudad de México',
     category: 'Real Dialogues',
     cefr: 'A2',
-    wordCount: 160,
+    wordCount: 165,
     dateAdded: '2026-08-18',
-    content: `CAMARERO: ¡Buenas tardes, señores! Bienvenidos a La Cava. ¿Qué les apetece tomar para empezar mientras miran la carta?
+    content: `TAQUERO: ¡Buenas tardes, güera! Bienvenidos a "El Templo del Pastor". ¿Qué les vamos sirviendo para abrir apetito?
 
-ALBERTO: ¡Hola! Para mí, una caña bien fría, por favor. Y para mi compañera, una copa de vino tinto de La Rioja.
+SANTIAGO: ¡Hola! Buenas tardes. Para empezar, tráiganos una orden de cuatro tacos al pastor con todo: cilantro, cebolla y por supuesto con piña.
 
-CAMARERO: Marchando una caña y un Rioja. Les he puesto una tapita de cortesía: aceitunas aliñadas y queso manchego curado.
+TAQUERO: ¡Sale y vale! Marchando cuatro al pastor con todo. ¿Y para tomar? ¿Les late una agua de horchata bien fría o de jamaica?
 
-ELENA: ¡Muchísimas gracias! Todo huele delicioso. ¿Nos recomiendas alguna especialidad de la casa para compartir?
+VALERIA: ¡Una de horchata para mí, por favor! Y cuéntame, amigo, ¿la salsa roja que está en la mesa pica mucho o está tranquila?
 
-CAMARERO: Sin duda alguna, tienen que probar nuestros huevos rotos con jamón ibérico de bellota y las croquetas caseras de boletus. Son las favoritas de nuestros clientes habituales.
+TAQUERO: La roja es de chile de árbol, así que esa sí pica sabroso. Para los tacos al pastor, les recomiendo ponerles la salsa verde de aguacate con jalapeño, que es una chulada y le da el toque perfecto. ¡Buen provecho, señores!`,
+    translation_en: `TAQUERO: Good afternoon, folks/friend! Welcome to "El Templo del Pastor". What can we serve you to open your appetite?
 
-ALBERTO: ¡Perfecto! Tráiganos una ración de huevos rotos y media de croquetas. Y si tienen pan crujiente recién horneado, por favor.`,
-    translation_en: `WAITER: Good afternoon, gentlemen/folks! Welcome to La Cava. What would you like to drink to start while you look at the menu?
+SANTIAGO: Hello! Good afternoon. To start, bring us an order of four tacos al pastor with everything: cilantro, onion, and of course with pineapple.
 
-ALBERTO: Hello! For me, a very cold draft beer, please. And for my friend, a glass of Rioja red wine.
+TAQUERO: Right away! Coming right up: four al pastor with everything. And to drink? Do you fancy a cold horchata or hibiscus water (jamaica)?
 
-WAITER: Coming right up: one draft beer and a Rioja. I've brought you a complimentary tapa: seasoned olives and cured Manchego cheese.
+VALERIA: An horchata for me, please! And tell me, friend, is the red salsa on the table very spicy or is it mild?
 
-ELENA: Thank you very much! Everything smells delicious. Do you recommend any house specialty for us to share?
-
-WAITER: Without a doubt, you have to try our broken eggs with acorn-fed Iberian ham and homemade wild mushroom croquettes. They are the favorites of our regular customers.
-
-ALBERTO: Perfect! Bring us a portion of broken eggs and half a portion of croquettes. And if you have freshly baked crusty bread, please.`,
-    translation_ar: `النادل: مساء الخير! مرحباً بكم في لا كافا. ماذا تفضلون أن تشربوا في البداية بينما تطالعون قائمة الطعام؟
-ألبرتو: مرحباً! بالنسبة لي، كأس بيرة بارد جداً من فضلك. ولزميلتي، كأس نبيذ ريوخا أحمر.
-النادل: فوراً! أحضرت لكم مقبلات مجانية: زيتون متبل وجبن مانشيجو معتق.
-إيلينا: شكراً جزيلاً! الرائحة شهية للغاية. هل تنصحنا بطبق مميز من أطباق المطعم لنتشاركه؟
-النادل: بلا شك، يجب أن تجربوا طبق البيض المقلي باللحم الإيبيري وكروكيت الفطر المنزلي.
-ألبرتو: ممتاز! أحضر لنا وجبة بيض ونصف وجبة كروكيت مع خبز مقرمش طازج.`
+TAQUERO: The red one is made of chile de árbol, so that one is really spicy. For the tacos al pastor, I recommend putting the green avocado and jalapeño salsa, which is beautiful and gives them the perfect touch. Enjoy your meal, folks!`,
+    translation_ar: `صانع التاكو: مساء الخير يا أصدقاء! مرحباً بكم في "معبد الباستور". ماذا يمكنني أن أقدم لكم لفتح الشهية؟
+سانتياغو: مرحباً! مساء الخير. كبداية، أحضر لنا أربعة تاكو باستور "بكل شيء": كزبرة، بصل، وبالتأكيد أناناس.
+صانع التاكو: حاضر! أربعة باستور بكل شيء. وللشرب؟ هل تفضلون مشروب الهورتشاتا البارد أم الكركديه (جامايكا)؟
+فاليريا: هورتشاتا لي من فضلك! وأخبرني يا صديقي، هل الصلصة الحمراء على الطاولة حارة جداً أم معتدلة؟`
   },
   {
     id: 'curated-culture-1',
-    title: 'El legado andalusí: El puente árabe en la lengua española',
+    title: 'El encuentro de dos mundos: Tenochtitlan y el asombro español',
     category: 'History & Culture',
     cefr: 'B1',
-    wordCount: 175,
+    wordCount: 180,
     dateAdded: '2026-08-15',
-    content: `Durante casi ocho siglos, la presencia árabe en la península ibérica (Al-Ándalus) transformó para siempre la cultura, la ciencia, la agricultura y el idioma de España. Más de cuatro mil palabras en el léxico español actual provienen directamente del árabe clásico y del dialecto andalusí.
+    content: `En noviembre del año mil quinientos diecinueve, los conquistadores españoles liderados por Hernán Cortés divisaron por primera vez la gran capital azteca de Tenochtitlan. El soldado e historiador Bernal Díaz del Castillo escribió en sus crónicas que se quedaron asombrados y dijeron que aquella majestuosa urbe flotante parecía a las cosas de encantamiento que se cuentan en los libros de caballerías.
 
-Casi todos los términos que comienzan con el prefijo "al-" tienen raíz arábiga, tales como *alcalde* (al-qadi, el juez), *algodón* (al-qutn), *almohada* (al-mikhadda), *alcázar* (al-qasr) y *álgebra* (al-jabr). Asimismo, la arquitectura mudéjar con sus intrincados azulejos geométricos y los avanzados sistemas de regadío como las acequias siguen asombrando a historiadores de todo el planeta. Esta fascinante simbiosis cultural demuestra que el español es un idioma enriquecido por siglos de convivencia mediterránea.`,
-    translation_en: `For nearly eight centuries, the Arab presence on the Iberian Peninsula (Al-Andalus) forever transformed the culture, science, agriculture, and language of Spain. More than four thousand words in the modern Spanish lexicon come directly from Classical Arabic and the Andalusian dialect.
+Con más de doscientos mil habitantes, Tenochtitlan era más grande, limpia y organizada que París, Londres o Sevilla en esa época. Tenía un inmenso mercado en Tlatelolco, agua potable traída por acueductos desde Chapultepec y una red de canoas que conectaba toda la ciudad. El trágico encuentro entre el emperador Moctezuma II y Cortés marcó el nacimiento doloroso y fascinante de la cultura mestiza que define al México moderno.`,
+    translation_en: `In November 1519, the Spanish conquistadors led by Hernán Cortés glimpsed the great Aztec capital of Tenochtitlan for the first time. The soldier and historian Bernal Díaz del Castillo wrote in his chronicles that they were astonished and said that the majestic floating city resembled the enchantments told in books of chivalry.
 
-Almost all terms beginning with the prefix "al-" have Arabic roots, such as *alcalde* (mayor), *algodón* (cotton), *almohada* (pillow), *alcázar* (fortress), and *álgebra* (algebra). Likewise, Mudéjar architecture with its intricate geometric tiles and advanced irrigation systems like irrigation channels (acequias) continue to amaze historians across the globe. This fascinating cultural symbiosis proves that Spanish is a language enriched by centuries of Mediterranean coexistence.`,
-    translation_ar: `على مدى ما يقرب من ثمانية قرون، غير الوجود العربي في شبه الجزيرة الإيبيرية (الأندلس) ثقافة وعلوم وزراعة ولغة إسبانيا إلى الأبد. أكثر من أربعة آلاف كلمة في المعجم الإسباني الحالي تعود مباشرة إلى اللغة العربية الفصحى واللهجة الأندلسية.
-
-تبدأ معظم الكلمات التي تحتوي على البادئة "al-" بجذور عربية، مثل *alcalde* (القاضي/العمدة)، و *algodón* (القطن)، و *almohada* (المخدة/الوسادة)، و *alcázar* (القصر)، و *álgebra* (الجبر). كما تستمر العمارة المدجنة بأنماط الزليج الهندسية وأنظمة الري المتقدمة كالسواقي في إبهار المؤرخين حول العالم.`
+With more than two hundred thousand inhabitants, Tenochtitlan was larger, cleaner, and more organized than Paris, London, or Seville at that time. It had an immense market in Tlatelolco, drinking water brought by aqueducts from Chapultepec, and a network of canoes connecting the entire city. The tragic encounter between Emperor Moctezuma II and Cortés marked the painful and fascinating birth of the mestizo culture that defines modern Mexico.`,
+    translation_ar: `في نوفمبر عام 1519، شاهد الغزاة الإسبان بقيادة هيرنان كورتيس لأول مرة عاصمة الأزتيك العظيمة تينوتشيتيتلان. كتب الجندي والمؤرخ برنال دياز ديل كاستيو في مذكراته أنهم ذُهلوا وقالوا إن تلك المدينة العائمة المهيبة تبدو كأشياء السحر التي تروى في كتب الفروسية.`
   },
   {
     id: 'curated-story-1',
-    title: 'El misterio de la llave de Toledo',
+    title: 'Diego Rivera y los misterios del Palacio de Bellas Artes',
     category: 'Literature & Fiction',
     cefr: 'A2',
-    wordCount: 155,
+    wordCount: 160,
     dateAdded: '2026-08-10',
-    content: `Mateo caminaba por los callejones empedrados del casco antiguo de Toledo cuando una tormenta repentina lo obligó a refugiarse en una pequeña tienda de antigüedades. El anciano propietario, Don Rodrigo, estaba limpiando un viejo baúl de madera de nogal.
+    content: `Mateo caminaba entusiasmado por el Palacio de Bellas Artes, un majestuoso edificio de mármol blanco en el centro histórico de la Ciudad de México. Se detuvo ante el monumental mural de Diego Rivera titulado "El hombre controlador del universo", una impresionante obra llena de figuras históricas y engranajes tecnológicos.
 
-En el interior del baúl, brillaba una misteriosa llave de bronce con grabados en caligrafía cúfica y caracteres latinos. "Esta llave ha pertenecido a mi familia durante cinco generaciones", murmuró Don Rodrigo con voz solemne. "Abre una puerta secreta debajo de la antigua muralla, donde dicen que se esconden manuscritos sobre astronomía y medicina medieval". Mateo sintió una inmensa curiosidad y decidió ayudar al anciano a resolver el enigma histórico.`,
-    translation_en: `Mateo was walking through the cobblestone alleys of Toledo's old town when a sudden thunderstorm forced him to take shelter in a small antique shop. The elderly owner, Don Rodrigo, was cleaning an old walnut wood chest.
+El custodio del museo, Don Jacinto, se acercó silenciosamente y le sonrió. "Esta obra tiene una historia increíble, joven", murmuró. "Es una recreación del mural original que Rivera pintó en Nueva York, el cual fue destruido por contener el rostro del líder comunista Vladimir Lenin. Rivera regresó a México con orgullo y volvió a pintar cada detalle aquí para que todo el pueblo pudiera admirar su mensaje de libertad y futuro". Mateo miró el mural con un respeto totalmente nuevo.`,
+    translation_en: `Mateo was walking enthusiastically through the Palace of Fine Arts (Palacio de Bellas Artes), a majestic white marble building in the historic center of Mexico City. He stopped before Diego Rivera's monumental mural titled "Man, Controller of the Universe," an impressive artwork full of historical figures and technological gears.
 
-Inside the chest, a mysterious bronze key was shining, engraved with Kufic calligraphy and Latin characters. "This key has belonged to my family for five generations," whispered Don Rodrigo in a solemn voice. "It opens a secret door beneath the old wall, where they say medieval manuscripts on astronomy and medicine are hidden." Mateo felt immense curiosity and decided to help the old man solve the historical enigma.`,
-    translation_ar: `كان ماتيو يسير في الأزقة المرصوفة بالحجارة في مدينة طليطلة القديمة عندما أجبرته عاصفة مفاجئة على الاحتماء بمتجر صغير للتحف القديمة. كان المالك المسن، دون رودريغو، ينظف صندوقاً قديماً من خشب الجوز.
-
-داخل الصندوق، كان هناك مفتاح برونزي غامض يلمع بنقوش بالخط الكوفي والحروف اللاتينية. همس دون رودريغو بصوت جاد: "هذا المفتاح ينتمي لعائلتي منذ خمسة أجيال، ويفتح باباً سرياً أسفل السور القديم حيث يقال إن مخطوطات في الفلك والطب القديم مخبأة هناك". شعر ماتيو بفضول هائل وقرر مساعدة العجوز في حل اللغز التاريخي.`
-  },
-  {
-    id: 'curated-dialogue-2',
-    title: 'Entrevista técnica en una startup de tecnología en Buenos Aires',
-    category: 'Real Dialogues',
-    cefr: 'B2',
-    wordCount: 180,
-    dateAdded: '2026-08-05',
-    content: `ENTREVISTADORA: ¡Hola, Sofía! Qué gusto saludarte. Hemos revisado tu perfil y tu trayectoria en desarrollo de software distribuido nos parece sumamente interesante. Contanos un poco sobre cómo abordás los desafíos de escalabilidad y rendimiento en arquitecturas de microservicios.
-
-SOFÍA: Muchas gracias por la oportunidad. En mi experiencia previa, la clave fundamental radica en diseñar contratos de API robustos y desacoplar los servicios mediante colas de mensajería asíncronas. Cuando enfrentamos picos impredecibles de tráfico, evitamos cuellos de botella implementando patrones de resiliencia como circuit breakers y almacenamiento en caché distribuido.
-
-ENTREVISTADORA: Excelente enfoque. Y en cuanto al trabajo colaborativo, ¿cómo manejás las discrepancias técnicas dentro del equipo interdisciplinario?
-
-SOFÍA: Siempre priorizo los datos empíricos y las pruebas de carga reproducibles sobre las opiniones subjetivas. Organizamos sesiones de diseño técnico donde cada integrante expone los pros y contras de cada solución, buscando siempre el consenso y la simplicidad arquitectónica.`,
-    translation_en: `INTERVIEWER: Hello, Sofía! Great to greet you. We've reviewed your profile and your track record in distributed software development seems extremely interesting to us. Tell us a bit about how you approach scalability and performance challenges in microservice architectures.
-
-SOFÍA: Thank you very much for the opportunity. In my previous experience, the fundamental key lies in designing robust API contracts and decoupling services through asynchronous messaging queues. When facing unpredictable traffic spikes, we avoid bottlenecks by implementing resilience patterns like circuit breakers and distributed caching.
-
-INTERVIEWER: Excellent approach. And regarding collaborative teamwork, how do you handle technical disagreements within an interdisciplinary team?
-
-SOFÍA: I always prioritize empirical data and reproducible load tests over subjective opinions. We organize technical design sessions where each member presents the pros and cons of each solution, always seeking consensus and architectural simplicity.`,
-    translation_ar: `المُحاورة: مرحباً صوفيا! سعداء بالحديث معك. لقد راجعنا ملفك المهني ومسيرتك في تطوير البرمجيات الموزعة تبدو مثيرة للاهتمام للغاية. حدثينا قليلاً عن كيفية تعاملك مع تحديات قابلية التوسع والأداء في بنية الخدمات المصغرة.
-صوفيا: شكراً جزيلاً على هذه الفرصة. المفتاح الجوهري يكمن في تصميم عقود برمجية متينة وفصل الخدمات باستخدام طوابير الرسائل غير المتزامنة. نتجنب الاختناقات عبر تطبيق أنماط الصمود مثل قواطع الدوائر والتخزين المؤقت الموزع.
-المُحاورة: منهج ممتاز. وكيف تديرين الخلافات التقنية داخل الفريق؟
-صوفيا: أعطي الأولوية دائماً للبيانات التجريبية واختبارات الضغط القابلة للتكرار بدلاً من الآراء الذاتية.`
+The museum guardian, Don Jacinto, approached silently and smiled. "This artwork has an incredible story, young man," he whispered. "It is a recreation of the original mural that Rivera painted in New York, which was destroyed for containing the face of communist leader Vladimir Lenin. Rivera returned to Mexico with pride and repainted every detail here so that all the people could admire his message of freedom and future." Mateo looked at the mural with a completely new respect.`,
+    translation_ar: `كان ماتيو يسير بحماس في قصر الفنون الجميلة (Bellas Artes)، وهو مبنى مهيب من الرخام الأبيض في وسط مدينة مكسيكو التاريخي. وقف أمام جدارية دييغو ريفيرا الضخمة "الإنسان المتحكم في الكون"، وهي عمل مذهل مليء بالشخصيات التاريخية والآلات التكنولوجية.`
   },
   {
     id: 'curated-news-2',
-    title: 'La gastronomía mediterránea declarada patrimonio vivo y saludable',
+    title: 'El chocolate: El regalo sagrado de los aztecas al mundo',
     category: 'News & Trends',
     cefr: 'A2',
-    wordCount: 135,
+    wordCount: 140,
     dateAdded: '2026-08-25',
-    content: `Un reciente estudio científico internacional confirma que la dieta mediterránea tradicional protege el corazón y prolonga la longevidad. Los ingredientes fundamentales incluyen el aceite de oliva virgen extra, verduras de temporada, legumbres, pescados azules y frutos secos.
+    content: `Un reciente congreso internacional sobre historia alimentaria en la Ciudad de México destacó el papel del cacao en la civilización prehispánica. Para los aztecas y mayas, las semillas de cacao eran tan valiosas que se utilizaban como moneda para el comercio y para pagar tributos.
 
-En España e Italia, las familias continúan la costumbre de cocinar juntos los fines de semana. Los nutricionistas recomiendan evitar los alimentos ultraprocesados y recuperar las recetas tradicionales de nuestras abuelas, ricas en fibra natural y antioxidantes esenciales. Comer bien es parte inseparable de la cultura hispana.`,
-    translation_en: `A recent international scientific study confirms that the traditional Mediterranean diet protects the heart and extends longevity. Fundamental ingredients include extra virgin olive oil, seasonal vegetables, legumes, oily fish, and nuts.
+La palabra "chocolate" proviene del náhuatl "xocolatl", una bebida amarga elaborada con agua, cacao molido, maíz y chiles picantes, consumida principalmente por emperadores y guerreros para obtener energía. Tras la llegada de los españoles, se le añadió azúcar y canela, transformando este tónico sagrado mesoamericano en la delicia dulce que hoy adora todo el planeta.`,
+    translation_en: `A recent international congress on food history in Mexico City highlighted the role of cacao in pre-Hispanic civilization. For the Aztecs and Mayas, cacao seeds were so valuable they were used as currency for commerce and to pay tributes.
 
-In Spain and Italy, families continue the custom of cooking together on weekends. Nutritionists recommend avoiding ultra-processed foods and reclaiming our grandmothers' traditional recipes, rich in natural fiber and essential antioxidants. Eating well is an inseparable part of Hispanic culture.`,
-    translation_ar: `تؤكد دراسة علمية دولية حديثة أن النظام الغذائي المتوسطي التقليدي يحمي القلب ويطيل العمر. تشمل المكونات الأساسية زيت الزيتون البكر الممتاز، والخضروات الموسمية، والبقوليات، والأسماك الزيتية، والمكسرات.`
+The word "chocolate" comes from the Nahuatl "xocolatl," a bitter drink made of water, ground cacao, corn, and spicy chiles, consumed mainly by emperors and warriors to gain energy. Following the arrival of the Spaniards, sugar and cinnamon were added, transforming this sacred Mesoamerican tonic into the sweet treat adored today by the entire planet.`,
+    translation_ar: `سلط مؤتمر دولي حديث عن تاريخ الأغذية في مدينة مكسيكو الضوء على دور الكاكاو في حضارات ما قبل الغزو الإسباني. بالنسبة للأزتيك والمايا، كانت بذور الكاكاو ثمينة للغاية لدرجة أنها استُخدمت كعملة للتجارة ولدفع الضرائب.`
   },
   {
     id: 'curated-culture-2',
-    title: 'El misterio y la pasión del Flamenco en Andalucía',
+    title: 'El Día de Muertos: Amor, historia y memoria mexicana',
     category: 'History & Culture',
     cefr: 'B1',
-    wordCount: 165,
-    dateAdded: '2026-08-24',
-    content: `El flamenco no es simplemente un género musical o un baile vistoso; es una expresión artística profunda nacida de la convivencia entre las culturas gitana, mora, judía y cristiana en el sur de España. Reconocido por la UNESCO como Patrimonio Inmaterial de la Humanidad, el flamenco se sustenta en tres pilares: el cante, el toque de guitarra y el baile.
-
-El concepto del *duende* describe ese momento mágico e inexplicable en el que el artista conecta de forma visceral con sus emociones más puras: la alegría, la soledad y la esperanza. En ciudades como Sevilla, Granada y Jerez de la Frontera, las peñas flamencas mantienen viva esta tradición ancestral noche tras noche.`,
-    translation_en: `Flamenco is not simply a musical genre or a showy dance; it is a profound artistic expression born from the coexistence of Gypsy, Moorish, Jewish, and Christian cultures in southern Spain. Recognized by UNESCO as Intangible Cultural Heritage of Humanity, flamenco rests on three pillars: singing, guitar playing, and dancing.
-
-The concept of *duende* describes that magical and inexplicable moment when the artist connects viscerally with their purest emotions: joy, loneliness, and hope. In cities like Seville, Granada, and Jerez, flamenco clubs keep this ancestral tradition alive night after night.`,
-    translation_ar: `الفلامنكو ليس مجرد نوع موسيقي أو رقصة استعراضية؛ بل هو تعبير فني عميق نشأ من التعايش بين الثقافات الغجرية والموريسكية واليهودية والمسيحية في جنوب إسبانيا.`
-  },
-  {
-    id: 'curated-dialogue-3',
-    title: 'Planeando un viaje por la Patagonia: Glaciares y montañas',
-    category: 'Real Dialogues',
-    cefr: 'A1',
-    wordCount: 120,
-    dateAdded: '2026-08-22',
-    content: `LUCÍA: ¡Hola, Diego! ¿A dónde vas a viajar durante tus próximas vacaciones?
-
-DIEGO: ¡Hola, Lucía! Voy a viajar al sur de Argentina, a la Patagonia. Quiero visitar el famoso glaciar Perito Moreno y caminar por los senderos de Bariloche.
-
-LUCÍA: ¡Qué aventura tan maravillosa! Recuerda llevar ropa muy abrigada, una buena cámara de fotos y botas cómodas para la nieve.
-
-DIEGO: Sí, ya tengo todo preparado en mi mochila. ¡Tengo muchas ganas de ver los lagos azules y respirar el aire puro de la montaña!`,
-    translation_en: `LUCÍA: Hello, Diego! Where are you going to travel during your next vacation?
-DIEGO: Hello, Lucía! I'm traveling to southern Argentina, to Patagonia. I want to visit the famous Perito Moreno Glacier and hike the trails of Bariloche.
-LUCÍA: What a wonderful adventure! Remember to bring very warm clothes, a good camera, and comfortable snow boots.
-DIEGO: Yes, I already have everything packed in my backpack. I'm so eager to see the blue lakes and breathe the pure mountain air!`,
-    translation_ar: `لوسيا: مرحباً دييغو! إلى أين ستسافر خلال عطلتك القادمة؟
-دييغو: مرحباً لوسيا! سأسافر إلى جنوب الأرجنتين، إلى باتاغونيا. أريد زيارة نهر بيريتو مورينو الجليدي الشهير والتنزه في مسارات باريلوتشي.
-لوسيا: يا لها من مغامرة رائعة! تذكر أن تأخذ ملابس دافئة جداً وحذاءً مريحاً للثلج.
-دييغو: نعم، كل شيء جاهز في حقيبتي. أنا متحمس جداً لرؤية البحيرات الزرقاء ونقاء الجبال!`
-  },
-  {
-    id: 'curated-science-1',
-    title: 'La inteligencia artificial y el rescate de manuscritos antiguos',
-    category: 'Science & Tech',
-    cefr: 'B2',
     wordCount: 170,
-    dateAdded: '2026-08-21',
-    content: `Investigadores de la Universidad de Salamanca han desarrollado un sofisticado modelo de visión por computadora capaz de transcribir y restaurar manuscritos medievales dañados por la humedad y el paso del tiempo. Gracias al procesamiento neuronal del lenguaje natural, el algoritmo analiza patrones de tinta casi invisibles al ojo humano y predice palabras deterioradas con una precisión superior al 98%.
+    dateAdded: '2026-08-24',
+    content: `El Día de Muertos no es una versión mexicana de Halloween, sino una de las tradiciones más alegres, profundas e íntimas de México. Declarada Patrimonio Cultural Inmaterial por la UNESCO, esta celebración prehispánica honra el regreso transitorio de las almas de los seres queridos fallecidos.
 
-Este avance tecnológico permite a filólogos e historiadores digitalizar miles de documentos inéditos custodiados en archivos monásticos y bibliotecas históricas de todo el mundo hispanohablante. La sinergia entre humanidades digitales e inteligencia artificial está democratizando el acceso a nuestro patrimonio intelectual colectivo.`,
-    translation_en: `Researchers at the University of Salamanca have developed a sophisticated computer vision model capable of transcribing and restoring medieval manuscripts damaged by moisture and the passage of time. Thanks to neural natural language processing, the algorithm analyzes ink patterns nearly invisible to the human eye and predicts deteriorated words with greater than 98% precision.
+Las familias mexicanas colocan hermosas "ofrendas" (altares) en sus hogares decoradas con flores de cempasúchil de color naranja brillante, cuyo aroma y pétalos guían a las almas a casa. Las calaveras de azúcar, el pan de muerto dulce y los platillos favoritos de los difuntos completan el banquete. En lugares de la Ciudad de México como Mixquic y el propio Paseo de la Reforma, la muerte no se asocia con el miedo, sino con el amor eterno y la celebración de la vida.`,
+    translation_en: `The Day of the Dead is not a Mexican version of Halloween, but one of the most joyful, profound, and intimate traditions in Mexico. Declared Intangible Cultural Heritage by UNESCO, this pre-Hispanic celebration honors the temporary return of the souls of deceased loved ones.
 
-This technological breakthrough allows philologists and historians to digitize thousands of unpublished documents housed in monastic archives and historical libraries across the Spanish-speaking world. The synergy between digital humanities and artificial intelligence is democratizing access to our collective intellectual heritage.`,
-    translation_ar: `طور باحثون في جامعة سالامانكا نموذجاً متطوراً للرؤية الحاسوبية قادر على نسخ وترميم المخطوطات القديمة التالفة. بفضل المعالجة العصبية للغة، يحلل الخوارزمية أنماط الحبر غير المرئية بدقة تتجاوز 98%.`
+Mexican families place beautiful "ofrendas" (altars) in their homes decorated with bright orange cempasúchil (marigold) flowers, whose scent and petals guide the souls home. Sugar skulls, sweet pan de muerto, and the deceased's favorite dishes complete the banquet. In Mexico City spots like Mixquic and Paseo de la Reforma, death is not associated with fear, but with eternal love and the celebration of life.`,
+    translation_ar: `يوم الموتى (El Día de Muertos) ليس النسخة المكسيكية من الهالوين، بل هو أحد أكثر التقاليد بهجة وعمقاً وحميمية في المكسيك. يحتفي هذا التقليد، المصنف كإرث غير مادي من قبل اليونسكو، بالعودة المؤقتة لأرواح الأحباء الراحلين.`
   }
 ];

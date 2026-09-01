@@ -3,6 +3,7 @@ import { VOCABULARY_A1 } from './vocabularyA1';
 import { VOCABULARY_A2 } from './vocabularyA2';
 import { VOCABULARY_B1 } from './vocabularyB1';
 import { VOCABULARY_B2 } from './vocabularyB2';
+import { VOCABULARY_MEXICAN_GASTRONOMY } from './vocabularyMexicanGastronomy';
 
 // 1000 Frequency Core List entries with authentic Spanish, English, Arabic, CEFR, category, POS, gender, and examples
 export const COMPREHENSIVE_1000_RAW: Array<[string, string, string, CEFRLevel, string, PartOfSpeech, string?, string?]> = [
@@ -672,7 +673,8 @@ export function generateFull1000Vocabulary(): VocabularyItem[] {
     ...VOCABULARY_A1,
     ...VOCABULARY_A2,
     ...VOCABULARY_B1,
-    ...VOCABULARY_B2
+    ...VOCABULARY_B2,
+    ...VOCABULARY_MEXICAN_GASTRONOMY
   ];
 
   const seenWords = new Set<string>(initial.map(w => (w.spanish || w.word || '').toLowerCase().trim()));

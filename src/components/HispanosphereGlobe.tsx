@@ -904,7 +904,24 @@ export const HispanosphereGlobe: React.FC<HispanosphereGlobeProps> = ({
     let lastTime = performance.now();
     let pulsePhase = 0;
 
+    let isVisible = true;
+    const intersectionObserver = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+      if (isVisible && !animFrameIdRef.current) {
+        lastTime = performance.now();
+        animFrameIdRef.current = requestAnimationFrame(render);
+      } else if (!isVisible && animFrameIdRef.current) {
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+      }
+    }, { threshold: 0.05 });
+    intersectionObserver.observe(container);
+
     const render = (time: number) => {
+      if (!isVisible) {
+        animFrameIdRef.current = null;
+        return;
+      }
       const dt = Math.min(0.1, (time - lastTime) / 1000);
       lastTime = time;
       pulsePhase += dt * 3;
@@ -1409,6 +1426,7 @@ export const HispanosphereGlobe: React.FC<HispanosphereGlobeProps> = ({
 
     return () => {
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+      intersectionObserver.disconnect();
       resizeObserver.disconnect();
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('mousedown', onMouseDown);

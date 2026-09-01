@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, Globe, Heart, Shield, BookOpen, Layers, Award, UserCheck } from 'lucide-react';
-import { IberioLogo } from './IberacademyLogo';
+import { IberioLogo, AztecBirdMascot } from './IberacademyLogo';
 import { soundEffects } from '../utils/audio';
 
 interface FooterProps {
@@ -33,12 +33,17 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="space-y-3 md:col-span-1">
             <div 
               onClick={() => handleFooterClick('dashboard')}
-              className="flex items-center gap-2.5 cursor-pointer group w-fit"
+              className="flex items-center gap-3 cursor-pointer group w-fit"
             >
-              <IberioLogo variant="icon" className="w-8 h-8 shadow-md" />
-              <span className="font-black text-white text-base tracking-tight">
-                Iberio
-              </span>
+              <AztecBirdMascot size={36} interactive={true} showAura={false} />
+              <div>
+                <span className="font-black text-white text-base tracking-tight font-header block leading-none">
+                  Iberio
+                </span>
+                <span className="text-[9px] font-mono uppercase text-orange-400 font-bold tracking-widest">
+                  Cuauhtli Immersion
+                </span>
+              </div>
             </div>
             <p className="text-xs text-stone-400 leading-relaxed">
               Implicit Spanish Acquisition & Comprehensible Input Engine powered by Dr. Stephen Krashen's i+1 hypotheses.

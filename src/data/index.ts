@@ -5,3 +5,4 @@ export * from './comprehensibleStories';
 export * from './curriculum';
 export * from './placementAndVideos';
 export * from './vocabularyComprehensive1000';
+export * from './vocabularyMexicanGastronomy';
