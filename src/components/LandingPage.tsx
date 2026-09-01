@@ -24,7 +24,6 @@ import {
   Briefcase,
   GraduationCap,
   Mail,
-  UtensilsCrossed,
   HeartHandshake,
   Star,
   Layers,
@@ -34,7 +33,6 @@ import { User } from 'firebase/auth';
 import { soundEffects, speakSpanish } from '../utils/audio';
 import { IberioLogo, AztecBirdMascot } from './IberacademyLogo';
 import { HispanosphereGlobe } from './HispanosphereGlobe';
-import { VOCABULARY_MEXICAN_GASTRONOMY } from '../data/vocabularyMexicanGastronomy';
 import { Footer } from './Footer';
 
 interface LandingPageProps {
@@ -55,7 +53,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activeCefrLevel, setActiveCefrLevel] = useState<'A1' | 'A2' | 'B1' | 'B2'>('A1');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [mascotBubble, setMascotBubble] = useState<string>('¡Hola! Soy Cuauhtli, el ave solar de Iberio. ¡Aprende español sin memorizar!');
-  const [selectedDishId, setSelectedDishId] = useState<string>('mx-gas-1');
 
   const fluencyMonths = Math.max(3, Math.round(12 - demoMinutes * 0.15));
 
@@ -151,24 +148,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   ];
 
-  const currentDish = VOCABULARY_MEXICAN_GASTRONOMY.find(d => d.id === selectedDishId) || VOCABULARY_MEXICAN_GASTRONOMY[0];
-
   return (
     <div className="bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 min-h-screen font-sans selection:bg-orange-500 selection:text-white overflow-x-hidden flex flex-col antialiased">
       
-      {/* ================= TOP ANNOUNCEMENT BAR ================= */}
-      <div className="bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-stone-200 px-4 py-2.5 text-center text-[11px] font-black tracking-widest uppercase flex items-center justify-center gap-2 border-b border-stone-800 shadow-sm z-50">
-        <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-        <span>SLA Science • Dr. Stephen Krashen’s Input Hypothesis (i+1)</span>
-        <button
-          onClick={() => {
-            soundEffects.playPop();
-            onStartOnboarding();
-          }}
-          className="ml-2 px-3 py-1 rounded-md bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black text-[10px] tracking-wider uppercase transition-all duration-200 shadow-md shadow-orange-500/20 cursor-pointer"
-        >
-          Free Evaluation
-        </button>
+      {/* ================= TOP ANNOUNCEMENT & DEV MODE HUMOR BANNER ================= */}
+      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-stone-950 px-4 py-2.5 text-center text-xs font-bold shadow-md z-50 flex items-center justify-center gap-2 flex-wrap border-b border-orange-400">
+        <span className="px-2 py-0.5 rounded-full bg-stone-950 text-amber-400 font-mono text-[10px] uppercase font-black tracking-widest shrink-0 animate-pulse flex items-center gap-1">
+          🚧 DEV MODE IN PROGRESS
+        </span>
+        <span className="font-medium text-stone-950">
+          This site is actively being built. Honestly, half the features work by pure luck and magic 🪄 (and I have no idea why lol). Got feedback or ideas? Drop me a line!
+        </span>
+        <div className="flex items-center gap-1.5 ml-1">
+          <a
+            href="https://www.facebook.com/mhdmahran/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Message on Facebook"
+            className="p-1.5 rounded-lg bg-stone-950 text-amber-400 hover:bg-stone-900 transition-all flex items-center justify-center shadow-xs hover:scale-105 active:scale-95"
+          >
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+          </a>
+          <a
+            href="mailto:moemahran@gmail.com"
+            title="Send an Email"
+            className="p-1.5 rounded-lg bg-stone-950 text-amber-400 hover:bg-stone-900 transition-all flex items-center justify-center shadow-xs hover:scale-105 active:scale-95"
+          >
+            <Mail className="w-4 h-4" />
+          </a>
+        </div>
       </div>
 
       {/* ================= IMPECCABLE AGENCY HEADER ================= */}
@@ -240,49 +250,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Glow Background Gradient Ring (Optimized: No heavy blur filter) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-orange-500/10 via-amber-500/5 to-transparent rounded-full pointer-events-none -z-10" />
 
-        {/* PROMINENT AZTEC MASCOT SHOWCASE */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={springTransition}
-          className="flex flex-col items-center justify-center space-y-3 cursor-pointer group"
-          onClick={handleMascotClick}
-        >
-          <div className="relative">
-            <AztecBirdMascot size={88} interactive={true} showAura={true} />
-
-            {/* Pulsing Badge */}
-            <span className="absolute -bottom-1 -right-2 px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950 font-black text-[9px] uppercase tracking-wider shadow-md border border-white/20 animate-bounce">
-              Cuauhtli • Mascot
-            </span>
-          </div>
-
-          {/* Interactive Mascot Speech Bubble */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mascotBubble}
-              initial={{ opacity: 0, scale: 0.9, y: 5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -5 }}
-              transition={{ duration: 0.2 }}
-              className="px-4 py-2 rounded-2xl bg-white dark:bg-stone-900 border border-orange-500/30 shadow-lg text-xs font-semibold text-stone-800 dark:text-stone-200 max-w-md mx-auto flex items-center justify-center gap-2"
-            >
-              <Volume2 className="w-4 h-4 text-orange-500 shrink-0" />
-              <span>{mascotBubble}</span>
-            </motion.div>
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Category Tag Pill */}
+        {/* CLEAN AZTEC MASCOT */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={springTransition}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-950 dark:text-orange-300 text-xs font-black tracking-wide uppercase"
+          className="flex items-center justify-center cursor-pointer group hover:scale-105 transition-transform"
+          onClick={handleMascotClick}
+          title="Cuauhtli • Click to Listen"
         >
-          <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-          <span>The Scientific Method for Spanish Acquisition</span>
+          <AztecBirdMascot size={72} interactive={true} showAura={false} />
         </motion.div>
+
+
 
         {/* Agency Typography Display Headline */}
         <motion.h1
@@ -377,6 +357,117 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 font-extrabold">
             ★ Rated 4.9/5 by SLA Educators
           </span>
+        </div>
+
+        {/* ================= MISSION STATEMENT & CORE OBJECTIVE CARD (CRO ANCHOR) ================= */}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={smoothEase}
+          className="mt-10 max-w-5xl mx-auto bg-gradient-to-br from-stone-900 via-stone-950 to-stone-900 text-white rounded-3xl p-8 sm:p-10 border border-stone-800 shadow-2xl relative overflow-hidden text-left"
+        >
+          {/* Subtle Accent Glow */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex items-center gap-2 mb-4">
+            <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-widest bg-orange-500/20 text-orange-400 border border-orange-500/30">
+              OUR MISSION STATEMENT & OBJECTIVE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-black font-header text-white leading-tight">
+                To transform Spanish learning into intuitive, natural acquisition.
+              </h2>
+              <p className="text-sm text-stone-300 leading-relaxed font-normal">
+                <strong>Our Mission:</strong> We exist to eliminate language barriers by replacing dry grammar rules and repetitive drills with <strong>Dr. Stephen Krashen’s SLA Comprehensible Input ($i+1$)</strong>. Your brain naturally acquires language when you understand context-rich stories.
+              </p>
+              <p className="text-sm text-stone-300 leading-relaxed font-normal">
+                <strong>Our Objective:</strong> Guide 100,000+ learners to <strong>conversational B2 fluency within 6 months</strong> by combining authentic Mexican cultural immersion, native CDMX audio, and adaptive AI conversation tutoring.
+              </p>
+            </div>
+
+            {/* 3 Core Pillars */}
+            <div className="space-y-3 bg-stone-900/80 p-5 rounded-2xl border border-stone-800">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-orange-500/20 text-orange-400 shrink-0 mt-0.5">
+                  <Brain className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider font-mono">Scientific SLA Engine</h4>
+                  <p className="text-xs text-stone-400 mt-0.5">Comprehensible input ($i+1$) delivers 90% higher memory retention than traditional textbooks.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 border-t border-stone-800 pt-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider font-mono">Mexican Cultural Immersion</h4>
+                  <p className="text-xs text-stone-400 mt-0.5">Master authentic CDMX pronunciation, gastronomy, Frida Kahlo stories, and regional slang.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 border-t border-stone-800 pt-3">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider font-mono">Adaptive AI & SRS Engine</h4>
+                  <p className="text-xs text-stone-400 mt-0.5">AI Juan conversation partner & SM-2 Spaced Repetition flashcards practice right before memory fades.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ================= CLEAR CONVERSION INCENTIVES GRID (WHY TRY TODAY) ================= */}
+        <div className="mt-8 max-w-5xl mx-auto space-y-4 text-left">
+          <div className="text-center space-y-1">
+            <span className="text-[11px] font-mono font-black uppercase text-orange-600 dark:text-orange-400 tracking-widest block">
+              ⚡ RISK-FREE CRO INCENTIVES
+            </span>
+            <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white font-header">
+              Why Try Iberio Today? (100% Free Risk-Free Guarantee)
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-2">
+              <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 w-fit">
+                <Award className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-black text-stone-900 dark:text-white">Free CEFR Assessment</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Discover your exact level (A1–B2) in under 2 minutes. No credit card required.</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-2">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 w-fit">
+                <BookOpenCheck className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-black text-stone-900 dark:text-white">Instant Story Library</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Start reading 20+ graded Mexican stories with instant word lookups immediately.</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-2">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 w-fit">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-black text-stone-900 dark:text-white">Live AI Tutor Demo</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Roleplay real conversations in Spanish with our AI tutor Juan at your own pace.</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-2">
+              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500 w-fit">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-black text-stone-900 dark:text-white">Certified Diploma</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Earn official digital CEFR proficiency certificates upon completing each level.</p>
+            </div>
+          </div>
         </div>
 
         {/* ================= SHOWCASE 1: KRASHEN COMPREHENSIBLE READER ================= */}
@@ -531,123 +622,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </AnimatePresence>
           </div>
         </motion.div>
-      </section>
-
-      {/* ================= NEW SHOWCASE: MEXICAN GASTRONOMY & CDMX ACCENT DECK ================= */}
-      <section className="py-20 bg-stone-900 text-white border-y border-stone-800 relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-12">
-          
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <span className="px-3.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest font-mono">
-              🇲🇽 SPECIALIZED CULINARY DECK
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-black tracking-tight font-header text-white">
-              Mexican Gastronomy Vault
-            </h2>
-            <p className="text-sm sm:text-base text-stone-400">
-              Master essential vocabulary for traditional Mexican delicacies, complete with accurate phonetics and CDMX audio clips.
-            </p>
-          </div>
-
-          {/* Interactive Dish Selector Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-            
-            {/* Dish List Tabs */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-bold uppercase text-stone-500 tracking-wider block px-1">
-                Select Dish Deck Entry
-              </span>
-              {VOCABULARY_MEXICAN_GASTRONOMY.slice(0, 5).map(dish => {
-                const isSelected = dish.id === selectedDishId;
-                return (
-                  <button
-                    key={dish.id}
-                    onClick={() => {
-                      soundEffects.playPop();
-                      setSelectedDishId(dish.id);
-                      speakSpanish(dish.spanish);
-                    }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer text-left ${
-                      isSelected
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-stone-950 border-emerald-400 font-extrabold shadow-lg'
-                        : 'bg-stone-800/60 hover:bg-stone-800 text-stone-300 border-stone-700/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <UtensilsCrossed className={`w-4 h-4 ${isSelected ? 'text-stone-950' : 'text-emerald-400'}`} />
-                      <span className="text-sm capitalize">{dish.spanish}</span>
-                    </div>
-                    <span className="text-xs font-mono font-bold opacity-80">{dish.cefr}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Selected Dish Showcase Card (Center Column, Span 2) */}
-            <div className="md:col-span-2 bg-stone-950 border border-stone-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 opacity-10 font-mono text-8xl font-black select-none pointer-events-none text-emerald-500">
-                🇲🇽
-              </div>
-
-              <div className="flex items-start justify-between gap-4 border-b border-stone-800 pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-2xl sm:text-3xl font-black text-white capitalize font-header">
-                      {currentDish.spanish}
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold border border-emerald-500/30">
-                      {currentDish.cefr}
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-400 mt-1">{currentDish.english}</p>
-                  <p className="text-xs text-amber-400 font-bold mt-0.5" dir="rtl">{currentDish.arabic}</p>
-                </div>
-
-                <motion.button
-                  onClick={() => speakSpanish(currentDish.spanish)}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="p-4 rounded-2xl bg-emerald-500 text-stone-950 hover:bg-emerald-400 transition cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0"
-                  title="Play CDMX Audio"
-                >
-                  <Volume2 className="w-5 h-5" />
-                </motion.button>
-              </div>
-
-              {/* Collocation & Real Example */}
-              <div className="space-y-4 text-xs">
-                {currentDish.collocations && currentDish.collocations.length > 0 && (() => {
-                  const firstColl = currentDish.collocations[0];
-                  const phraseEs = typeof firstColl === 'string' ? firstColl : firstColl.phrase_es;
-                  const phraseEn = typeof firstColl === 'string' ? '' : firstColl.phrase_en;
-                  return (
-                    <div className="p-4 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
-                      <span className="text-[10px] font-mono font-bold uppercase text-emerald-400 block">
-                        Common Mexican Collocation
-                      </span>
-                      <p className="font-bold text-white">{phraseEs}</p>
-                      {phraseEn && <p className="text-stone-400">{phraseEn}</p>}
-                    </div>
-                  );
-                })()}
-
-                {currentDish.examples && currentDish.examples.length > 0 && (
-                  <div className="p-4 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
-                    <span className="text-[10px] font-mono font-bold uppercase text-amber-400 block">
-                      Authentic Usage Example
-                    </span>
-                    <p className="font-serif italic text-stone-200 text-sm">
-                      "{currentDish.examples[0].es}"
-                    </p>
-                    <p className="text-stone-400 text-[11px]">{currentDish.examples[0].en}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>
-
-        </div>
       </section>
 
       {/* ================= 3D HISPANOSPHERE GLOBE SHOWCASE ================= */}

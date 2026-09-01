@@ -278,7 +278,8 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           persona: selectedPersona,
           nativeLang: userProgress.settings.nativeLanguage,
           history,
-          practiceTopic: grammarPracticeTopic
+          practiceTopic: grammarPracticeTopic,
+          targetDialect: userProgress.targetDialect || 'mexico'
         })
       });
 

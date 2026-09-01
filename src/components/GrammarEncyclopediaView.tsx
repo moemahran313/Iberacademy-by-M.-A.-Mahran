@@ -37,6 +37,7 @@ import {
 } from '../data/slaGrammarEngine';
 import { speakSpanish, soundEffects } from '../utils/audio';
 import { useApp } from '../context/AppContext';
+import { ReportGrammarIssueModal } from './ReportGrammarIssueModal';
 
 interface GrammarEncyclopediaViewProps {
   userProgress: UserProgress;
@@ -51,6 +52,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
   const [activeTabMode, setActiveTabMode] = useState<
     'path' | 'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'encyclopedia'
   >('path');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Selected lesson/topic
   const [selectedTopicId, setSelectedTopicId] = useState<string>(GRAMMAR_ENCYCLOPEDIA[0].id);
@@ -504,13 +506,26 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
             <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6 sticky top-6">
               {/* Selected Lesson Header */}
               <div className="border-b border-stone-100 dark:border-stone-800 pb-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
-                    UNIT {selectedTopic.unit} • {selectedTopic.cefr}
-                  </span>
-                  <span className="text-xs text-stone-400 font-mono">
-                    {selectedTopic.category}
-                  </span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
+                      UNIT {selectedTopic.unit} • {selectedTopic.cefr}
+                    </span>
+                    <span className="text-xs text-stone-400 font-mono">
+                      {selectedTopic.category}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      soundEffects.playPop();
+                      setIsReportModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-stone-400 hover:text-rose-500 transition cursor-pointer"
+                    title="Report a grammar or translation issue in this lesson"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Report Issue</span>
+                  </button>
                 </div>
 
                 <h2 className="text-xl font-black text-stone-900 dark:text-white leading-tight">
@@ -1414,22 +1429,35 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                       UNIT {selectedTopic.unit} • {selectedTopic.cefr} • {selectedTopic.category}
                     </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      soundEffects.playPop();
-                      setGrammarPracticeTopic({
-                        id: selectedTopic.id,
-                        title_es: selectedTopic.title_es,
-                        title_en: selectedTopic.title_en,
-                        formula: selectedTopic.formula
-                      });
-                      setActiveTab('tutor');
-                    }}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-950 dark:bg-amber-500 text-white dark:text-stone-950 font-black text-xs hover:opacity-90 transition shadow-sm cursor-pointer w-fit"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
-                    <span>Practice Rule with AI</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        soundEffects.playPop();
+                        setIsReportModalOpen(true);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs transition cursor-pointer"
+                      title="Report any spelling or grammar issues in this lesson"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Report Issue</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        soundEffects.playPop();
+                        setGrammarPracticeTopic({
+                          id: selectedTopic.id,
+                          title_es: selectedTopic.title_es,
+                          title_en: selectedTopic.title_en,
+                          formula: selectedTopic.formula
+                        });
+                        setActiveTab('tutor');
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-950 dark:bg-amber-500 text-white dark:text-stone-950 font-black text-xs hover:opacity-90 transition shadow-sm cursor-pointer w-fit"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
+                      <span>Practice Rule with AI</span>
+                    </button>
+                  </div>
                 </div>
                 <h2 className="text-2xl font-black text-stone-900 dark:text-white mt-2">
                   {selectedTopic.title_es}
@@ -1601,6 +1629,13 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
           </div>
         </div>
       )}
+
+      <ReportGrammarIssueModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        source="GrammarEncyclopediaView"
+        contextName={selectedTopic.title_es}
+      />
     </div>
   );
 };

@@ -21,12 +21,32 @@
         "progressData": { "type": "string" }
       },
       "required": ["uid", "email"]
+    },
+    "grammar_reports": {
+      "title": "Grammar Issue Report",
+      "description": "Report submitted by a user about a grammar or spelling issue in a story, vocabulary list, or grammar encyclopedia.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "source": { "type": "string" },
+        "context": { "type": "string" },
+        "selectedText": { "type": "string" },
+        "issueDescription": { "type": "string" },
+        "suggestedFix": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["source", "context", "issueDescription", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "users",
       "description": "User profile document containing account credentials, avatar ID, XP, level, and stats for global league ranking and cloud synchronization."
+    },
+    "/grammar_reports/{reportId}": {
+      "schema": "grammar_reports",
+      "description": "Grammar and content feedback reports submitted by learners to refine content accuracy."
     }
   }
 }

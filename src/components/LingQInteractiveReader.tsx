@@ -25,7 +25,8 @@ import {
   Timer,
   Clock,
   VolumeX,
-  Gauge
+  Gauge,
+  AlertTriangle
 } from 'lucide-react';
 import {
   UserProgress,
@@ -35,6 +36,7 @@ import {
   ImportedContent,
   ReadingSessionRecord
 } from '../types';
+import { ReportGrammarIssueModal } from './ReportGrammarIssueModal';
 import {
   tokenizeText,
   groupTokensIntoSentences,
@@ -101,6 +103,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   const [minedSuccessMessage, setMinedSuccessMessage] = useState<string | null>(null);
   const [hasCompletedReading, setHasCompletedReading] = useState<boolean>(false);
   const [isAiTranslating, setIsAiTranslating] = useState<boolean>(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Client-side cache to instantly resolve previously fetched word translations without hitting the server or API
   const clientTranslationCache = useRef<Record<string, any>>({});
@@ -496,6 +499,18 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
                 <div className="text-[10px] font-medium opacity-90">{report.krashenEvaluation.badge}</div>
               </div>
             </div>
+
+            <button
+              onClick={() => {
+                soundEffects.playPop();
+                setIsReportModalOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-stone-800 hover:bg-rose-950/20 border border-stone-700 hover:border-rose-900 text-rose-300 hover:text-rose-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              title="Report any spelling or grammar issues in this reading"
+            >
+              <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <span>Report Issue</span>
+            </button>
 
             <button
               onClick={handleMarkPageAsKnown}
@@ -1210,6 +1225,14 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
           </>
         )}
       </AnimatePresence>
+
+      <ReportGrammarIssueModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        source="ReadingInterface"
+        contextName={content.title}
+        selectedText={selectedToken ? selectedToken.clean : ''}
+      />
     </div>
   );
 };

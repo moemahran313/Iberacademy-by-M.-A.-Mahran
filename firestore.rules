@@ -10,6 +10,10 @@ service cloud.firestore {
     match /mail/{mailId} {
       allow read, write, delete: if true;
     }
+    match /grammar_reports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
   }
 }
 

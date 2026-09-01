@@ -53,7 +53,8 @@ async function startServer() {
       persona = 'teacher',
       nativeLang = 'en',
       currentPhase,
-      practiceTopic = null
+      practiceTopic = null,
+      targetDialect = 'mexico'
     } = req.body;
 
     const isArabic = nativeLang === 'ar';
@@ -142,7 +143,23 @@ Memory Anchor: ${practiceTopic.formula || ''}.
 Your primary directive is to bypass standard diagnostics or greeting loops, and immediately generate active sentence-building drills and challenges focused exclusively on this lesson's contents. Present challenges requiring the user to produce Spanish output using this specific rule.`
       : '';
 
+    const dialectPrompt = targetDialect === 'mexico'
+      ? `\n\n--- 🇲🇽 DIALECT FOCUS: MEXICAN SPANISH ---
+You MUST speak, write, and teach strictly in authentic, natural Mexican Spanish (Español de México).
+Whenever presenting vocabulary, dialogues, scenario hooks, or sample sentences, you MUST use Mexican vocabulary and terms instead of Iberian counterparts:
+- Use 'carro' or 'auto' instead of 'coche'
+- Use 'celular' instead of 'móvil'
+- Use 'computadora' instead of 'ordenador'
+- Use 'boleto' instead of 'billete'
+- Use 'platicar' instead of 'charlar'
+- Use 'andar en bicicleta' or 'andar a bicicleta' instead of 'montar a bicicleta' or 'montar en bicicleta'
+- Never use 'vosotros' or its corresponding verb conjugations and pronouns (e.g., use 'ustedes' and 'los'/'les' instead).
+Ensure that all context settings, names (such as Mateo, Carlos, Sofía, Elena, Juan), and conversational expressions (like '¡chido!', '¡padrísimo!', '¿qué onda?') are natural and appropriate for Mexican Spanish culture and align gracefully with the student's current proficiency level.`
+      : '';
+
     const systemPrompt = `You are "Profesor Mateo", an elite, certified Spanish language pedagogue and linguist specializing in the communicative method, comprehensible input (Krashen's hypotheses), and deliberate practice for adult second-language learners.
+
+${dialectPrompt}
 
 Your mission is NOT to act like an encyclopedic chatbot or give superficial surface quizzes. Your mission is to systematically take the learner from their current level to genuine CEFR B2+ conversational and writing fluency.
 
@@ -1071,35 +1088,35 @@ Respond in valid JSON format matching this schema:
 
   // AI Custom Comprehensible Story Generator
   app.post('/api/ai/generate-story', async (req, res) => {
-    const { topic = 'el día a día', cefr = 'A1', language = 'en' } = req.body;
+    const { topic = 'el día a día', cefr = 'A1', language = 'en', targetDialect = 'mexico' } = req.body;
     const isArabic = language === 'ar';
 
     const fallbackStory = {
-      title_es: `Una aventura en Madrid: ${topic}`,
-      title_en: `An Adventure in Madrid: ${topic}`,
-      title_ar: `مغامرة في مدريد: ${topic}`,
+      title_es: `Una aventura en Coyoacán: ${topic}`,
+      title_en: `An Adventure in Coyoacán: ${topic}`,
+      title_ar: `مغامرة في كويواكان: ${topic}`,
       paragraphs: [
         {
-          es: 'Hoy es un día soleado en Madrid. Carlos se levanta a las siete de la mañana, prepara un café caliente con leche y lee las noticias.',
-          en: 'Today is a sunny day in Madrid. Carlos gets up at seven in the morning, prepares a hot coffee with milk, and reads the news.',
-          ar: 'اليوم يوم مشمس في مدريد. يستيقظ كارلوس في السابعة صباحاً ويعد قهوة ساخنة بالحليب ويقرأ الأخبار.'
+          es: 'Hoy es un día soleado en Coyoacán, en la Ciudad de México. Carlos camina por la plaza principal con su perro Mateo, platicando con los vecinos.',
+          en: 'Today is a sunny day in Coyoacán, in Mexico City. Carlos walks through the main plaza with his dog Mateo, chatting with the neighbors.',
+          ar: 'اليوم هو يوم مشمس في كويواكان، في مدينة مكسيكو. يسير كارلوس في الساحة الرئيسية مع كلبه ماتيو، وهو يتحدث مع الجيران.'
         },
         {
-          es: 'Luego, va al parque del Retiro con su perro Mateo. En el camino, saluda cordialmente a los vecinos y disfruta del aire fresco.',
-          en: 'Then, he goes to Retiro Park with his dog Mateo. On the way, he cordially greets his neighbors and enjoys the fresh air.',
-          ar: 'ثم يذهب إلى حديقة ريتيرو مع كلبه ماتيو. في الطريق، يلقي التحية بحرارة على الجيران ويستمتع بالهواء النقي.'
+          es: 'Luego, decide andar en bicicleta por las hermosas calles coloniales, admirando las coloridas casas llenas de flores.',
+          en: 'Then, he decides to ride a bicycle through the beautiful colonial streets, admiring the colorful houses full of flowers.',
+          ar: 'ثم يقرر ركوب الدراجة عبر الشوارع الاستعمارية الجميلة، معجباً بالبيوت الملونة المليئة بالزهور.'
         },
         {
-          es: 'Por la tarde, se reúne con sus amigos en una plaza para practicar español y compartir unas deliciosas tapas tradicionales.',
-          en: 'In the afternoon, he meets his friends in a plaza to practice Spanish and share some delicious traditional tapas.',
-          ar: 'في المساء، يلتقي بأصدقائه في الساحة لممارسة الإسبانية ومشاركة بعض أطباق التاباس التقليدية اللذيذة.'
+          es: 'Por la tarde, compra un agua fresca de jamaica y un elote caliente para disfrutar el aire fresco de la plaza.',
+          en: 'In the afternoon, he buys a cold hibiscus water and a hot elote (corn on the cob) to enjoy the fresh air of the plaza.',
+          ar: 'في المساء، يشتري ماء الكركديه البارد وإلوتي (ذرة ساخنة) ليستمتع بالهواء العليل في الساحة.'
         }
       ],
       vocabList: [
-        { es: 'levantarse', en: 'to get up', ar: 'يستيقظ' },
-        { es: 'camino', en: 'way/path', ar: 'طريق' },
-        { es: 'saludar', en: 'to greet', ar: 'يحيي' },
-        { es: 'tapas', en: 'traditional Spanish small plates', ar: 'مقبلات إسبانية تقليدية' }
+        { es: 'platicar', en: 'to chat / talk', ar: 'يتحدث / يدردش' },
+        { es: 'andar en bicicleta', en: 'to ride a bicycle', ar: 'يركب دراجة هوائية' },
+        { es: 'agua fresca de jamaica', en: 'cold hibiscus flower drink', ar: 'مشروب الكركديه البارد' },
+        { es: 'elote', en: 'Mexican-style corn on the cob', ar: 'عرنوس ذرة على الطريقة المكسيكية' }
       ]
     };
 
@@ -1109,11 +1126,17 @@ Respond in valid JSON format matching this schema:
     }
 
     try {
+      const dialectInstruction = targetDialect === 'mexico'
+        ? `Write the story strictly in authentic Mexican Spanish (Español de México).
+Use natural Mexican vocabulary and phrasing instead of Iberian options (e.g., 'carro'/'auto' instead of 'coche', 'celular' instead of 'móvil', 'computadora' instead of 'ordenador', 'boleto' instead of 'billete', 'platicar' instead of 'charlar', 'andar en/a bicicleta' instead of 'montar a/en bicicleta', and do NOT use 'vosotros' or 'os'). Incorporate Mexican cultural themes (Coyoacán, Oaxaca, CDMX) if applicable.`
+        : `Write the story in standard Spanish appropriate for CEFR level ${cefr}.`;
+
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: `Create a graded comprehensible input story for Spanish learners at level ${cefr}.
-Topic: ${topic || 'everyday life in Spain/Latin America'}.
+Topic: ${topic || 'everyday life in Mexico'}.
 Ensure strictly appropriate vocabulary and grammar for ${cefr}.
+${dialectInstruction}
 Provide bilingual translations in English and Arabic for each paragraph.
 
 Return JSON:
