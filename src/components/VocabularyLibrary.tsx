@@ -22,7 +22,7 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { VocabularyItem, CEFRLevel, UserProgress, SRSGrade, SRSItem } from '../types';
-import { ALL_VOCABULARY } from '../data';
+import { ALL_VOCABULARY, HIGH_FREQUENCY_VOCAB_ENGINE } from '../data';
 import { speakSpanish, soundEffects } from '../utils/audio';
 import {
   calculateNextSRS,
@@ -45,7 +45,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'flashcards' | 'srs'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'flashcards' | 'srs' | 'high_frequency'>('high_frequency');
 
   // Standard flashcard state
   const [flashcardIdx, setFlashcardIdx] = useState(0);
@@ -517,6 +517,17 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
           {/* View Mode Toggle */}
           <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-lg self-start sm:self-auto">
             <button
+              onClick={() => setViewMode('high_frequency')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                viewMode === 'high_frequency'
+                  ? 'bg-amber-500 text-stone-950 font-black shadow-sm'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-950" />
+              <span>80/20 High-Freq Engine</span>
+            </button>
+            <button
               onClick={() => setViewMode('grid')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
                 viewMode === 'grid'
@@ -603,6 +614,110 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
           </div>
         )}
       </div>
+
+      {/* ================= VIEW 0: HIGH FREQUENCY 80/20 VOCABULARY ENGINE ================= */}
+      {viewMode === 'high_frequency' && (
+        <div className="space-y-6">
+          <div className="p-5 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
+                  ⚡ Pareto 80/20 Principle
+                </span>
+                <h2 className="text-xl font-black text-stone-900 dark:text-white mt-1">
+                  Pareto Top-1,000 High-Frequency Lexicon
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-stone-800 px-3 py-1 rounded-xl">
+                Accounts for 85% of Spoken Mexican Spanish
+              </span>
+            </div>
+            <p className="text-xs text-stone-700 dark:text-stone-300">
+              Obscure dictionary words have been purged. Focus exclusively on conversational connectors, survival requests, high-frequency verbs, and natural collocations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {HIGH_FREQUENCY_VOCAB_ENGINE.filter(item => {
+              if (!searchTerm) return true;
+              const term = searchTerm.toLowerCase();
+              return (
+                item.word.toLowerCase().includes(term) ||
+                item.english_primary.toLowerCase().includes(term) ||
+                item.bucket.toLowerCase().includes(term)
+              );
+            }).map((item) => (
+              <div
+                key={item.id}
+                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500 rounded-2xl p-5 space-y-3 shadow-xs hover:shadow-md transition-all"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/50">
+                      {item.bucket}
+                    </span>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => speakSpanish(item.word)}
+                        className="text-xl font-black text-stone-900 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>{item.word}</span>
+                        <Volume2 className="w-4 h-4 text-amber-500 shrink-0" />
+                      </button>
+                      <span className="text-xs font-mono text-stone-400">
+                        [{item.audio_phonetic}]
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-stone-400 bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded">
+                    Rank #{item.frequency_rank}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-stone-800 dark:text-stone-200">
+                    🇬🇧 {item.english_primary}
+                  </p>
+                </div>
+
+                {/* Collocations */}
+                <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl space-y-1.5 border border-stone-100 dark:border-stone-800">
+                  <span className="text-[10px] font-mono font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block">
+                    🔗 Natural Collocations (Word Pairs)
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {item.collocations.map((colloc, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => speakSpanish(colloc)}
+                        className="text-xs font-semibold bg-white dark:bg-stone-800 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-stone-700 px-2.5 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-stone-700 transition flex items-center gap-1"
+                      >
+                        <span>{colloc}</span>
+                        <Volume2 className="w-3 h-3 text-amber-500 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Example sentence */}
+                <div className="space-y-1 text-xs">
+                  <p className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
+                    <span>💬 "{item.example_es}"</span>
+                  </p>
+                  <p className="text-stone-500 dark:text-stone-400">
+                    "{item.example_en}"
+                  </p>
+                </div>
+
+                {/* Mexican usage note */}
+                <p className="text-[11px] text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-stone-800/80 p-2.5 rounded-xl border border-amber-200/60 dark:border-stone-700/60 font-medium">
+                  🇲🇽 <strong>Mexican Dialect Note:</strong> {item.mexican_usage_note}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ================= VIEW 1: SRS REVIEW MODE ================= */}
       {viewMode === 'srs' && (

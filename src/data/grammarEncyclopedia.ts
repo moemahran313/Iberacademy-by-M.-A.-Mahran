@@ -13,6 +13,13 @@ export const GRAMMAR_ENCYCLOPEDIA: (GrammarTopic & { unit: number })[] = [
     summary_en: 'Every Spanish noun has a grammatical gender (masculine or feminine). Generally, -o is masculine and -a is feminine. Plurals are formed by adding -s or -es.',
     summary_ar: 'كل اسم في الإسبانية له جنس قواعدي (مذكر أو مؤنث). عادة ما تنتهي الأسماء المذكرة بـ -o والمؤنثة بـ -a. يُصاغ الجمع بإضافة -s أو -es.',
     formula: 'Nouns ending in -o / -ma / -l / -r = Usually Masculine | Nouns ending in -a / -ción / -tad / -dad = Usually Feminine',
+    hack_title: 'The Noun Gender Hack: Spotting -o vs -a instantly',
+    the_rule_in_plain_english: "Nouns ending in -o are almost always masculine (el), and nouns ending in -a are almost always feminine (la). To make them plural, just slap an 's' if it ends in a vowel, or 'es' if it ends in a consonant.",
+    power_pattern: '[el + noun-o] ⚡ [la + noun-a]',
+    real_world_examples: [
+      { before: 'Quiero uno taco y una café.', after: 'Quiero un taco y un café.', english: 'I want a taco and a coffee.', context: 'Ordering at a street food stand' }
+    ],
+    common_pitfall_alert: "Watch out for 'el mapa' (the map) and 'la mano' (the hand) — they defy the -o/-a rule!",
     fullContent_en: `### 1. Masculine Nouns:
 - Ends in **-o**: *el libro* (the book), *el perro* (the dog).
 - Ends in **-ma**: *el problema* (the problem), *el idioma* (the language).
@@ -76,6 +83,13 @@ export const GRAMMAR_ENCYCLOPEDIA: (GrammarTopic & { unit: number })[] = [
     summary_en: 'Spanish has four definite articles (the) and four indefinite articles (a/some). They must agree in gender and number with the nouns they modify.',
     summary_ar: 'تمتلك اللغة الإسبانية أربع أدوات تعريف (الـ) وأربع أدوات تنكير (اسم نكرة / بعض). يجب أن تطابق الأداة الاسم في الجنس والعدد.',
     formula: 'Definite: el, la, los, las | Indefinite: un, una, unos, unas',
+    hack_title: "The Article Matching Hack: 'The' and 'A' Made Simple",
+    the_rule_in_plain_english: "Use 'el' / 'la' for specific things ('the book on the table') and 'un' / 'una' for any random thing ('a book'). Pluralize them to 'los/las' or 'unos/unas'. When 'a' meets 'el', they fuse into 'al'!",
+    power_pattern: 'a + el ➔ AL | de + el ➔ DEL',
+    real_world_examples: [
+      { before: 'Voy a el banco de el centro.', after: 'Voy al banco del centro.', english: "I'm going to the downtown bank.", context: 'Asking for directions downtown' }
+    ],
+    common_pitfall_alert: "Never say 'a el' or 'de el' separately. They MUST merge into 'al' and 'del'!",
     fullContent_en: `### 1. Definite Articles ("The" - specific entities):
 - **Masculine Singular**: *el* (*el chico* - the boy)
 - **Feminine Singular**: *la* (*la chica* - the girl)
@@ -143,6 +157,13 @@ export const GRAMMAR_ENCYCLOPEDIA: (GrammarTopic & { unit: number })[] = [
     summary_en: 'Spanish subject pronouns replace nouns as the subject of the sentence. They are often omitted in speech because verb endings clearly indicate who is acting.',
     summary_ar: 'تستبدل ضمائر الفاعل الأسماء كفاعل للجملة. غالباً ما يتم حذفها في الحديث اليومي لأن نهايات الفعل تدل بوضوح على الفاعل.',
     formula: 'Pronouns can be dropped | Verb endings act as the pronoun!',
+    hack_title: "The Invisible Pronoun Hack: Stop Saying 'Yo' All The Time!",
+    the_rule_in_plain_english: "In Spanish, the verb ending already tells everyone who is doing the action. Saying 'Yo' repeatedly makes you sound like a robotic textbook. Drop 'Yo', 'Tú', and 'Nosotros' unless you want to emphasize who did it.",
+    power_pattern: '[Verb Ending = Subject] (Drop Yo/Tú/Él)',
+    real_world_examples: [
+      { before: 'Yo soy Carlos, yo vivo en México y yo quiero un taco.', after: 'Soy Carlos, vivo en México y quiero un taco.', english: "I'm Carlos, I live in Mexico, and I want a taco.", context: 'Introducing yourself casually' }
+    ],
+    common_pitfall_alert: "Overusing 'Yo' is the #1 sign of an English speaker translating word-for-word. Drop it!",
     fullContent_en: `### Spanish Subject Pronouns:
 | English | Singular | Plural |
 |---|---|---|
@@ -196,6 +217,13 @@ export const GRAMMAR_ENCYCLOPEDIA: (GrammarTopic & { unit: number })[] = [
     summary_en: 'Spanish regular verbs belong to three conjugation families: -AR, -ER, and -IR. To conjugate, drop the ending and add the specific present tense terminations.',
     summary_ar: 'تنقسم الأفعال القياسية في الإسبانية إلى ثلاث مجموعات حسب نهايتها: -AR و -ER و -IR. للتصريف، نحذف النهاية ونضيف الحروف المناسبة للزمن.',
     formula: 'Drop (-ar / -er / -ir) + Add Present Tense Endings!',
+    hack_title: 'The Action Verb Hack: Master 80% of Conversations with 3 Endings',
+    the_rule_in_plain_english: 'All regular verbs end in -AR, -ER, or -IR. Chop off that ending and add the secret code: -o for I, -as/-es for You, -a/-e for He/She, and -amos/-emos/-imos for We.',
+    power_pattern: '[Verb Stem] + [-o / -as / -a / -amos / -an]',
+    real_world_examples: [
+      { before: 'Yo hablar español y comer tacos.', after: 'Hablo español y como tacos.', english: 'I speak Spanish and eat tacos.', context: 'Chatting with locals over lunch' }
+    ],
+    common_pitfall_alert: "-IR verbs match -ER verbs everywhere EXCEPT for 'we' (nosotros write -imos, not -emos)!",
     fullContent_en: `### Present Regular Endings:
 1. **-AR Verbs** (*Hablar* - to speak):
    - Yo: **-o** (*hablo*)
@@ -281,6 +309,13 @@ export const GRAMMAR_ENCYCLOPEDIA: (GrammarTopic & { unit: number })[] = [
     summary_en: 'Ser defines identity, essence, origin, professions, and time. Estar describes temporary states, emotions, locations, and ongoing actions.',
     summary_ar: 'يُستخدم Ser لتعريف الهوية والأصل والمهن والوقت والصفات الدائمة. بينما يُستخدم Estar للموقع الجغرافي والحالات النفسية والصحية المؤقتة والأفعال المستمرة.',
     formula: 'Ser = D.O.C.T.O.R. (Description, Occupation, Characteristic, Time, Origin, Relationship) | Estar = P.L.A.C.E. (Position, Location, Action, Condition, Emotion)',
+    hack_title: "The 'To Be' Dual Power Hack: Permanent vs Temporary",
+    the_rule_in_plain_english: 'Use SER for WHO you are, WHAT you do, and WHERE you are from (your permanent identity). Use ESTAR for HOW you feel right now and WHERE you are located physically (temporary state & location).',
+    power_pattern: 'SER = Identity & Origin ⚡ ESTAR = Mood & Location',
+    real_world_examples: [
+      { before: 'Soy en la casa porque soy cansado.', after: 'Estoy en la casa porque estoy cansado.', english: "I'm at home because I'm tired.", context: "Texting a friend why you can't go out" }
+    ],
+    common_pitfall_alert: "Location ALWAYS uses ESTAR, even if a building has been there for 500 years! 'El museo está aquí'.",
     fullContent_en: `### When to use SER:
 1. **Description & Identity**: *Soy Carlos.* (I am Carlos.)
 2. **Occupation**: *Ella es ingeniera.* (She is an engineer.)
@@ -342,6 +377,13 @@ export const GRAMMAR_ENCYCLOPEDIA: (GrammarTopic & { unit: number })[] = [
     summary_en: 'Spanish adjectives must match the noun they modify in gender (masculine/feminine) and number (singular/plural). They usually come AFTER the noun.',
     summary_ar: 'يجب أن تطابق الصفات الأسماء التي تصفها في الجنس (مذكر/مؤنث) والعدد (مفرد/جمع). عادةً ما تأتي الصفة بعد الاسم الموصوف.',
     formula: 'Noun + Adjective (with matched endings -o/a/os/as)',
+    hack_title: 'The Mirror Image Hack: Flip Your Adjectives',
+    the_rule_in_plain_english: 'In Spanish, describe the noun AFTER you name it, not before! Also, make sure the adjective mirrors the noun: if the noun is feminine plural (casas), the adjective must be feminine plural (rojas).',
+    power_pattern: '[Noun] + [Matching Adjective]',
+    real_world_examples: [
+      { before: 'Tengo un rojo carro y dos blancas camisas.', after: 'Tengo un carro rojo y dos camisas blancas.', english: 'I have a red car and two white shirts.', context: 'Describing your personal belongings' }
+    ],
+    common_pitfall_alert: "Don't put colors before the noun! It's 'camisa negra', never 'negra camisa'.",
     fullContent_en: `### 1. Adjective Agreement:
 - **Masculine Singular**: *un coche rojo* (a red car)
 - **Feminine Singular**: *una casa roja* (a red house)
@@ -405,6 +447,13 @@ Unlike English, descriptive adjectives come **after** the noun in Spanish:
     summary_en: 'Telling time in Spanish uses the verb SER (es for 1:00, son for other hours) and feminine articles. Numbers are essential for prices, dates, and hours.',
     summary_ar: 'الحديث عن الوقت في الإسبانية يستدعي استخدام فعل SER (نستخدم es للساعة الواحدة و son لباقي الساعات) مع أدوات التعريف المؤنثة.',
     formula: 'Es la una (1:00) | Son las + Hour (2:00 to 12:00)',
+    hack_title: "The Time Cheat Sheet: 'Es la' vs 'Son las'",
+    the_rule_in_plain_english: "When telling time, use 'Es la una' for 1 o'clock (because 1 is singular), and 'Son las' for every other hour (2 to 12). Add minutes with 'y' and subtract with 'menos'.",
+    power_pattern: '1:00 ➔ Es la una | 2:00-12:00 ➔ Son las [número]',
+    real_world_examples: [
+      { before: 'Son las una de la tarde.', after: 'Es la una de la tarde.', english: "It's 1:00 PM.", context: 'Checking the time for an appointment' }
+    ],
+    common_pitfall_alert: "Only hour 1 gets 'Es la'. Hours 2 through 12 always get 'Son las'!",
     fullContent_en: `### 1. Telling Time:
 - **Asking for time**: *¿Qué hora es?* (What time is it?)
 - **At 1:00**: *Es la una.* (It is one o'clock.)
@@ -470,6 +519,13 @@ Unlike English, descriptive adjectives come **after** the noun in Spanish:
     summary_en: 'In Spanish, gustar literally means "to be pleasing to". The subject is actually the thing that you like, and the person who likes it is represented by an indirect object pronoun.',
     summary_ar: 'في الإسبانية يعني فعل gustar حرفياً "يكون ساراً لـ". الفاعل الحقيقي في الجملة هو الشيء المحبوب، بينما الشخص المعجب يُعبر عنه بضمير مفعول غير مباشر.',
     formula: 'Indirect Pronoun (me/te/le/nos/os/les) + gusta (singular item) / gustan (plural items)',
+    hack_title: "The 'Reverse Like' Hack: Things Please You",
+    the_rule_in_plain_english: "Don't say 'I like X'. Instead, think 'X pleases me'. If 1 thing pleases you, use 'Me gusta'. If multiple things please you, add an 'N' ➔ 'Me gustan'.",
+    power_pattern: '[Me / Te / Le / Nos] + [gusta (singular) / gustan (plural)]',
+    real_world_examples: [
+      { before: 'Yo gusto los tacos y la música.', after: 'Me gustan los tacos y me gusta la música.', english: 'I like tacos and I like music.', context: 'Expressing personal preferences in conversation' }
+    ],
+    common_pitfall_alert: "Never say 'Yo gusto'! Start with 'Me gusta' for one item or action, and 'Me gustan' for plural items.",
     fullContent_en: `### Grammatical Mechanics of Gustar:
 Unlike English "I like books", Spanish reverses this to "Books please me" (*Me gustan los libros*).
 
@@ -541,6 +597,13 @@ Unlike English "I like books", Spanish reverses this to "Books please me" (*Me g
     summary_en: 'Saber is used for facts, information, and skills (knowing how to do something). Conocer is used for people, places, and artistic works (being familiar with).',
     summary_ar: 'يُستخدم Saber لمعرفة الحقائق، المعلومات، والمهارات (معرفة كيفية فعل شيء). بينما يُستخدم Conocer لمعرفة الأشخاص، الأماكن، وتذوق الأعمال الفنية (الدرابة والتعارف).',
     formula: 'Saber = Information / How-to | Conocer = Person / Place / Familiarity',
+    hack_title: "The 'Knowing' Split Hack: Facts vs People/Places",
+    the_rule_in_plain_english: "Use SABER when you know a fact, information, or how to do a skill ('Sé hablar español'). Use CONOCER when you are familiar with a person, city, or place ('Conozco a Juan', 'Conozco México').",
+    power_pattern: 'SABER = Facts & Skills ⚡ CONOCER = People & Places',
+    real_world_examples: [
+      { before: 'Sé a tu hermano y sé Madrid.', after: 'Conozco a tu hermano y conozco Madrid.', english: 'I know your brother and I know Madrid.', context: 'Talking about mutual acquaintances and travels' }
+    ],
+    common_pitfall_alert: "Always put 'a' before a person with CONOCER: 'Conozco A María', not 'Conozco María'.",
     fullContent_en: `### 1. When to use SABER:
 - **Facts & Information**: *Sé que Madrid es la capital.* (I know Madrid is the capital.)
 - **Skills (Saber + Infinitive)**: *Sé hablar español.* (I know how to speak Spanish.)
@@ -600,6 +663,13 @@ Unlike English "I like books", Spanish reverses this to "Books please me" (*Me g
     summary_en: 'Stem-changing verbs undergo a vowel change in their root (e->ie, o->ue, e->i) for all forms except nosotros and vosotros (the "boot" pattern).',
     summary_ar: 'الأفعال متغيرة الجذر يطرأ عليها تغير في حرف العلة الأصلي (e->ie, o->ue, e->i) في جميع التصريفات عدا nosotros و vosotros (رسم الحذاء البوت).',
     formula: 'Stem changes inside the Boot (Yo, Tú, Él, Ellos) | Outside remains regular!',
+    hack_title: 'The Boot Verb Hack: Changing Root Vowels Easily',
+    the_rule_in_plain_english: "Some verbs change their root vowel (e➔ie, o➔ue, e➔i) when spoken. Imagine drawing a boot over the conjugation table: change the vowel INSIDE the boot (Yo, Tú, Él, Ellos), but leave 'Nosotros' outside unchanged!",
+    power_pattern: 'Inside the Boot ➔ Stem Change | Nosotros ➔ Normal Regular Stem',
+    real_world_examples: [
+      { before: 'Yo quero comer y nosotros querimos café.', after: 'Quiero comer y queremos café.', english: 'I want to eat and we want coffee.', context: 'Ordering food for a group' }
+    ],
+    common_pitfall_alert: "Never change the vowel for 'Nosotros'! It stays regular: 'queremos', 'podemos', 'dormimos'.",
     fullContent_en: `### Vowel Change Families:
 1. **e -> ie** (*Querer* - to want):
    - Yo **quiero** | Nosotros **queremos**
@@ -667,6 +737,13 @@ Unlike English "I like books", Spanish reverses this to "Books please me" (*Me g
     summary_en: 'Direct object pronouns (lo, la, los, las) replace the noun that directly receives the action of the verb. They must match in gender and number and are placed before conjugated verbs.',
     summary_ar: 'تستبدل ضمائر المفعول المباشر (lo, la, los, las) الاسم الذي يقع عليه الفعل مباشرة. يجب أن تطابق الاسم جنساً وعدداً، وتوضع قبل الأفعال المصرفة.',
     formula: 'Pronoun + Conjugated Verb | Replaces the WHAT of the action',
+    hack_title: "The Shortcut Word Hack: Replacing Nouns with 'Lo' & 'La'",
+    the_rule_in_plain_english: "Instead of repeating the same noun 5 times ('I bought the book, I read the book, I love the book'), replace it with 'lo' (masculine) or 'la' (feminine) right BEFORE the action verb.",
+    power_pattern: '[lo / la / los / las] + [Conjugated Verb]',
+    real_world_examples: [
+      { before: 'Tengo la maleta. Voy a poner la maleta en el carro.', after: 'Tengo la maleta. La voy a poner en el carro.', english: "I have the suitcase. I'm going to put it in the car.", context: 'Packing and preparing for a trip' }
+    ],
+    common_pitfall_alert: "Put 'lo' or 'la' BEFORE the verb ('Lo tengo'), NOT after it ('Tengo lo')!",
     fullContent_en: `### Direct Object Pronoun Chart:
 - Me (me) | Nos (us)
 - Te (you) | Os (you all)
@@ -722,6 +799,13 @@ Unlike English "I like books", Spanish reverses this to "Books please me" (*Me g
     summary_en: 'Indirect object pronouns (me, te, le, nos, os, les) answer the question "to whom" or "for whom" the action is done.',
     summary_ar: 'تجيب ضمائر المفعول به غير المباشر (me, te, le, nos, os, les) عن السؤال "لمن" أو "لأجل من" يُفعل هذا الفعل.',
     formula: 'Pronoun + Conjugated Verb | Replaces the WHO is receiving the benefits',
+    hack_title: "The 'To Whom' Hack: Passing Things to People",
+    the_rule_in_plain_english: "Use 'me', 'te', 'le', 'nos', 'les' right before the verb to show who receives the action ('he bought ME a coffee' ➔ 'me compró un café'). Even if you name the person, keep 'le'!",
+    power_pattern: '[me / te / le / nos / les] + [Verb]',
+    real_world_examples: [
+      { before: 'Compré un regalo a mi mamá.', after: 'Le compré un regalo a mi mamá.', english: 'I bought a gift for my mom.', context: 'Shopping for family' }
+    ],
+    common_pitfall_alert: "Spanish speakers ALWAYS keep 'le' even when naming the person ('Le dije a Juan'), don't drop it!",
     fullContent_en: `### Indirect Object Pronoun Chart:
 - Me (to/for me) | Nos (to/for us)
 - Te (to/for you) | Os (to/for you all)
@@ -773,6 +857,13 @@ Spanish often uses BOTH the indirect pronoun and the specific recipient noun in 
     summary_en: 'When both direct and indirect object pronouns are used together, the indirect pronoun always comes first. If both begin with "L", the indirect pronoun changes to "se".',
     summary_ar: 'عند استخدام ضميري المفعول المباشر وغير المباشر معاً، يسبق غير المباشر المباشر دائماً. إذا بدأ كلا الضميرين بحرف L، يتحول الضمير غير المباشر إلى "se".',
     formula: 'Indirect (me/te/le/nos/les) + Direct (lo/la/los/las) | "le lo" becomes "se lo"',
+    hack_title: "The Double Pronoun & 'Se' Secret Hack",
+    the_rule_in_plain_english: "Always put the Person before the Thing ('Te lo doy' = I give it to you). If you have two 'L' pronouns in a row like 'le lo' or 'le la', change 'le' to 'SE' because 'le lo' sounds weird to Spanish ears!",
+    power_pattern: 'Person First + Thing Second ⚡ (le + lo ➔ SE LO)',
+    real_world_examples: [
+      { before: 'Le lo di a María.', after: 'Se lo di a María.', english: 'I gave it to María.', context: 'Explaining who received an item' }
+    ],
+    common_pitfall_alert: "Never say 'le lo' or 'les la'! Two L's together clash — change 'le/les' to 'se'!",
     fullContent_en: `### 1. Pronoun Order Rule:
 **People before things** (Indirect Object pronoun comes before Direct Object pronoun).
 - *Te lo doy.* (I give it to you. *Te* = to you, *lo* = it).
@@ -825,6 +916,13 @@ Therefore, **le** and **les** change to **se** when followed by **lo, la, los, l
     summary_en: 'The Preterite tense is used to talk about specific, completed actions in the past with definite starting and ending points.',
     summary_ar: 'يُستخدم زمن الماضي البسيط (Pretérito Indefinido) للتعبير عن أحداث محددة ومكتملة تماماً في الماضي مع تحديد بدايتها ونهايتها.',
     formula: 'Drop AR/ER/IR + Add Preterite Conjugation Endings',
+    hack_title: 'The Single-Event Past Hack: What Happened Yesterday',
+    the_rule_in_plain_english: "Use Preterite for completed, finished past events that happened at a specific moment in time ('Ayer hablé con María' = Yesterday I spoke with María). Think of it like taking a single photograph of the past.",
+    power_pattern: '[Specific Time Signal (Ayer/Anoche)] + [Preterite Verb]',
+    real_world_examples: [
+      { before: 'Ayer hablo con mi jefe.', after: 'Ayer hablé con mi jefe.', english: 'Yesterday I spoke with my boss.', context: 'Reporting on yesterday at work' }
+    ],
+    common_pitfall_alert: "Don't confuse finished past actions with routines! If it happened once at a specific time, use Preterite.",
     fullContent_en: `### 1. Regular Preterite Endings:
 - **-AR Verbs** (*Hablar*):
   - Yo: **-é** (*hablé*) | Nosotros: **-amos** (*hablamos*)
@@ -890,6 +988,13 @@ Therefore, **le** and **les** change to **se** when followed by **lo, la, los, l
     summary_en: 'The Imperfect tense sets the scene, narrates habitual past actions ("used to"), and describes ongoing background states, age, and time in the past.',
     summary_ar: 'يُستخدم زمن الماضي المستمر (Imperfecto) لوصف المشهد الخلفي، وتصوير العادات المتكررة في الماضي (كان يفعل)، ووصف الأحوال المستمرة، والعمر والوقت.',
     formula: 'AR -> -aba | ER/IR -> -ía (Used for routines and descriptions)',
+    hack_title: "The Nostalgia & Background Hack: 'Used to' & Background Scenery",
+    the_rule_in_plain_english: "Use Imperfect (-aba / -ía) to describe past habits ('I used to play' ➔ 'jugaba'), past background scenery ('It was raining' ➔ 'llovía'), age ('Tenía 10 años'), and time ('Eran las 3'). Only 3 verbs are irregular in this entire tense!",
+    power_pattern: '[AR ➔ -aba] ⚡ [ER/IR ➔ -ía]',
+    real_world_examples: [
+      { before: 'Cuando yo fui niño, yo comí dulces siempre.', after: 'Cuando era niño, comía dulces siempre.', english: 'When I was a kid, I used to eat candies all the time.', context: 'Reminiscing about childhood' }
+    ],
+    common_pitfall_alert: "The 3 irregular verbs are 'ser' (era), 'ir' (iba), and 'ver' (veía). Everything else follows -aba or -ía!",
     fullContent_en: `### 1. Regular Imperfect Endings:
 - **-AR Verbs** (*Hablar*):
   - Yo: **-aba** | Nosotros: **-ábamos**
@@ -955,6 +1060,13 @@ Therefore, **le** and **les** change to **se** when followed by **lo, la, los, l
     summary_en: 'Preterite narrates completed, punctual events on a timeline. Imperfect sets the scene, background, habitual past routines, age, and ongoing past descriptions.',
     summary_ar: 'الماضي البسيط (Pretérito) يسرد الأحداث المكتملة والمحددة زمنياً. بينما الماضي المستمر (Imperfecto) يصف الخلفية والمشهد، العادات المتكررة، العمر، والوصف في الماضي.',
     formula: 'Pretérito = Completed Action / Time Anchor | Imperfecto = Background / Habit / Description',
+    hack_title: 'The Movie Director Past Hack: Background Scenery vs Sudden Action',
+    the_rule_in_plain_english: "Think like a movie director: Imperfect is the background setting ('It was dark, I was walking home' ➔ 'Estaba oscuro, caminaba a casa'), and Preterite is the sudden action interrupting the scene ('Suddenly, a dog barked' ➔ 'De repente, un perro ladró')!",
+    power_pattern: 'IMPERFECT (Scenery & Habits) ⚡ PRETERITE (Action & Plot Points)',
+    real_world_examples: [
+      { before: 'Caminé a casa cuando de repente empezaba a llover.', after: 'Caminaba a casa cuando de repente empezó a llover.', english: 'I was walking home when suddenly it started to rain.', context: 'Storytelling about an unexpected event' }
+    ],
+    common_pitfall_alert: "If 'mientras' (while) is present, use Imperfect! If 'de repente' (suddenly) is present, use Preterite!",
     fullContent_en: `### The Movie Metaphor:
 - **Imperfect is the Background & Scenery**: The weather was warm (*hacía calor*), the birds were singing (*cantaban los pájaros*), and I was walking (*caminaba*).
 - **Preterite is the Sudden Action**: Suddenly, a dog appeared (*apareció un perro*) and barked (*ladró*).
@@ -1011,6 +1123,13 @@ Therefore, **le** and **les** change to **se** when followed by **lo, la, los, l
     summary_en: 'Reflexive verbs indicate that the subject performs the action on itself (e.g., wash oneself). They require a reflexive pronoun (me, te, se, nos, os, se).',
     summary_ar: 'الأفعال الانعكاسية تدل على أن الفاعل يمارس الفعل على نفسه (مثل: يغتسل). تتطلب استخدام ضمائر الانعكاس (me, te, se, nos, os, se).',
     formula: 'Reflexive Pronoun + Verb Conjugation | Replaces "oneself"',
+    hack_title: "The Self-Action Hack: Doing Things to Yourself",
+    the_rule_in_plain_english: "When you do an action to YOURSELF (shower, wake up, brush teeth), add 'me', 'te', 'se', or 'nos' before the verb. Always use 'el' / 'la' for body parts ('Me lavo las manos'), NEVER 'mi'!",
+    power_pattern: '[me / te / se / nos] + [Action Verb]',
+    real_world_examples: [
+      { before: 'Yo lavo mi pelo y visto mis ropas.', after: 'Me lavo el pelo y me visto.', english: 'I wash my hair and get dressed.', context: 'Describing morning routine' }
+    ],
+    common_pitfall_alert: "Never say 'Me lavo mi cara'! In Spanish, body parts get 'la cara', not 'mi cara' when using a reflexive verb.",
     fullContent_en: `### Reflexive Pronoun Chart:
 - Yo: **me** (*me lavo* - I wash myself)
 - Tú: **te** (*te lavas* - you wash yourself)
@@ -1066,6 +1185,13 @@ Reflexive verbs are identified in the dictionary by the **-se** attached to thei
     summary_en: 'POR looks backward to causes, motives, duration, exchanges, and means. PARA looks forward to destination, recipients, deadlines, and purposes.',
     summary_ar: 'حرف POR ينظر للخلف (السبب، الدافع، المدة الزمنية، التبادل، الوسيلة). بينما حرف PARA ينظر للأمام (الغاية، المستلم، الموعد النهائي، الوجهة، الهدف).',
     formula: 'POR = Cause / Motive / Through / Duration | PARA = Purpose / Recipient / Destination / Deadline',
+    hack_title: 'The Arrow Hack: Cause (POR ⬅️) vs Purpose (PARA ➡️)',
+    the_rule_in_plain_english: "POR looks BACKWARD at causes, reasons, motives, price, and duration ('Thanks FOR your help' ➔ 'Gracias por tu ayuda'). PARA points FORWARD at future goals, destinations, deadlines, and recipients ('This is FOR you' ➔ 'Para ti').",
+    power_pattern: 'POR = Reason / Motive / Exchange ⚡ PARA = Goal / Destination / Recipient',
+    real_world_examples: [
+      { before: 'Estudio por aprender y este regalo es por ti.', after: 'Estudio para aprender y este regalo es para ti.', english: 'I study to learn and this gift is for you.', context: 'Expressing goals and giving presents' }
+    ],
+    common_pitfall_alert: "When saying 'in order to do something', ALWAYS use PARA + Verb Infinitive ('Para comer', 'Para viajar')!",
     fullContent_en: `### Master Rules for POR:
 - **Reason / Cause**: *Gracias por tu ayuda.* (Thanks because of your help.)
 - **Duration / Time period**: *Estudié por tres horas.* (I studied for three hours.)
@@ -1127,6 +1253,13 @@ Reflexive verbs are identified in the dictionary by the **-se** attached to thei
     summary_en: 'Demonstrative adjectives point out specific nouns based on distance from the speaker. They must agree in gender and number with the noun.',
     summary_ar: 'تشير صفات الإشارة إلى أسماء محددة بناءً على المسافة الجغرافية من المتحدث. يجب أن تطابق الاسم الموصوف في الجنس والعدد.',
     formula: 'This & These have T’s (este/esta) | That & Those don’t (ese/esa) | Far away has AQU- (aquel/aquella)',
+    hack_title: "The Rhyme Hack for Pointing Things Out: 'This' Has a T!",
+    the_rule_in_plain_english: "Remember the golden rhyme: 'This and These have T's' (este / esta / estos / estas = right here). 'That and Those don't' (ese / esa / esos / esas = over there). For things way far away, use 'aquel'!",
+    power_pattern: "THIS (este/esta) ⚡ THAT (ese/esa) ⚡ THAT OVER THERE (aquel/aquella)",
+    real_world_examples: [
+      { before: 'Quiero ese taco de aquí y este de allá.', after: 'Quiero este taco de aquí y ese de allá.', english: 'I want this taco here and that one over there.', context: 'Ordering at a restaurant counter' }
+    ],
+    common_pitfall_alert: "Plural masculine for 'this' is 'ESTOS' (NOT 'estes', which doesn't exist)!",
     fullContent_en: `### Three Degrees of Distance in Spanish:
 
 1. **Close (Here - *aquí*):**
@@ -1196,6 +1329,13 @@ Reflexive verbs are identified in the dictionary by the **-se** attached to thei
     summary_en: 'The Subjunctive is a MOOD (not a tense) expressing unreality, desires, doubt, subjectivity, uncertainty, and recommendations.',
     summary_ar: 'صيغة الـ Subjuntivo هي نمط إعرابي (Mood) يعبر عن اللايقين، الأمنيات، الشك، المشاعر، والتوصيات عندما يختلف فاعل الجملة الأولى عن فاعل الجملة الثانية.',
     formula: 'Trigger Verb (Indicative) + QUE + Different Subject (Subjunctive)',
+    hack_title: "The Opposite Vowel Subjunctive Hack: Flipping Verbs for Desires & Doubts",
+    the_rule_in_plain_english: "When expressing a wish or doubt about someone else ('Quiero que...'), swap the verb vowels! -AR verbs get 'E' endings (hablar ➔ hable), and -ER/-IR verbs get 'A' endings (comer ➔ coma, vivir ➔ viva)!",
+    power_pattern: 'AR Verbs ➔ End with -E ⚡ ER/IR Verbs ➔ End with -A',
+    real_world_examples: [
+      { before: 'Quiero que tú hablas español y comes bien.', after: 'Quiero que tú hables español y comas bien.', english: 'I want you to speak Spanish and eat well.', context: 'Expressing wishes for a friend' }
+    ],
+    common_pitfall_alert: "If you are talking about yourself ('Quiero comer'), use Infinitive! Only use Subjunctive when there's 'QUE' and a DIFFERENT person!",
     fullContent_en: `### The W.E.I.R.D.O. Triggers:
 1. **Wishes / Desires**: *Quiero que vengas.* (I want you to come.)
 2. **Emotions**: *Me alegro de que estés aquí.* (I am glad that you are here.)
@@ -1256,6 +1396,13 @@ Reflexive verbs are identified in the dictionary by the **-se** attached to thei
     summary_en: 'The Present Perfect is used to talk about actions that started in the past but are still relevant to the present. It uses the helper verb HABER + Past Participle.',
     summary_ar: 'يُستخدم زمن الماضي القريب (Present Perfect) للتحدث عن أفعال وقعت مؤخراً ولها اتصال بالزمن الحاضر. يُصاغ باستخدام الفعل المساعد HABER + اسم المفعول.',
     formula: 'Haber (he/has/ha/hemos/habéis/han) + Participle (AR -> ado, ER/IR -> ido)',
+    hack_title: "The 'Have Done' Recent Action Hack: Easy Compound Past",
+    the_rule_in_plain_english: "To say 'I have done' or 'Have you seen?', combine 'he / has / ha / hemos' with a verb ending in -ADO (for -AR verbs) or -IDO (for -ER/-IR verbs). Never separate 'haber' from its participle!",
+    power_pattern: '[he / has / ha / hemos] + [-ado / -ido]',
+    real_world_examples: [
+      { before: 'Yo he comiendo y tú has hablé.', after: 'Yo he comido y tú has hablado.', english: "I have eaten and you have spoken.", context: 'Discussing recent actions today' }
+    ],
+    common_pitfall_alert: "Watch out for irregulars: 'hecho' (done), 'visto' (seen), 'escrito' (written), 'dicho' (said)!",
     fullContent_en: `### 1. Helper Verb "Haber" Conjugation:
 - Yo **he** | Nosotros **hemos**
 - Tú **has** | Vosotros **habéis**

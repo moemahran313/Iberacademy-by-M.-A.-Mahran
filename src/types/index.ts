@@ -129,6 +129,16 @@ export interface GrammarTopic {
   formula?: string;
   fullContent_en: string;
   fullContent_ar: string;
+  hack_title?: string;
+  the_rule_in_plain_english?: string;
+  power_pattern?: string;
+  real_world_examples?: {
+    before?: string;
+    after: string;
+    english: string;
+    context: string;
+  }[];
+  common_pitfall_alert?: string;
   examples: {
     es: string;
     en: string;

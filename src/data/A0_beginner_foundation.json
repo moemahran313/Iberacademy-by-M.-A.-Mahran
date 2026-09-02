@@ -1,0 +1,382 @@
+[
+  {
+    "unit_id": "unit_0_1",
+    "title": "Unit 0.1: Ordering Your First Drink",
+    "category": "Cafe & Survival",
+    "emoji": "☕",
+    "anchor_words": [
+      { "word": "Hola", "translation": "Hello / Hi", "ipa": "/ˈola/", "phonetic_guide": "OH-lah", "audio_cue": "Hola", "emoji": "👋" },
+      { "word": "Un", "translation": "A / One (masculine)", "ipa": "/un/", "phonetic_guide": "OON", "audio_cue": "Un", "emoji": "1️⃣" },
+      { "word": "Café", "translation": "Coffee", "ipa": "/kaˈfe/", "phonetic_guide": "kah-FEH", "audio_cue": "Café", "emoji": "☕" },
+      { "word": "Por favor", "translation": "Please", "ipa": "/poɾ faˈβoɾ/", "phonetic_guide": "por fah-VOR", "audio_cue": "Por favor", "emoji": "🙏" },
+      { "word": "Quiero", "translation": "I want / I would like", "ipa": "/ˈkjeɾo/", "phonetic_guide": "KYEH-roh", "audio_cue": "Quiero", "emoji": "🙋‍♂️" }
+    ],
+    "chunk_building_ladder": [
+      { "step": 1, "text_es": "Café", "text_en": "Coffee", "audio_text": "Café", "explanation": "Step 1: Start with the item." },
+      { "step": 2, "text_es": "Un café", "text_en": "A coffee", "audio_text": "Un café", "explanation": "Step 2: Add 'a' (Un)." },
+      { "step": 3, "text_es": "Un café, por favor", "text_en": "A coffee, please", "audio_text": "Un café, por favor", "explanation": "Step 3: Add courtesy." },
+      { "step": 4, "text_es": "Quiero un café, por favor", "text_en": "I want a coffee, please", "audio_text": "Quiero un café, por favor", "explanation": "Step 4: Full survival sentence!" }
+    ],
+    "zero_jargon_explanation": "In Spanish, you can order easily by placing 'Quiero' (I want) before any drink and adding 'por favor' at the end.",
+    "micro_drills": [
+      {
+        "id": "u01_d1",
+        "type": "tap_to_translate",
+        "prompt": "How do you say 'Please' in Spanish?",
+        "audio_text": "Por favor",
+        "options": ["Por favor", "Hola", "Café", "Quiero"],
+        "correct_answer": "Por favor",
+        "explanation": "'Por favor' literally means 'for favor' and is used everywhere for 'please'."
+      },
+      {
+        "id": "u01_d2",
+        "type": "sentence_builder",
+        "prompt": "Assemble: 'A coffee, please'",
+        "audio_text": "Un café, por favor",
+        "options": ["Un", "café,", "por", "favor"],
+        "correct_answer": "Un café, por favor",
+        "explanation": "Combine 'Un' + 'café' + 'por favor'."
+      },
+      {
+        "id": "u01_d3",
+        "type": "word_swap",
+        "prompt": "Swap 'Café' to order 'Tea' (Té): 'Quiero un _____ , por favor'",
+        "audio_text": "té",
+        "options": ["té", "hola", "un", "gracias"],
+        "correct_answer": "té",
+        "explanation": "Replacing 'café' with 'té' lets you order tea instantly using the exact same structure."
+      },
+      {
+        "id": "u01_d4",
+        "type": "audio_match",
+        "prompt": "Listen and select the word spoken:",
+        "audio_text": "Quiero",
+        "options": ["Quiero", "Café", "Hola", "Favor"],
+        "correct_answer": "Quiero",
+        "explanation": "'Quiero' means 'I want' or 'I would like'."
+      },
+      {
+        "id": "u01_d5",
+        "type": "visual_match",
+        "prompt": "Match '☕ Un café'",
+        "audio_text": "Un café",
+        "options": ["A coffee", "A tea", "Water", "Please"],
+        "correct_answer": "A coffee",
+        "explanation": "☕ represents 'Un café'."
+      },
+      {
+        "id": "u01_d6",
+        "type": "rapid_choice",
+        "prompt": "Select the polite opening greeting:",
+        "audio_text": "Hola",
+        "options": ["Hola", "Adiós", "Gracias", "Té"],
+        "correct_answer": "Hola",
+        "explanation": "'Hola' is the universal greeting to start any interaction."
+      }
+    ]
+  },
+  {
+    "unit_id": "unit_0_2",
+    "title": "Unit 0.2: Water & Refreshments",
+    "category": "Cafe & Survival",
+    "emoji": "🥤",
+    "anchor_words": [
+      { "word": "Agua", "translation": "Water", "ipa": "/ˈaɣwa/", "phonetic_guide": "AH-gwah", "audio_cue": "Agua", "emoji": "💧" },
+      { "word": "Sin", "translation": "Without", "ipa": "/sin/", "phonetic_guide": "SEEN", "audio_cue": "Sin", "emoji": "🚫" },
+      { "word": "Hielo", "translation": "Ice", "ipa": "/ˈjelo/", "phonetic_guide": "YEH-loh", "audio_cue": "Hielo", "emoji": "🧊" },
+      { "word": "Con", "translation": "With", "ipa": "/kon/", "phonetic_guide": "KOHN", "audio_cue": "Con", "emoji": "➕" },
+      { "word": "Gas", "translation": "Gas / Carbonation", "ipa": "/ɡas/", "phonetic_guide": "GAHS", "audio_cue": "Gas", "emoji": "🫧" }
+    ],
+    "chunk_building_ladder": [
+      { "step": 1, "text_es": "Agua", "text_en": "Water", "audio_text": "Agua", "explanation": "Step 1: The item." },
+      { "step": 2, "text_es": "Agua sin hielo", "text_en": "Water without ice", "audio_text": "Agua sin hielo", "explanation": "Step 2: Add modifier (without ice)." },
+      { "step": 3, "text_es": "Un agua sin hielo", "text_en": "A water without ice", "audio_text": "Un agua sin hielo", "explanation": "Step 3: Add article." },
+      { "step": 4, "text_es": "Quiero un agua sin hielo, por favor", "text_en": "I want a water without ice, please", "audio_text": "Quiero un agua sin hielo, por favor", "explanation": "Step 4: Complete request!" }
+    ],
+    "zero_jargon_explanation": "Use 'sin' (without) or 'con' (with) right after any food or drink item to customize your order instantly.",
+    "micro_drills": [
+      {
+        "id": "u02_d1",
+        "type": "tap_to_translate",
+        "prompt": "How do you say 'Ice' in Spanish?",
+        "audio_text": "Hielo",
+        "options": ["Hielo", "Agua", "Gas", "Sin"],
+        "correct_answer": "Hielo",
+        "explanation": "'Hielo' is pronounced YEH-loh (the H is silent)."
+      },
+      {
+        "id": "u02_d2",
+        "type": "sentence_builder",
+        "prompt": "Build: 'Water without ice'",
+        "audio_text": "Agua sin hielo",
+        "options": ["Agua", "sin", "hielo"],
+        "correct_answer": "Agua sin hielo",
+        "explanation": "'Agua' + 'sin' + 'hielo'."
+      },
+      {
+        "id": "u02_d3",
+        "type": "word_swap",
+        "prompt": "Swap 'sin' for 'with' (con): 'Agua _____ gas'",
+        "audio_text": "con",
+        "options": ["con", "sin", "por", "de"],
+        "correct_answer": "con",
+        "explanation": "'Con' means with, making 'Agua con gas' sparkling water."
+      },
+      {
+        "id": "u02_d4",
+        "type": "audio_match",
+        "prompt": "Listen and match:",
+        "audio_text": "Sin hielo",
+        "options": ["Sin hielo", "Con hielo", "Agua con gas", "Un café"],
+        "correct_answer": "Sin hielo",
+        "explanation": "'Sin hielo' means without ice."
+      },
+      {
+        "id": "u02_d5",
+        "type": "visual_match",
+        "prompt": "Match '🧊 Hielo'",
+        "audio_text": "Hielo",
+        "options": ["Ice", "Water", "Coffee", "Tea"],
+        "correct_answer": "Ice",
+        "explanation": "🧊 is Hielo."
+      },
+      {
+        "id": "u02_d6",
+        "type": "rapid_choice",
+        "prompt": "What means 'Sparkling water'?",
+        "audio_text": "Agua con gas",
+        "options": ["Agua con gas", "Agua sin gas", "Agua con hielo", "Agua de limón"],
+        "correct_answer": "Agua con gas",
+        "explanation": "'Gas' refers to carbonation."
+      }
+    ]
+  },
+  {
+    "unit_id": "unit_0_3",
+    "title": "Unit 0.3: Paying the Bill & Courtesy",
+    "category": "Cafe & Survival",
+    "emoji": "💳",
+    "anchor_words": [
+      { "word": "La cuenta", "translation": "The bill / check", "ipa": "/la ˈkwenta/", "phonetic_guide": "lah KWEHN-tah", "audio_cue": "La cuenta", "emoji": "🧾" },
+      { "word": "Gracias", "translation": "Thank you", "ipa": "/ˈɡɾasjas/", "phonetic_guide": "GRAH-syahs", "audio_cue": "Gracias", "emoji": "🙏" },
+      { "word": "De nada", "translation": "You're welcome", "ipa": "/de ˈnaða/", "phonetic_guide": "deh NAH-dah", "audio_cue": "De nada", "emoji": "😊" },
+      { "word": "Tarjeta", "translation": "Card (credit/debit)", "ipa": "/taɾˈxeta/", "phonetic_guide": "tar-HEH-tah", "audio_cue": "Tarjeta", "emoji": "💳" },
+      { "word": "Efectivo", "translation": "Cash", "ipa": "/efekˈtiβo/", "phonetic_guide": "eh-fehk-TEE-boh", "audio_cue": "Efectivo", "emoji": "💵" }
+    ],
+    "chunk_building_ladder": [
+      { "step": 1, "text_es": "La cuenta", "text_en": "The bill", "audio_text": "La cuenta", "explanation": "Step 1: The key noun." },
+      { "step": 2, "text_es": "La cuenta, por favor", "text_en": "The bill, please", "audio_text": "La cuenta, por favor", "explanation": "Step 2: Universal request at restaurants." },
+      { "step": 3, "text_es": "Pago con tarjeta", "text_en": "I pay with card", "audio_text": "Pago con tarjeta", "explanation": "Step 3: State payment method." },
+      { "step": 4, "text_es": "La cuenta, por favor. Pago con tarjeta.", "text_en": "The bill, please. I pay with card.", "audio_text": "La cuenta, por favor. Pago con tarjeta.", "explanation": "Step 4: Smooth transaction complete." }
+    ],
+    "zero_jargon_explanation": "Raise your hand slightly at a restaurant and say 'La cuenta, por favor' to ask for the bill politely.",
+    "micro_drills": [
+      {
+        "id": "u03_d1",
+        "type": "tap_to_translate",
+        "prompt": "How do you say 'The bill' in Spanish?",
+        "audio_text": "La cuenta",
+        "options": ["La cuenta", "Gracias", "Tarjeta", "Efectivo"],
+        "correct_answer": "La cuenta",
+        "explanation": "'La cuenta' means the check/bill."
+      },
+      {
+        "id": "u03_d2",
+        "type": "sentence_builder",
+        "prompt": "Build: 'The bill, please'",
+        "audio_text": "La cuenta, por favor",
+        "options": ["La", "cuenta,", "por", "favor"],
+        "correct_answer": "La cuenta, por favor",
+        "explanation": "Standard polite request."
+      },
+      {
+        "id": "u03_d3",
+        "type": "word_swap",
+        "prompt": "Swap 'tarjeta' (card) for 'cash' (efectivo): 'Pago con _____ '",
+        "audio_text": "efectivo",
+        "options": ["efectivo", "cuenta", "gracias", "por favor"],
+        "correct_answer": "efectivo",
+        "explanation": "'Efectivo' means paper cash money."
+      },
+      {
+        "id": "u03_d4",
+        "type": "audio_match",
+        "prompt": "Listen and match:",
+        "audio_text": "Gracias",
+        "options": ["Gracias", "De nada", "La cuenta", "Efectivo"],
+        "correct_answer": "Gracias",
+        "explanation": "'Gracias' = Thank you."
+      },
+      {
+        "id": "u03_d5",
+        "type": "visual_match",
+        "prompt": "Match '💳 Tarjeta'",
+        "audio_text": "Tarjeta",
+        "options": ["Card", "Cash", "Bill", "Water"],
+        "correct_answer": "Card",
+        "explanation": "💳 represents Tarjeta."
+      },
+      {
+        "id": "u03_d6",
+        "type": "rapid_choice",
+        "prompt": "How to respond when someone says 'Gracias'?",
+        "audio_text": "De nada",
+        "options": ["De nada", "Por favor", "Hola", "La cuenta"],
+        "correct_answer": "De nada",
+        "explanation": "'De nada' literally means 'of nothing' (You're welcome)."
+      }
+    ]
+  },
+  {
+    "unit_id": "unit_0_4",
+    "title": "Unit 0.4: Essential Greetings & Time of Day",
+    "category": "Social & Courtesy",
+    "emoji": "🌅",
+    "anchor_words": [
+      { "word": "Buenos días", "translation": "Good morning", "ipa": "/ˈbwenos ˈdjas/", "phonetic_guide": "BWAY-nohs DEE-ahs", "audio_cue": "Buenos días", "emoji": "🌅" },
+      { "word": "Buenas tardes", "translation": "Good afternoon", "ipa": "/ˈbwenas ˈtaɾðes/", "phonetic_guide": "BWAY-nahs TAR-dehs", "audio_cue": "Buenas tardes", "emoji": "☀️" },
+      { "word": "Buenas noches", "translation": "Good evening / night", "ipa": "/ˈbwenas ˈnotʃes/", "phonetic_guide": "BWAY-nahs NOH-chehs", "audio_cue": "Buenas noches", "emoji": "🌙" },
+      { "word": "Mucho gusto", "translation": "Nice to meet you", "ipa": "/ˈmutʃo ˈɣusto/", "phonetic_guide": "MOO-choh GOOS-toh", "audio_cue": "Mucho gusto", "emoji": "🤝" },
+      { "word": "Adiós", "translation": "Goodbye", "ipa": "/aˈðjos/", "phonetic_guide": "ah-DYOHS", "audio_cue": "Adiós", "emoji": "👋" }
+    ],
+    "chunk_building_ladder": [
+      { "step": 1, "text_es": "Hola", "text_en": "Hello", "audio_text": "Hola", "explanation": "Step 1: Basic greeting." },
+      { "step": 2, "text_es": "Hola, buenos días", "text_en": "Hello, good morning", "audio_text": "Hola, buenos días", "explanation": "Step 2: Add time of day." },
+      { "step": 3, "text_es": "Hola, mucho gusto", "text_en": "Hello, nice to meet you", "audio_text": "Hola, mucho gusto", "explanation": "Step 3: Introduction greeting." },
+      { "step": 4, "text_es": "Hola, buenos días, mucho gusto", "text_en": "Hello, good morning, nice to meet you", "audio_text": "Hola, buenos días, mucho gusto", "explanation": "Step 4: Polished initial contact!" }
+    ],
+    "zero_jargon_explanation": "'Buenos días' is used until noon, 'Buenas tardes' from noon until sunset, and 'Buenas noches' after dark.",
+    "micro_drills": [
+      {
+        "id": "u04_d1",
+        "type": "tap_to_translate",
+        "prompt": "How do you say 'Good afternoon'?",
+        "audio_text": "Buenas tardes",
+        "options": ["Buenas tardes", "Buenos días", "Buenas noches", "Mucho gusto"],
+        "correct_answer": "Buenas tardes",
+        "explanation": "'Tardes' refers to afternoon hours."
+      },
+      {
+        "id": "u04_d2",
+        "type": "sentence_builder",
+        "prompt": "Build: 'Hello, good morning'",
+        "audio_text": "Hola, buenos días",
+        "options": ["Hola,", "buenos", "días"],
+        "correct_answer": "Hola, buenos días",
+        "explanation": "Friendly morning opening."
+      },
+      {
+        "id": "u04_d3",
+        "type": "word_swap",
+        "prompt": "Swap 'días' for 'night' (noches): 'Buenas _____ '",
+        "audio_text": "noches",
+        "options": ["noches", "días", "tardes", "gusto"],
+        "correct_answer": "noches",
+        "explanation": "'Buenas noches' is used after dark."
+      },
+      {
+        "id": "u04_d4",
+        "type": "audio_match",
+        "prompt": "Listen and match:",
+        "audio_text": "Mucho gusto",
+        "options": ["Mucho gusto", "Adiós", "Buenos días", "De nada"],
+        "correct_answer": "Mucho gusto",
+        "explanation": "'Mucho gusto' = Pleasure to meet you."
+      },
+      {
+        "id": "u04_d5",
+        "type": "visual_match",
+        "prompt": "Match '🌙 Buenas noches'",
+        "audio_text": "Buenas noches",
+        "options": ["Good evening", "Good morning", "Good afternoon", "Nice to meet you"],
+        "correct_answer": "Good evening",
+        "explanation": "🌙 represents night."
+      },
+      {
+        "id": "u04_d6",
+        "type": "rapid_choice",
+        "prompt": "Which greeting is used at 9:00 AM?",
+        "audio_text": "Buenos días",
+        "options": ["Buenos días", "Buenas tardes", "Buenas noches", "Adiós"],
+        "correct_answer": "Buenos días",
+        "explanation": "'Buenos días' covers morning hours."
+      }
+    ]
+  },
+  {
+    "unit_id": "unit_0_5",
+    "title": "Unit 0.5: Tacos & Street Food Basics",
+    "category": "Dining & Food",
+    "emoji": "🌮",
+    "anchor_words": [
+      { "word": "Taco", "translation": "Taco", "ipa": "/ˈtako/", "phonetic_guide": "TAH-koh", "audio_cue": "Taco", "emoji": "🌮" },
+      { "word": "Dos", "translation": "Two", "ipa": "/dos/", "phonetic_guide": "DOHS", "audio_cue": "Dos", "emoji": "2️⃣" },
+      { "word": "Tres", "translation": "Three", "ipa": "/tɾes/", "phonetic_guide": "TREHS", "audio_cue": "Tres", "emoji": "3️⃣" },
+      { "word": "Salsa", "translation": "Sauce / Salsa", "ipa": "/ˈsalsa/", "phonetic_guide": "SAHL-sah", "audio_cue": "Salsa", "emoji": "🌶️" },
+      { "word": "Todo", "translation": "Everything", "ipa": "/ˈtoðo/", "phonetic_guide": "TOH-doh", "audio_cue": "Todo", "emoji": "✨" }
+    ],
+    "chunk_building_ladder": [
+      { "step": 1, "text_es": "Tacos", "text_en": "Tacos", "audio_text": "Tacos", "explanation": "Step 1: Item." },
+      { "step": 2, "text_es": "Tres tacos", "text_en": "Three tacos", "audio_text": "Tres tacos", "explanation": "Step 2: Add quantity." },
+      { "step": 3, "text_es": "Tres tacos con todo", "text_en": "Three tacos with everything", "audio_text": "Tres tacos con todo", "explanation": "Step 3: Add toppings option ('con todo')." },
+      { "step": 4, "text_es": "Dame tres tacos con todo, por favor", "text_en": "Give me three tacos with everything, please", "audio_text": "Dame tres tacos con todo, por favor", "explanation": "Step 4: Perfect street taco order!" }
+    ],
+    "zero_jargon_explanation": "'Con todo' at a Mexican street stand means with cilantro, onions, and standard house salsa.",
+    "micro_drills": [
+      {
+        "id": "u05_d1",
+        "type": "tap_to_translate",
+        "prompt": "What does 'Con todo' mean at a taco stand?",
+        "audio_text": "Con todo",
+        "options": ["With everything", "Without spicy", "To go", "Only salsa"],
+        "correct_answer": "With everything",
+        "explanation": "'Todo' = everything."
+      },
+      {
+        "id": "u05_d2",
+        "type": "sentence_builder",
+        "prompt": "Build: 'Two tacos, please'",
+        "audio_text": "Dos tacos, por favor",
+        "options": ["Dos", "tacos,", "por", "favor"],
+        "correct_answer": "Dos tacos, por favor",
+        "explanation": "Standard taco ordering pattern."
+      },
+      {
+        "id": "u05_d3",
+        "type": "word_swap",
+        "prompt": "Swap 'dos' for 'three' (tres): ' _____ tacos, por favor'",
+        "audio_text": "Tres",
+        "options": ["Tres", "Dos", "Un", "Todo"],
+        "correct_answer": "Tres",
+        "explanation": "'Tres' means 3."
+      },
+      {
+        "id": "u05_d4",
+        "type": "audio_match",
+        "prompt": "Listen and match:",
+        "audio_text": "Salsa",
+        "options": ["Salsa", "Taco", "Todo", "Tres"],
+        "correct_answer": "Salsa",
+        "explanation": "'Salsa' is sauce/salsa."
+      },
+      {
+        "id": "u05_d5",
+        "type": "visual_match",
+        "prompt": "Match '🌮 Taco'",
+        "audio_text": "Taco",
+        "options": ["Taco", "Water", "Bill", "Coffee"],
+        "correct_answer": "Taco",
+        "explanation": "🌮 is Taco."
+      },
+      {
+        "id": "u05_d6",
+        "type": "rapid_choice",
+        "prompt": "How to ask for 3 tacos?",
+        "audio_text": "Tres tacos",
+        "options": ["Tres tacos", "Dos tacos", "Un taco", "Cuatro tacos"],
+        "correct_answer": "Tres tacos",
+        "explanation": "'Tres' = 3."
+      }
+    ]
+  }
+]

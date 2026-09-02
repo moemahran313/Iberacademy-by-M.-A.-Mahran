@@ -24,6 +24,7 @@ import { StreakCounterWidget } from './StreakCounterWidget';
 import { SRSDailyReviewWidget } from './SRSDailyReviewWidget';
 import { GlobalLeague } from './GlobalLeague';
 import { soundEffects } from '../utils/audio';
+import { useApp } from '../context/AppContext';
 
 interface ReadingDashboardProps {
   userProgress: UserProgress;
@@ -43,6 +44,7 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
   onOpenVocabulary
 }) => {
   const [mobileTab, setMobileTab] = React.useState<'reading' | 'stats'>('reading');
+  const { setActiveTab } = useApp();
 
   const currentLevel = userProgress.currentLevel || 'A1';
   const totalWordsRead = userProgress.totalWordsRead || 0;
@@ -232,6 +234,36 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
         
         {/* --- TAB 1: ACTIVE READING & PATHWAYS --- */}
         <div className={`${mobileTab === 'reading' ? 'block' : 'hidden'} sm:block space-y-6 sm:space-y-10`}>
+          {/* Absolute Zero (A0) Beginner Foundation Banner */}
+          <motion.div
+            variants={bentoItemVariants}
+            className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 dark:border-amber-500/20 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
+          >
+            <div className="space-y-2 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold text-[11px]">
+                <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>Zero Prior Spanish Required</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight">
+                Absolute Zero (A0) Beginner Foundation
+              </h2>
+              <p className="text-xs text-stone-600 dark:text-stone-300 font-medium leading-relaxed">
+                25 micro-scaffolded units that eliminate cognitive friction, grammar jargon, and sudden jumps. Start from line 1 with micro-sound anchors, chunk ladders, and survival sentences.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                soundEffects.playPop();
+                setActiveTab('a0_foundation');
+              }}
+              className="px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 transition shrink-0"
+            >
+              <span>Explore 25 A0 Units</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
+
           {/* Daily Spaced Repetition (SRS) Review Cards Deck */}
           <motion.div variants={bentoItemVariants}>
             <SRSDailyReviewWidget

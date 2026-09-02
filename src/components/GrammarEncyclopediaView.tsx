@@ -33,10 +33,12 @@ import {
   PATTERN_DISCOVERY_ITEMS,
   MINIMAL_PAIR_CARDS,
   PROCESSING_INSTRUCTION_DRILLS,
-  SYNTAX_REPAIR_CHALLENGES
+  SYNTAX_REPAIR_CHALLENGES,
+  TEN_POINT_GRAMMAR_MATRICES
 } from '../data/slaGrammarEngine';
 import { speakSpanish, soundEffects } from '../utils/audio';
 import { useApp } from '../context/AppContext';
+import { VisualMatchingQuiz } from './VisualMatchingQuiz';
 import { ReportGrammarIssueModal } from './ReportGrammarIssueModal';
 
 interface GrammarEncyclopediaViewProps {
@@ -50,7 +52,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
 }) => {
   const { setActiveTab, setGrammarPracticeTopic } = useApp();
   const [activeTabMode, setActiveTabMode] = useState<
-    'path' | 'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'encyclopedia'
+    'path' | 'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'visual_mapping' | 'encyclopedia'
   >('path');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
@@ -385,6 +387,18 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         </button>
 
         <button
+          onClick={() => setActiveTabMode('visual_mapping')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+            activeTabMode === 'visual_mapping'
+              ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-950 dark:text-amber-300" />
+          <span>Rosetta Visual Engine</span>
+        </button>
+
+        <button
           onClick={() => setActiveTabMode('encyclopedia')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'encyclopedia'
@@ -411,6 +425,9 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ----------------- TAB: ROSETTA VISUAL MAPPING ENGINE ----------------- */}
+      {activeTabMode === 'visual_mapping' && <VisualMatchingQuiz />}
 
       {/* ----------------- TAB: PATH (THE ULTIMATE GAMIFIED MAP) ----------------- */}
       {activeTabMode === 'path' && (
@@ -1505,6 +1522,71 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                   </div>
                 </div>
               </div>
+
+              {/* 10-Point Demonstration Matrix */}
+              {(() => {
+                const matrix = TEN_POINT_GRAMMAR_MATRICES.find(m => m.topicId === selectedTopic.id);
+                if (!matrix) return null;
+                return (
+                  <div className="p-5 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-stone-800/80 dark:to-stone-900 border border-amber-200 dark:border-stone-700 rounded-2xl space-y-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-amber-200 dark:border-stone-700 pb-3 gap-2">
+                      <div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
+                          🔥 10-Point Demonstration Matrix
+                        </span>
+                        <h3 className="text-lg font-black text-stone-900 dark:text-white mt-1">
+                          {matrix.title}
+                        </h3>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-stone-800 px-3 py-1 rounded-xl w-fit">
+                        {matrix.formula}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-stone-700 dark:text-stone-300 font-medium">
+                      💡 {matrix.plain_english_concept}
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {matrix.ten_point_matrix.map((point) => (
+                        <div
+                          key={point.point_number}
+                          className="p-3.5 bg-white dark:bg-stone-800 rounded-xl border border-amber-200/80 dark:border-stone-700 space-y-1.5 shadow-xs"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-mono font-black text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-stone-900 px-2 py-0.5 rounded">
+                              {point.label}
+                            </span>
+                            <span className="text-[9px] font-mono text-stone-400">
+                              #{point.point_number}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => speakSpanish(point.es)}
+                            className="text-left font-bold text-xs sm:text-sm text-stone-900 dark:text-white flex items-center gap-1.5 hover:text-amber-500 transition cursor-pointer"
+                          >
+                            <span>🇪🇸 {point.es}</span>
+                            <Volume2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          </button>
+
+                          <p className="text-[11px] text-stone-600 dark:text-stone-300">
+                            🇬🇧 {point.en}
+                          </p>
+                          {point.ar && (
+                            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 font-arabic text-right" dir="rtl">
+                              🇦🇪 {point.ar}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-stone-400 italic">
+                            🗣️ [{point.phonetic}] • 💡 {point.note}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Examples */}
               <div className="space-y-3 pt-4 border-t border-stone-100 dark:border-stone-800">

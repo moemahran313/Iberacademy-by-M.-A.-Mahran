@@ -15,6 +15,8 @@ import { PlacementTestModal } from './components/PlacementTestModal';
 import { LingLooperGame } from './components/LingLooperGame';
 import { ProfileView } from './components/ProfileView';
 import { CurriculumPlannerView } from './components/CurriculumPlannerView';
+import { A0BeginnerFoundationView } from './components/A0BeginnerFoundationView';
+import { OralShadowingDrill } from './components/OralShadowingDrill';
 import { OnboardingModal } from './components/OnboardingModal';
 import { AuthModal } from './components/AuthModal';
 import { WelcomeVerificationModal } from './components/WelcomeVerificationModal';
@@ -99,6 +101,15 @@ function AppContent() {
                   />
                 )}
 
+                {activeTab === 'a0_foundation' && (
+                  <A0BeginnerFoundationView
+                    onAddXp={(amount) => {
+                      setUserProgress(prev => ({ ...prev, xp: prev.xp + amount }));
+                    }}
+                    onBackToDashboard={() => setActiveTab('dashboard')}
+                  />
+                )}
+
                 {activeTab === 'planner' && (
                   <CurriculumPlannerView
                     userProgress={userProgress}
@@ -155,6 +166,17 @@ function AppContent() {
                   <LingLooperGame
                     userProgress={userProgress}
                     setUserProgress={setUserProgress}
+                  />
+                )}
+
+                {activeTab === 'shadowing' && (
+                  <OralShadowingDrill
+                    userProgress={userProgress}
+                    setUserProgress={setUserProgress}
+                    onAddXp={(amount) => {
+                      setUserProgress(prev => ({ ...prev, xp: prev.xp + amount }));
+                    }}
+                    onBackToDashboard={() => setActiveTab('dashboard')}
                   />
                 )}
 

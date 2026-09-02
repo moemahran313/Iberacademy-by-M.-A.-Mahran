@@ -1,3 +1,32 @@
+export interface DemonstrationPoint {
+  point_number: number;
+  point_type:
+    | 'affirmative_yo'
+    | 'negative_yo'
+    | 'question_tu'
+    | 'plural_subject'
+    | 'desire_need'
+    | 'real_dialogue'
+    | 'mistake_correction'
+    | 'mexican_dialect'
+    | 'polite_formal'
+    | 'rapid_trigger';
+  label: string;
+  es: string;
+  en: string;
+  ar?: string;
+  phonetic: string;
+  note: string;
+}
+
+export interface GrammarRuleMatrix {
+  topicId: string;
+  title: string;
+  formula: string;
+  plain_english_concept: string;
+  ten_point_matrix: DemonstrationPoint[];
+}
+
 export interface PatternDiscoveryItem {
   id: string;
   topicId: string;
@@ -505,3 +534,217 @@ export const SYNTAX_REPAIR_CHALLENGES: SyntaxRepairChallenge[] = [
     explanation_ar: 'في الإسبانية، يندمج حرف الجر a بالضرورة مع أدوات التعريف el ليكونا al.'
   }
 ];
+
+export const TEN_POINT_GRAMMAR_MATRICES: GrammarRuleMatrix[] = [
+  {
+    topicId: 'g-tener-expressions',
+    title: 'The Verb TENER (To Have / Expressions)',
+    formula: 'TENER + [Age / Hunger / Thirst / Cold / Heat / Fear / Need]',
+    plain_english_concept: 'Spanish uses TENER (to possess) for physical states, age, and feelings where English uses "to be".',
+    ten_point_matrix: [
+      {
+        point_number: 1,
+        point_type: 'affirmative_yo',
+        label: '1. Affirmative Statement (Yo)',
+        es: 'Yo tengo mucha hambre y quiero comer tacos.',
+        en: 'I am very hungry and want to eat tacos.',
+        ar: 'أنا جائع جداً وأريد تناول التاكو.',
+        phonetic: 'YOH TEHN-goh MOO-chah AHM-breh',
+        note: 'Expresses physical state as possession of hunger.'
+      },
+      {
+        point_number: 2,
+        point_type: 'negative_yo',
+        label: '2. Negative Statement (Yo no...)',
+        es: 'Yo no tengo efectivo en este momento.',
+        en: 'I do not have cash at this moment.',
+        ar: 'ليس لدي مال نقدي في هذه اللحظة.',
+        phonetic: 'YOH noh TEHN-goh eh-fehk-TEE-boh',
+        note: '"No" always directly precedes "tengo".'
+      },
+      {
+        point_number: 3,
+        point_type: 'question_tu',
+        label: '3. Question Form (¿Tú...?)',
+        es: '¿Tú tienes frío o prendo el aire?',
+        en: 'Are you cold or should I turn on the AC?',
+        ar: 'هل تشعر بالبرد أم أغلّق التكييف؟',
+        phonetic: 'too TYEH-nehs FREE-oh',
+        note: 'Tener + frío = to be cold.'
+      },
+      {
+        point_number: 4,
+        point_type: 'plural_subject',
+        label: '4. Plural Subject (Nosotros / Ustedes)',
+        es: 'Nosotros tenemos una reunión a las tres de la tarde.',
+        en: 'We have a meeting at three in the afternoon.',
+        ar: 'لدينا اجتماع في الساعة الثالثة عصراً.',
+        phonetic: 'noh-SOH-trohs teh-NEH-mohs OO-nah reh-oo-NYOHN',
+        note: 'We form "tenemos" preserves root stem.'
+      },
+      {
+        point_number: 5,
+        point_type: 'desire_need',
+        label: '5. Expressing Desire / Need (Quiero / Necesito)',
+        es: 'Necesito tener la clave del Wi-Fi antes de empezar.',
+        en: 'I need to have the Wi-Fi key before starting.',
+        ar: 'أحتاج إلى الحصول على كلمة سر الواي فاي قبل البدء.',
+        phonetic: 'neh-seh-SEE-toh teh-NEHR lah KLAH-veh',
+        note: 'Infinitive "tener" follows modal verb "necesito".'
+      },
+      {
+        point_number: 6,
+        point_type: 'real_dialogue',
+        label: '6. Real Conversation Snippet',
+        es: '—¿Tienes prisa? —No, tengo todo el tiempo del mundo.',
+        en: '—Are you in a rush? —No, I have all the time in the world.',
+        ar: '—هل أنت مستعجل؟ —لا، لدي كل الوقت في العالم.',
+        phonetic: 'TYEH-nehs PREE-sah? Noh, TEHN-goh TOH-doh',
+        note: 'Tener prisa = to be in a hurry.'
+      },
+      {
+        point_number: 7,
+        point_type: 'mistake_correction',
+        label: '7. Common Beginner Mistake & Correction',
+        es: '❌ "Soy 25 años" ➔ ✅ "Tengo 25 años."',
+        en: 'Wrong: "I am 25 years" ➔ Correct: "I have 25 years."',
+        ar: 'خطأ: "Soy 25 años" ➔ صواب: "Tengo 25 años."',
+        phonetic: 'TEHN-goh VEHN-tee-SEEN-koh AH-nyohs',
+        note: 'Never use SER for age in Spanish!'
+      },
+      {
+        point_number: 8,
+        point_type: 'mexican_dialect',
+        label: '8. Mexican Dialect Variant',
+        es: '¿Qué onda, mano? ¿Tienes chance de hablar ahorita?',
+        en: 'What’s up, bro? Do you have a moment to talk right now?',
+        ar: 'أهلاً يا صديقي، هل لديك وقت للحديث الآن؟',
+        phonetic: 'keh OHN-dah MAH-noh TYEH-nehs CHAHN-seh',
+        note: '"Tener chance" is authentic Mexican slang for having time/availability.'
+      },
+      {
+        point_number: 9,
+        point_type: 'polite_formal',
+        label: '9. Polite / Formal Request (Usted)',
+        es: '¿Usted tiene alguna pregunta sobre el contrato?',
+        en: 'Do you (formal) have any questions regarding the contract?',
+        ar: 'هل لدى حضرتك أي سؤال بخصوص العقد؟',
+        phonetic: 'OOS-tehd TYEH-neh ahl-GOO-nah preh-GOON-tah',
+        note: 'Formal subject uses 3rd person form "tiene".'
+      },
+      {
+        point_number: 10,
+        point_type: 'rapid_trigger',
+        label: '10. Rapid Output Trigger',
+        es: 'Si trabajas todo el día bajo el sol, tú _____ mucha sed.',
+        en: 'Fill in: "tienes" (If you work all day under the sun, you are very thirsty).',
+        ar: 'أكمل: tienes (إذا عملت طوال اليوم تحت الشمس، تكون عطشاناً جداً).',
+        phonetic: 'TYEH-nehs MOO-chah SEHD',
+        note: 'Target: tienes.'
+      }
+    ]
+  },
+  {
+    topicId: 'g-ser-vs-estar',
+    title: 'SER vs ESTAR (Permanent Identity vs Temporary State)',
+    formula: 'SER = Identity / Origin / Traits | ESTAR = Location / Emotional & Physical States',
+    plain_english_concept: 'SER describes WHO or WHAT something inherently is. ESTAR describes HOW or WHERE something currently is.',
+    ten_point_matrix: [
+      {
+        point_number: 1,
+        point_type: 'affirmative_yo',
+        label: '1. Affirmative Statement (Yo)',
+        es: 'Yo soy desarrollador de software y estoy muy emocionado hoy.',
+        en: 'I am a software developer (SER) and I am very excited today (ESTAR).',
+        ar: 'أنا مبرمج برمجيات (Ser) وأنا متحمس جداً اليوم (Estar).',
+        phonetic: 'YOH SOY deh-sah-roh-yah-DOR... ehs-TOY MOO-y eh-moh-syoh-NAH-doh',
+        note: 'Profession = SER, Emotion = ESTAR.'
+      },
+      {
+        point_number: 2,
+        point_type: 'negative_yo',
+        label: '2. Negative Statement (Yo no...)',
+        es: 'Yo no estoy cansado, pero no soy de esta ciudad.',
+        en: 'I am not tired (ESTAR), but I am not from this city (SER).',
+        ar: 'لستُ تعباناً (Estar)، ولكني لستُ من هذه المدينة (Ser).',
+        phonetic: 'YOH noh ehs-TOY kahn-SAH-doh... noh SOY deh EHS-tah syoo-DAHD',
+        note: 'State of fatigue = ESTAR, Origin = SER.'
+      },
+      {
+        point_number: 3,
+        point_type: 'question_tu',
+        label: '3. Question Form (¿Tú...?)',
+        es: '¿Dónde estás tú y por qué no estás listo todavía?',
+        en: 'Where are you (ESTAR) and why are you not ready yet (ESTAR)?',
+        phonetic: 'DOHN-deh ehs-TAHS too',
+        note: 'Location and state of readiness both require ESTAR.'
+      },
+      {
+        point_number: 4,
+        point_type: 'plural_subject',
+        label: '4. Plural Subject (Nosotros / Ustedes)',
+        es: 'Nosotros somos mexicanos y estamos orgullosos de nuestra cultura.',
+        en: 'We are Mexican (SER) and we are proud of our culture (ESTAR).',
+        phonetic: 'noh-SOH-trohs SOH-mohs meh-hee-KAH-nohs',
+        note: 'Nationality = SER, Current sentiment = ESTAR.'
+      },
+      {
+        point_number: 5,
+        point_type: 'desire_need',
+        label: '5. Expressing Desire / Need (Quiero / Necesito)',
+        es: 'Quiero estar tranquilo este fin de semana en la playa.',
+        en: 'I want to be relaxed (ESTAR) this weekend at the beach.',
+        phonetic: 'KYEH-roh ehs-TAR trahn-KEE-loh',
+        note: 'Infinitive "estar" denotes state of peace.'
+      },
+      {
+        point_number: 6,
+        point_type: 'real_dialogue',
+        label: '6. Real Conversation Snippet',
+        es: '—¿De dónde eres? —Soy de Guadalajara, pero estoy viviendo en CDMX.',
+        en: '—Where are you from? —I’m from Guadalajara, but I’m living in CDMX.',
+        phonetic: 'Deh DOHN-deh EH-rehs? SOY deh Gwah-dah-lah-HAH-rah',
+        note: 'Origin = SER, Temporary residence/action = ESTAR.'
+      },
+      {
+        point_number: 7,
+        point_type: 'mistake_correction',
+        label: '7. Common Beginner Mistake & Correction',
+        es: '❌ "La comida es fría." ➔ ✅ "La comida está fría."',
+        en: 'Wrong: Food is cold inherently ➔ Correct: Food has gone cold right now.',
+        ar: 'خطأ: La comida es fría ➔ صواب: La comida está fría.',
+        phonetic: 'lah koh-MEE-dah ehs-TAH FREE-ah',
+        note: 'Food temperature is a variable state (ESTAR).'
+      },
+      {
+        point_number: 8,
+        point_type: 'mexican_dialect',
+        label: '8. Mexican Dialect Variant',
+        es: '¡Esta salsa está buenísima! ¡Está de poca madre!',
+        en: 'This salsa is amazing! It’s insanely good!',
+        phonetic: 'EHS-tah SAHL-sah ehs-TAH bweh-NEE-see-mah',
+        note: 'Food taste evaluation in current moment = ESTAR.'
+      },
+      {
+        point_number: 9,
+        point_type: 'polite_formal',
+        label: '9. Polite / Formal Request (Usted)',
+        es: '¿Usted está libre para una reunión ejecutiva hoy?',
+        en: 'Are you (formal) free for an executive meeting today?',
+        phonetic: 'OOS-tehd ehs-TAH LEE-breh',
+        note: 'Availability state requires ESTAR with Usted.'
+      },
+      {
+        point_number: 10,
+        point_type: 'rapid_trigger',
+        label: '10. Rapid Output Trigger',
+        es: 'El evento _____ en el auditorio principal a las seis.',
+        en: 'Fill in: "es" (The event TAKES PLACE in the main auditorium - Event location uses SER!).',
+        ar: 'أكمل: es (موقع الفعاليات والأحداث يستخدم Ser وليس Estar).',
+        phonetic: 'ehl eh-VEHN-toh EHS ehn ehl ow-dee-TOH-ryoh',
+        note: 'Target: es (Event locations = SER).'
+      }
+    ]
+  }
+];
+

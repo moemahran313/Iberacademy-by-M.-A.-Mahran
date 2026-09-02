@@ -31,6 +31,7 @@ import { SentenceMinerSRSView } from './SentenceMinerSRSView';
 import { ContentImporterModal } from './ContentImporterModal';
 import { RecommendedReadingModule } from './RecommendedReadingModule';
 import { ReadingProgressTracker } from './ReadingProgressTracker';
+import { SituationalImmersionView } from './SituationalImmersionView';
 import { soundEffects } from '../utils/audio';
 import { lookupSpanishWord } from '../utils/lingqEngine';
 
@@ -43,7 +44,7 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
   userProgress,
   setUserProgress
 }) => {
-  const [activeTab, setActiveTab] = useState<'library' | 'reader' | 'sentence_miner' | 'progress_tracker'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'situational_immersion' | 'reader' | 'sentence_miner' | 'progress_tracker'>('situational_immersion');
   const [selectedContent, setSelectedContent] = useState<ImportedContent | null>(null);
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>('all');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
@@ -206,6 +207,18 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
           {/* Action Tabs - Mobile scrollable menu, Desktop structured pills */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 w-full lg:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             <button
+              onClick={() => setActiveTab('situational_immersion')}
+              className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition whitespace-nowrap border shrink-0 cursor-pointer ${
+                activeTab === 'situational_immersion'
+                  ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-sm'
+                  : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5 text-amber-950" />
+              <span>🇲🇽 Situational Roleplay</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('library')}
               className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition whitespace-nowrap border shrink-0 cursor-pointer ${
                 activeTab === 'library'
@@ -318,7 +331,9 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
       </div>
 
       {/* RENDER VIEW ACCORDING TO ACTIVE TAB */}
-      {activeTab === 'reader' && selectedContent ? (
+      {activeTab === 'situational_immersion' ? (
+        <SituationalImmersionView />
+      ) : activeTab === 'reader' && selectedContent ? (
         <LingQInteractiveReader
           content={selectedContent}
           onBack={() => setActiveTab('library')}

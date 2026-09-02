@@ -6,3 +6,7 @@ export * from './curriculum';
 export * from './placementAndVideos';
 export * from './vocabularyComprehensive1000';
 export * from './vocabularyMexicanGastronomy';
+export * from './a0BeginnerFoundation';
+export * from './learningPath';
+export * from './highFrequencyVocab';
+export * from './situationalScenarios';

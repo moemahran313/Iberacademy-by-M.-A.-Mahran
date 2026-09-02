@@ -24,7 +24,11 @@ import {
   CheckCircle2,
   Target,
   Trophy,
-  Mail
+  Mail,
+  Bell,
+  Check,
+  AlertCircle,
+  Mic
 } from 'lucide-react';
 import { UserProgress } from '../types';
 import { IberioLogo } from './IberacademyLogo';
@@ -57,10 +61,46 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'learn' | 'practice' | null>(null);
 
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const navDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [notifications, setNotifications] = useState([
+    {
+      id: 'streak',
+      title: '🔥 Daily Streak Active',
+      message: `You are on a ${userProgress.streakDays}-day streak! Practice a story or review cards to keep it going.`,
+      time: 'Just now',
+      read: false,
+      tab: 'stories'
+    },
+    {
+      id: 'srs',
+      title: '📚 SRS Vocabulary Due',
+      message: 'Pending spaced-repetition cards ready for your daily memory review.',
+      time: 'Today',
+      read: false,
+      tab: 'srs'
+    },
+    {
+      id: 'report_system',
+      title: '🚩 Content Feedback Active',
+      message: 'Found a typo or grammar discrepancy? Use the "Report Issue" button in any reader or grammar lesson to send feedback.',
+      time: 'New',
+      read: false,
+      tab: 'encyclopedia'
+    }
+  ]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllAsRead = () => {
+    soundEffects.playPop();
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -71,6 +111,9 @@ export const Header: React.FC<HeaderProps> = ({
       if (navDropdownRef.current && !navDropdownRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
       }
+      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -78,12 +121,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   const learnItems = [
     { id: 'dashboard', label_en: 'Dashboard', label_ar: 'الرئيسية', icon: Compass, desc: 'Overview & Daily Goals' },
+    { id: 'a0_foundation', label_en: 'Absolute Zero (A0)', label_ar: 'أساسيات المبتدئ Zero', icon: Zap, desc: '25 Scaffolding Micro-Units' },
     { id: 'planner', label_en: 'Curriculum Planner', label_ar: 'المخطط', icon: Target, desc: 'AI Milestones & Weaknesses' },
     { id: 'stories', label_en: 'Reader & Stories', label_ar: 'القارئ الذكي', icon: Sparkles, desc: 'Comprehensible Input' },
     { id: 'path', label_en: 'Learning Path', label_ar: 'مسار التعلم', icon: Layers, desc: 'CEFR Roadmap' }
   ];
 
   const practiceItems = [
+    { id: 'shadowing', label_en: 'Oral Shadowing Studio', label_ar: 'الاستوديو الصوتي', icon: Mic, desc: '3-Stage Speak Production' },
     { id: 'linglooper', label_en: 'AI Tutor Chat', label_ar: 'الدردشة', icon: MessageSquare, desc: 'Interactive Role-Play' },
     { id: 'vocabulary', label_en: 'SRS Vocabulary', label_ar: 'المفردات', icon: BookOpen, desc: 'Flashcards & Spaced Repetition' },
     { id: 'verbs', label_en: 'Verb Conjugator', label_ar: 'الأفعال', icon: TrendingUp, desc: 'Conjugations & Drills' },
@@ -387,6 +432,87 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
               </button>
+
+              {/* Notification Center Bell */}
+              <div className="relative" ref={notificationDropdownRef}>
+                <button
+                  id="header-notification-bell"
+                  onClick={() => {
+                    soundEffects.playPop();
+                    setIsNotificationsOpen(!isNotificationsOpen);
+                  }}
+                  className="relative p-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
+                  title="Notifications & Updates"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-500" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white font-black text-[9px] rounded-full flex items-center justify-center animate-pulse shadow-2xs">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-80 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
+                    >
+                      <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Bell className="w-4 h-4 text-amber-500" />
+                          <span className="font-black text-xs text-stone-900 dark:text-white">Notifications</span>
+                        </div>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <Check className="w-3 h-3" /> Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 max-h-72 overflow-y-auto">
+                        {notifications.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              soundEffects.playPop();
+                              setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
+                              if (item.tab) {
+                                handleNavClick(item.tab);
+                                setIsNotificationsOpen(false);
+                              }
+                            }}
+                            className={`p-3 rounded-xl border text-left cursor-pointer transition ${
+                              item.read
+                                ? 'bg-stone-50 dark:bg-stone-800/40 border-stone-200/50 dark:border-stone-800/50 opacity-75'
+                                : 'bg-amber-500/10 border-amber-500/20 text-stone-900 dark:text-stone-100'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-extrabold text-xs text-stone-900 dark:text-white">{item.title}</span>
+                              <span className="text-[9px] text-stone-400 font-mono">{item.time}</span>
+                            </div>
+                            <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-snug font-medium">
+                              {item.message}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-1 text-center border-t border-stone-100 dark:border-stone-800">
+                        <p className="text-[10px] text-stone-400 font-medium">
+                          Stay consistent • Daily updates &amp; SLA reminders
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* Account Profile / Sign In Menu */}
               <div className="relative" ref={profileDropdownRef}>

@@ -17,10 +17,13 @@ import {
   MapPin,
   CheckCircle2,
   LockKeyhole,
-  Check
+  Check,
+  Volume2,
+  MessageSquare
 } from 'lucide-react';
 import { Unit, Lesson, CEFRLevel, UserProgress, ImportedContent } from '../types';
-import { CURRICULUM_UNITS } from '../data';
+import { CURRICULUM_UNITS, HIGH_UTILITY_LEARNING_PATH } from '../data';
+import { speakSpanish } from '../utils/audio';
 import { LessonModal } from './LessonModal';
 import { EndOfLevelAssessmentModal } from './EndOfLevelAssessmentModal';
 import { RecommendedReadingModule } from './RecommendedReadingModule';
@@ -343,6 +346,147 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* High-Utility Real-World Mexican Spanish Scenarios (Berlitz Survival Matrix) */}
+      {(() => {
+        const selectedScenarios = HIGH_UTILITY_LEARNING_PATH.filter(s => s.level === selectedLevel);
+        if (selectedScenarios.length === 0) return null;
+
+        return (
+          <div className="bg-gradient-to-br from-amber-500/10 via-stone-900 to-stone-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800 pb-5">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                  <span>Real-World Mexican Spanish Survival Scenarios ({selectedLevel})</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                  <span>Authentic Conversations (Conversaciones Reales)</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-stone-300 max-w-2xl">
+                  Zero textbook filler. Passes the 48-hour street test: real phrases, natural contrast vs formal textbooks, and modular variations.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {selectedScenarios.map((scen) => (
+                <div key={scen.id} className="bg-stone-950/80 border border-stone-800 rounded-2xl p-5 sm:p-6 space-y-6">
+                  {/* Scenario Context Header */}
+                  <div className="flex items-start justify-between gap-3 bg-stone-900/90 p-4 rounded-xl border border-stone-800">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl p-2 bg-stone-800/80 rounded-2xl">{scen.emoji}</span>
+                      <div>
+                        <span className="text-[10px] uppercase font-black tracking-widest text-amber-400">
+                          {scen.category} • {scen.level}
+                        </span>
+                        <h3 className="text-lg font-black text-white">{scen.title}</h3>
+                        <p className="text-xs text-stone-300 font-medium mt-0.5">
+                          📍 <strong>Scenario Context:</strong> {scen.scenario_context}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 1. Core Real-World Phrases (6 Phrases) */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-amber-400" />
+                      <span>Core Real-World Native Phrases ({scen.core_phrases.length})</span>
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {scen.core_phrases.map((cp, idx) => (
+                        <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-3.5 space-y-1.5 hover:border-amber-500/40 transition">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-black text-white flex items-center gap-2">
+                              <span>{cp.phrase_es}</span>
+                            </p>
+                            <button
+                              onClick={() => speakSpanish(cp.audio_text)}
+                              className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition cursor-pointer shrink-0"
+                              title="Listen audio"
+                            >
+                              <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-stone-300 font-medium">🇬🇧 {cp.phrase_en}</p>
+                          <p className="text-[11px] text-amber-300 font-mono italic">🗣️ {cp.phonetic}</p>
+                          <p className="text-[11px] text-stone-400 border-t border-stone-800 pt-1.5 mt-1">
+                            💡 {cp.context_note}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Contrast Examples (Textbook Formal vs Natural Mexican Spanish) */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <span>Formal Textbook vs Natural Mexican Spanish Contrast</span>
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {scen.contrast_examples.map((ce, idx) => (
+                        <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-4 space-y-2">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase text-red-400 bg-red-950/60 px-2 py-0.5 rounded">
+                              ❌ Formal Textbook (Avoid)
+                            </span>
+                            <p className="text-xs text-stone-300 line-through font-mono">{ce.textbook_formal}</p>
+                          </div>
+                          <div className="space-y-1 border-t border-stone-800 pt-2">
+                            <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded">
+                              ✅ Authentic Natural Mexican Spanish
+                            </span>
+                            <p className="text-sm font-black text-emerald-300 flex items-center gap-2">
+                              <span>{ce.natural_mexican}</span>
+                              <button
+                                onClick={() => speakSpanish(ce.natural_mexican)}
+                                className="p-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-stone-950 transition cursor-pointer"
+                              >
+                                <Volume2 className="w-3 h-3" />
+                              </button>
+                            </p>
+                            <p className="text-xs text-stone-300 font-medium">🇬🇧 {ce.english_translation}</p>
+                            <p className="text-[11px] text-stone-400 italic">💬 {ce.why_natural}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. Example Modular Variations (4 Variations) */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-amber-400" />
+                      <span>4 Modular Element Variations</span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                      {scen.example_variations.map((ev, idx) => (
+                        <div key={idx} className="bg-stone-900/80 border border-stone-800 rounded-xl p-3 space-y-1">
+                          <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded block w-max">
+                            Swapped: {ev.swapped_element}
+                          </span>
+                          <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
+                            <span>{ev.varied_es}</span>
+                            <button
+                              onClick={() => speakSpanish(ev.varied_es)}
+                              className="p-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition"
+                            >
+                              <Volume2 className="w-3 h-3" />
+                            </button>
+                          </p>
+                          <p className="text-[11px] text-stone-300">🇬🇧 {ev.varied_en}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ============================================================ */}
       {/* MODE 1: LINEAR DUOLINGO-STYLE PATH MAP                       */}
