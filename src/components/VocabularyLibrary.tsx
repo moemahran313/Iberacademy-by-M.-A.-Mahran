@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { VocabularyItem, CEFRLevel, UserProgress, SRSGrade, SRSItem } from '../types';
 import { ALL_VOCABULARY, HIGH_FREQUENCY_VOCAB_ENGINE } from '../data';
+import { CURRICULUM_UNITS } from '../data/curriculum';
 import { speakSpanish, soundEffects } from '../utils/audio';
 import {
   calculateNextSRS,
@@ -30,7 +31,8 @@ import {
   categorizeSRSWords,
   getSRSStats,
   getDailyReviewPrompt,
-  getTodayDateString
+  getTodayDateString,
+  generateChunksAndCollocationsPracticeSet
 } from '../utils/srs';
 
 interface VocabularyLibraryProps {
@@ -161,6 +163,14 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
     return categorizeSRSWords(ALL_VOCABULARY, userProgress.srsData || {}, userProgress.savedWordIds || []);
   }, [userProgress.srsData, userProgress.savedWordIds]);
 
+  // Generate SRS practice sets based on 'chunks and collocations' taught in user's recent lessons
+  const chunksPracticeSet = useMemo(() => {
+    return generateChunksAndCollocationsPracticeSet(
+      userProgress.completedLessonIds || [],
+      CURRICULUM_UNITS
+    );
+  }, [userProgress.completedLessonIds]);
+
   const toggleSaveWord = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setUserProgress(prev => {
@@ -265,10 +275,12 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
   // ================= SRS REVIEW LOGIC =================
 
   // Start an SRS session
-  const startSRSSession = (filterType: 'due' | 'level' | 'saved' | 'deck', levelVal = 'all') => {
+  const startSRSSession = (filterType: 'due' | 'level' | 'saved' | 'deck' | 'chunks', levelVal = 'all') => {
     let queue: VocabularyItem[] = [];
 
-    if (filterType === 'due') {
+    if (filterType === 'chunks') {
+      queue = [...chunksPracticeSet];
+    } else if (filterType === 'due') {
       queue = [...srsCategorized.dueWords];
       if (queue.length === 0) {
         // If nothing due, pull 10 unreviewed or learning words
@@ -767,6 +779,46 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
               </p>
               <p className="text-[11px] text-stone-400 mt-0.5">{srsStats.totalReviews} total reviews</p>
             </div>
+          </div>
+
+          {/* Chunks & Collocations SRS Practice Sets Card */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 dark:from-amber-950/40 dark:to-stone-900 border border-amber-300 dark:border-amber-700/60 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center text-sm shadow-xs">
+                  🎯
+                </span>
+                <div>
+                  <h3 className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-2">
+                    <span>Recent Lessons Chunks & Collocations Practice Set</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-stone-900 text-amber-300 dark:bg-stone-800 dark:text-amber-400">
+                      {chunksPracticeSet.length} Active Phrases
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-600 dark:text-stone-300">
+                    Spaced Repetition System auto-calibrated to multi-word collocations from recent scenarios over isolated words.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {chunksPracticeSet.slice(0, 5).map((chk, i) => (
+                  <span
+                    key={i}
+                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100/90 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                  >
+                    {chk.spanish}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => startSRSSession('chunks')}
+              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-xs transition flex items-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+            >
+              <Brain className="w-4 h-4" />
+              <span>Launch Chunks SRS Set</span>
+            </button>
           </div>
 
           {/* SRS Active Session / Complete View */}

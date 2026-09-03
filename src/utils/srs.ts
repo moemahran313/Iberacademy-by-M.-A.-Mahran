@@ -341,3 +341,187 @@ export function autoEnrollLessonWordsInSRS(
 
   return updated;
 }
+
+export interface ChunkCollocationSRSItem extends VocabularyItem {
+  chunkType: 'collocation' | 'conversational_phrase' | 'survival_expression';
+  contextSentence_es?: string;
+  contextSentence_en?: string;
+  contextSentence_ar?: string;
+  sourceLessonTitle?: string;
+}
+
+/**
+ * Generate custom SRS practice sets based on 'chunks and collocations' taught in recent lessons
+ */
+export function generateChunksAndCollocationsPracticeSet(
+  completedLessonIds: string[],
+  allUnits: { lessons: Lesson[] }[]
+): ChunkCollocationSRSItem[] {
+  const chunks: ChunkCollocationSRSItem[] = [];
+  const seenSpanish = new Set<string>();
+
+  // High-yield fallback collocations if no completed lessons yet
+  const defaultCollocations: ChunkCollocationSRSItem[] = [
+    {
+      id: 'chunk-1',
+      spanish: 'me pones un...',
+      english: 'give me / I will have a...',
+      arabic: 'ضع لي / أعطني...',
+      partOfSpeech: 'collocation',
+      cefr: 'A1',
+      category: 'Food & Dining',
+      chunkType: 'collocation',
+      contextSentence_es: 'Por favor, ¿me pones un café cortado y agua?',
+      contextSentence_en: 'Please, can I have a cortado coffee and water?',
+      contextSentence_ar: 'من فضلك، هل تعطيني قهوة مع ماء؟',
+      examples: [{ es: '¿Me pones un vaso de agua?', en: 'Can you give me a glass of water?', ar: 'هل تعطيني كأس ماء؟' }]
+    },
+    {
+      id: 'chunk-2',
+      spanish: '¿de qué me recomiendas?',
+      english: 'what do you recommend?',
+      arabic: 'بماذا تنصحني؟',
+      partOfSpeech: 'conversational_phrase',
+      cefr: 'A1',
+      category: 'Food & Dining',
+      chunkType: 'conversational_phrase',
+      contextSentence_es: 'Disculpa, ¿de qué me recomiendas pedir para cenar?',
+      contextSentence_en: 'Excuse me, what do you recommend ordering for dinner?',
+      contextSentence_ar: 'عفواً، بماذا تنصحني أن أطلب للعشاء؟',
+      examples: [{ es: '¿De qué me recomiendas probar?', en: 'What do you recommend I try?', ar: 'بماذا تنصحني أن أجرب؟' }]
+    },
+    {
+      id: 'chunk-3',
+      spanish: 'me parece un precio excesivo',
+      english: 'it seems like an excessive price to me',
+      arabic: 'يبدو لي السعر مبالغاً فيه',
+      partOfSpeech: 'conversational_phrase',
+      cefr: 'A2',
+      category: 'Business & Negotiation',
+      chunkType: 'conversational_phrase',
+      contextSentence_es: 'Sinceramente, me parece un precio excesivo para el alquiler.',
+      contextSentence_en: 'Honestly, it seems like an excessive rent price to me.',
+      contextSentence_ar: 'صراحة، يبدو لي سعر الإيجار مبالغاً فيه.',
+      examples: [{ es: 'Esa tarifa me parece un precio excesivo.', en: 'That rate seems excessive to me.', ar: 'تلك السعر تبدو مبالغ فيها.' }]
+    },
+    {
+      id: 'chunk-4',
+      spanish: 'pásame tu número móvil',
+      english: 'send me your mobile number',
+      arabic: 'أرسل لي رقم هاتفك',
+      partOfSpeech: 'survival_expression',
+      cefr: 'A1',
+      category: 'Social Interaction',
+      chunkType: 'survival_expression',
+      contextSentence_es: '¡Qué buena charla! Pásame tu número móvil por WhatsApp.',
+      contextSentence_en: 'Great talk! Send me your mobile number via WhatsApp.',
+      contextSentence_ar: 'محادثة رائعة! أرسل لي رقم هاتفك المحمول على الواتساب.',
+      examples: [{ es: 'Pásame tu contacto.', en: 'Send me your contact.', ar: 'أرسل لي رقم تواصلك.' }]
+    },
+    {
+      id: 'chunk-5',
+      spanish: 'sin salsa picosa',
+      english: 'without spicy sauce',
+      arabic: 'بدون صلصة حارة',
+      partOfSpeech: 'collocation',
+      cefr: 'A1',
+      category: 'Street Food',
+      chunkType: 'collocation',
+      contextSentence_es: 'Quiero dos tacos de canasta pero sin salsa picosa, por favor.',
+      contextSentence_en: 'I want two basket tacos but without spicy sauce, please.',
+      contextSentence_ar: 'أريد اثنين من التاكو لكن بدون صلصة حارة من فضلك.',
+      examples: [{ es: 'Por favor, sin salsa picosa.', en: 'Please, no spicy sauce.', ar: 'من فضلك بدون صلصة حارة.' }]
+    },
+    {
+      id: 'chunk-6',
+      spanish: '¿cuál es la clave del Wi-Fi?',
+      english: 'what is the Wi-Fi password?',
+      arabic: 'ما هي كلمة مرور الواي فاي؟',
+      partOfSpeech: 'survival_expression',
+      cefr: 'A1',
+      category: 'Hostel & Travel',
+      chunkType: 'survival_expression',
+      contextSentence_es: 'Disculpa, ¿cuál es la clave del Wi-Fi de la recepción?',
+      contextSentence_en: 'Excuse me, what is the reception Wi-Fi password?',
+      contextSentence_ar: 'عفواً، ما هي كلمة مرور الواي فاي في الاستقبال؟',
+      examples: [{ es: '¿Me das la clave del Wi-Fi?', en: 'Can you give me the Wi-Fi password?', ar: 'هل تعطيني كلمة مرور الواي فاي؟' }]
+    },
+    {
+      id: 'chunk-7',
+      spanish: 'no funciona la calefacción',
+      english: 'the heating is not working',
+      arabic: 'التدفئة لا تعمل',
+      partOfSpeech: 'conversational_phrase',
+      cefr: 'A2',
+      category: 'Accommodation Disputes',
+      chunkType: 'conversational_phrase',
+      contextSentence_es: 'Hola, quería avisar que no funciona la calefacción en la habitación.',
+      contextSentence_en: 'Hello, I wanted to report that the heating is not working in the room.',
+      contextSentence_ar: 'مرحباً، أردت الإبلاغ عن أن التدفئة لا تعمل في الغرفة.',
+      examples: [{ es: 'No funciona el aire acondicionado.', en: 'The air conditioning is not working.', ar: 'المكيف لا يعمل.' }]
+    },
+    {
+      id: 'chunk-8',
+      spanish: '¡me flipa el ambiente!',
+      english: 'I absolutely love the vibe!',
+      arabic: 'أعشق هذه الأجواء كثيراً!',
+      partOfSpeech: 'collocation',
+      cefr: 'A2',
+      category: 'Social Slang & Culture',
+      chunkType: 'collocation',
+      contextSentence_es: '¡Madre mía, me flipa el ambiente de este barrio!',
+      contextSentence_en: 'Wow, I absolutely love the vibe of this neighborhood!',
+      contextSentence_ar: 'يا إلهي، أعشق أجواء هذا الحي كثيراً!',
+      examples: [{ es: 'Me flipa esta música.', en: 'I love this music.', ar: 'أعشق هذه الموسيقى.' }]
+    }
+  ];
+
+  // Collect lessons from all units
+  const allLessons: Lesson[] = [];
+  allUnits.forEach(u => {
+    if (u.lessons) allLessons.push(...u.lessons);
+  });
+
+  // Extract chunks from completed lessons or recent lessons
+  const targetLessons = allLessons.filter(l => completedLessonIds.includes(l.id));
+  const lessonsToUse = targetLessons.length > 0 ? targetLessons : allLessons.slice(0, 10);
+
+  lessonsToUse.forEach((l, lIdx) => {
+    if (l.dialogue) {
+      l.dialogue.forEach((turn, tIdx) => {
+        const text = turn.es.trim();
+        if (text.length > 5 && text.length < 65) {
+          const clean = text.toLowerCase();
+          if (!seenSpanish.has(clean)) {
+            seenSpanish.add(clean);
+            chunks.push({
+              id: `chunk-lesson-${l.id}-${tIdx}`,
+              spanish: text,
+              english: turn.en,
+              arabic: turn.ar,
+              partOfSpeech: 'conversational_phrase',
+              cefr: l.cefr,
+              category: l.title_en || 'Recent Lesson Chunks',
+              chunkType: 'conversational_phrase',
+              contextSentence_es: text,
+              contextSentence_en: turn.en,
+              contextSentence_ar: turn.ar,
+              sourceLessonTitle: l.title_es,
+              examples: [{ es: text, en: turn.en, ar: turn.ar }]
+            });
+          }
+        }
+      });
+    }
+  });
+
+  // Blend extracted chunks with default high-yield collocations
+  defaultCollocations.forEach(dc => {
+    if (!seenSpanish.has(dc.spanish.toLowerCase())) {
+      chunks.push(dc);
+    }
+  });
+
+  return chunks;
+}
+

@@ -23,11 +23,17 @@ import {
   Target,
   RotateCw,
   X,
-  Lightbulb
+  Lightbulb,
+  GraduationCap,
+  ArrowRight,
+  Bookmark,
+  BookMarked,
+  Filter
 } from 'lucide-react';
 import { Unit, Lesson, CEFRLevel, UserProgress, ImportedContent } from '../types';
 import { CURRICULUM_UNITS, HIGH_UTILITY_LEARNING_PATH } from '../data';
 import { A0_BEGINNER_UNITS } from '../data/a0BeginnerFoundation';
+import { WORLD_CURRICULUM_SPECS, WorldCurriculumMeta } from '../data/worldCurriculumSpecs';
 import { speakSpanish, soundEffects } from '../utils/audio';
 import { LessonModal } from './LessonModal';
 import { EndOfLevelAssessmentModal } from './EndOfLevelAssessmentModal';
@@ -50,20 +56,20 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
 }) => {
   const [selectedLevel, setSelectedLevel] = useState<CEFRLevel>(userProgress.currentLevel || 'A1');
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [pathMode, setPathMode] = useState<'scenarios' | 'a0' | 'linear' | 'grid'>('scenarios');
+  const [pathMode, setPathMode] = useState<'worlds' | 'grammar' | 'vocab' | 'a0'>('worlds');
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState<boolean>(false);
   const [assessmentLevel, setAssessmentLevel] = useState<CEFRLevel>('A1');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Interactive Drill Answers state for Scenarios
-  const [scenarioDrillState, setScenarioDrillState] = useState<Record<string, { selected: string; isCorrect: boolean }>>({});
+  // Interactive Drill Answers state for A0
   const [activeA0UnitIndex, setActiveA0UnitIndex] = useState<number>(0);
   const [a0DrillAnswers, setA0DrillAnswers] = useState<Record<string, { selected: string; isCorrect: boolean }>>({});
 
   const levels: { id: CEFRLevel; title_en: string; title_ar: string; desc: string; color: string; badge: string; prevLevel: CEFRLevel | null; nextLevel: CEFRLevel | null }[] = [
-    { id: 'A1', title_en: 'Absolute Beginner', title_ar: 'المبتدئ الأساسي', desc: 'Greetings, survival Spanish, present tense, gender & articles', color: 'from-amber-500 to-orange-600', badge: '🌱 A1 Survival', prevLevel: null, nextLevel: 'A2' },
-    { id: 'A2', title_en: 'Elementary Explorer', title_ar: 'المستكشف الأولي', desc: 'Past tenses (indefinido vs imperfecto), prepositions, routines', color: 'from-emerald-500 to-teal-600', badge: '🚀 A2 Explorer', prevLevel: 'A1', nextLevel: 'B1' },
-    { id: 'B1', title_en: 'Intermediate Conversationalist', title_ar: 'المتحدث المتوسط', desc: 'Subjunctive mood, hypotheticals, opinions & reported speech', color: 'from-sky-500 to-blue-600', badge: '💬 B1 Fluent', prevLevel: 'A2', nextLevel: 'B2' },
-    { id: 'B2', title_en: 'Advanced Fluency & Nuance', title_ar: 'الطلاقة المتقدمة', desc: 'Debates, formal discourse, complex idioms & cultural mastery', color: 'from-purple-500 to-indigo-600', badge: '👑 B2 Master', prevLevel: 'B1', nextLevel: null }
+    { id: 'A1', title_en: 'Absolute Beginner', title_ar: 'المبتدئ الأساسي', desc: '16 Worlds • 81 Lessons • Greetings, survival Spanish, present tense', color: 'from-amber-500 to-orange-600', badge: '🌱 A1 Survival', prevLevel: null, nextLevel: 'A2' },
+    { id: 'A2', title_en: 'Elementary Explorer', title_ar: 'المستكشف الأولي', desc: '12 Worlds • 61 Lessons • Past tenses (indefinido vs imperfecto), prepositions', color: 'from-emerald-500 to-teal-600', badge: '🚀 A2 Explorer', prevLevel: 'A1', nextLevel: 'B1' },
+    { id: 'B1', title_en: 'Intermediate Conversationalist', title_ar: 'المتحدث المتوسط', desc: '10 Worlds • Subjunctive mood, hypotheticals, opinions & reported speech', color: 'from-sky-500 to-blue-600', badge: '💬 B1 Fluent', prevLevel: 'A2', nextLevel: 'B2' },
+    { id: 'B2', title_en: 'Advanced Fluency & Nuance', title_ar: 'الطلاقة المتقدمة', desc: '10 Worlds • Debates, formal discourse, complex idioms & cultural mastery', color: 'from-purple-500 to-indigo-600', badge: '👑 B2 Master', prevLevel: 'B1', nextLevel: null }
   ];
 
   // Helper to check if a CEFR level is unlocked
@@ -72,7 +78,6 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
     const unlocked = userProgress.unlockedLevels || ['A1'];
     if (unlocked.includes(lvl)) return true;
 
-    // Check if previous level was passed via exam or all lessons done
     const prevLvl: CEFRLevel = lvl === 'A2' ? 'A1' : lvl === 'B1' ? 'A2' : 'B1';
     if (userProgress.passedLevelExamIds?.includes(prevLvl)) return true;
 
@@ -88,7 +93,6 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
     setIsAssessmentModalOpen(true);
   };
 
-  const isCurrentLevelLocked = !isLevelUnlocked(selectedLevel);
   const currentLvlConfig = levels.find(l => l.id === selectedLevel) || levels[0];
 
   const currentUnits = useMemo(() => {
@@ -114,65 +118,83 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
   const totalCompleted = userProgress.completedLessonIds.length;
   const progressPercentage = Math.round((totalCompleted / Math.max(totalLessonsInCurriculum, 1)) * 100);
 
-  // Linear node determination
-  // A lesson is unlocked if it's the very first lesson, or if the previous lesson was completed
-  const isLessonUnlocked = (lessonIndexInAll: number, allLessonsList: Lesson[]) => {
-    if (lessonIndexInAll === 0) return true;
-    const prevLesson = allLessonsList[lessonIndexInAll - 1];
-    return userProgress.completedLessonIds.includes(prevLesson.id);
+  // A1 and A2 level statistics for progress tracking
+  const a1Units = CURRICULUM_UNITS.filter(u => u.level === 'A1');
+  const a1Lessons = a1Units.flatMap(u => u.lessons);
+  const a1Completed = a1Lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
+  const a1Percent = Math.round((a1Completed / Math.max(a1Lessons.length, 1)) * 100);
+
+  const a2Units = CURRICULUM_UNITS.filter(u => u.level === 'A2');
+  const a2Lessons = a2Units.flatMap(u => u.lessons);
+  const a2Completed = a2Lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
+  const a2Percent = Math.round((a2Completed / Math.max(a2Lessons.length, 1)) * 100);
+
+  // Add words to SRS
+  const handleAddSampleChunksToSRS = (chunks: { spanish: string; english: string; arabic: string }[]) => {
+    soundEffects.playLevelUp();
+    const newWordIds = chunks.map(c => c.spanish.toLowerCase());
+    setUserProgress(prev => {
+      const existing = new Set(prev.savedWordIds || []);
+      newWordIds.forEach(id => existing.add(id));
+      return {
+        ...prev,
+        savedWordIds: Array.from(existing),
+        xp: (prev.xp || 0) + 20
+      };
+    });
+    setToastMessage(`Added ${chunks.length} vocabulary chunks to your SRS Queue (+20 XP)!`);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const allLessonsInLevel = useMemo(() => {
-    const list: { lesson: Lesson; unit: Unit; globalIndex: number }[] = [];
-    let idx = 0;
-    currentUnits.forEach(u => {
-      u.lessons.forEach(l => {
-        list.push({ lesson: l, unit: u, globalIndex: idx });
-        idx++;
-      });
-    });
-    return list;
-  }, [currentUnits]);
-
   return (
-    <div className="space-y-6 text-stone-900 dark:text-stone-100">
-      {/* Top App-like HUD Banner */}
-      <div className="bg-stone-900 border border-stone-800 rounded-3xl p-5 sm:p-6 text-stone-100 shadow-md">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-          <div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-stone-950 shadow-xs">
-                Linear Skill Roadmap • Duolingo Style
+    <div className="space-y-6 text-stone-900 dark:text-stone-100 animate-fadeIn">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 bg-amber-500 text-stone-950 px-5 py-3 rounded-2xl shadow-xl font-extrabold text-xs flex items-center gap-2 border border-amber-400">
+          <Sparkles className="w-4 h-4 fill-stone-950" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Top App HUD Banner with A1-A2 Roadmap Progress Bar */}
+      <div className="bg-gradient-to-br from-stone-900 via-stone-950 to-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 text-stone-100 shadow-xl space-y-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-stone-950 shadow-xs">
+                CEFR A1–B2 Structured Pathway
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-stone-800 text-amber-300 border border-stone-700">
-                Bloom's Mastery Learning (≥80% Pass)
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-stone-800 text-amber-300 border border-amber-500/30">
+                Separated Grammar &amp; Vocabulary Decks
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <span>Spanish Mastery Pathway (مسار إتقان الإسبانية)</span>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+              <span>Spanish World Mastery Hierarchy</span>
             </h1>
-            <p className="text-sm text-stone-300 mt-1 max-w-2xl leading-relaxed">
-              Step-by-step linear progression from A1 survival basics to B2 native fluency. Every unit includes multimodal flashcards, authentic dialogues, grammar blueprints, and mastery checkpoint quizzes.
+            <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
+              Step-by-step progressive hierarchy of 28 core Worlds and 142 lessons across Level A1 and A2, uniting real-world communicative goals with explicit grammar blueprints and vocabulary decks.
             </p>
           </div>
 
-          {/* Top Stats HUD & Placement Test */}
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div className="flex items-center gap-3 bg-stone-800/80 border border-stone-700 px-4 py-2.5 rounded-2xl">
+          {/* XP & Placement Action */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex items-center gap-3 bg-stone-800/90 border border-stone-700/80 px-4 py-2.5 rounded-2xl">
               <div className="flex items-center gap-1.5 text-amber-400 font-extrabold text-xs sm:text-sm">
-                <Zap className="w-4 h-4 text-amber-400" />
+                <Zap className="w-4 h-4" />
                 <span>{userProgress.xp} XP</span>
               </div>
               <div className="w-px h-4 bg-stone-700" />
               <div className="flex items-center gap-1.5 text-orange-400 font-extrabold text-xs sm:text-sm">
-                <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                <Flame className="w-4 h-4 fill-orange-500" />
                 <span>{userProgress.streakDays} Day Streak</span>
               </div>
             </div>
 
             <button
               onClick={onOpenPlacementTest}
-              className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs sm:text-sm flex items-center gap-2 transition shadow-md shrink-0"
+              className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs sm:text-sm flex items-center gap-2 transition shadow-md cursor-pointer"
             >
               <Award className="w-4 h-4" />
               <span>Placement Test</span>
@@ -180,24 +202,59 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
           </div>
         </div>
 
-        {/* Global Progress Bar */}
-        <div className="mt-5 pt-4 border-t border-stone-800/80 space-y-2">
-          <div className="flex justify-between items-center text-xs font-bold">
-            <span className="text-stone-300">
-              Curriculum Mastery: {totalCompleted} of {totalLessonsInCurriculum} Lessons Cleared
-            </span>
-            <span className="text-amber-400 font-extrabold">{progressPercentage}% Completed</span>
+        {/* Level Progress Milestone Bars (A1 & A2 Visual Roadmap) */}
+        <div className="relative z-10 pt-4 border-t border-stone-800/80 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* A1 Roadmap Card */}
+          <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-amber-400 flex items-center gap-1.5 font-black">
+                <span>🌱 Level A1 (Absolute Beginner)</span>
+              </span>
+              <span className="text-stone-300 font-mono text-[11px]">
+                {a1Completed} / {a1Lessons.length} Lessons ({a1Percent}%)
+              </span>
+            </div>
+            <div className="w-full bg-stone-800 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(a1Percent, 3)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-stone-400">
+              <span>16 Worlds • 81 Lessons Total</span>
+              <span className="text-stone-300 font-semibold">
+                {a1Units.filter(u => u.lessons.every(l => userProgress.completedLessonIds.includes(l.id))).length} / 16 Worlds Cleared
+              </span>
+            </div>
           </div>
-          <div className="w-full bg-stone-800 rounded-full h-2.5 overflow-hidden p-0.5">
-            <div
-              className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 h-full rounded-full transition-all duration-500 shadow-sm"
-              style={{ width: `${Math.max(progressPercentage, 2)}%` }}
-            />
+
+          {/* A2 Roadmap Card */}
+          <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-emerald-400 flex items-center gap-1.5 font-black">
+                <span>🚀 Level A2 (Elementary Explorer)</span>
+              </span>
+              <span className="text-stone-300 font-mono text-[11px]">
+                {a2Completed} / {a2Lessons.length} Lessons ({a2Percent}%)
+              </span>
+            </div>
+            <div className="w-full bg-stone-800 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(a2Percent, 3)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-stone-400">
+              <span>12 Worlds • 61 Lessons Total</span>
+              <span className="text-stone-300 font-semibold">
+                {a2Units.filter(u => u.lessons.every(l => userProgress.completedLessonIds.includes(l.id))).length} / 12 Worlds Cleared
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Recommended Reading Module for Learner-Driven Input */}
+      {/* Recommended Input Stories Card */}
       <RecommendedReadingModule
         userProgress={userProgress}
         setUserProgress={setUserProgress}
@@ -208,416 +265,504 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
         }}
       />
 
-      {/* Continue Next Lesson Hero Action Card */}
+      {/* Immediate Next Objective Banner */}
       {nextLessonToComplete && (
         <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
           <div className="space-y-1">
             <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
               <Star className="w-3.5 h-3.5 fill-current" />
-              Immediate Next Objective on Your Pathway:
+              Current Position on Your Learning Pathway:
             </span>
-            <h3 className="text-lg font-black text-stone-900 dark:text-white">
-              {nextLessonToComplete.lesson.title_es}
+            <h3 className="text-lg font-black text-stone-900 dark:text-white flex items-center gap-2">
+              <span>World {nextLessonToComplete.unit.unitNumber}: {nextLessonToComplete.unit.title_es}</span>
             </h3>
             <p className="text-xs text-stone-600 dark:text-stone-300">
-              🇬🇧 {nextLessonToComplete.lesson.title_en} • <span className="font-arabic" dir="rtl">{nextLessonToComplete.lesson.title_ar}</span>
+              🎯 Next Lesson: <span className="font-bold">{nextLessonToComplete.lesson.title_es}</span> ({nextLessonToComplete.lesson.title_en})
             </p>
           </div>
 
           <button
             onClick={() => setActiveLesson(nextLessonToComplete.lesson)}
-            className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-md transition flex items-center gap-2 shrink-0 animate-pulse hover:animate-none"
+            className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-md transition flex items-center gap-2 shrink-0 animate-pulse hover:animate-none cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>Continue Lesson</span>
+            <span>Launch Next Lesson</span>
           </button>
         </div>
       )}
 
-      {/* Level Selector Tabs + Mode Toggle */}
+      {/* Level Selector Tabs */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
           {levels.map(lvl => {
             const isSelected = selectedLevel === lvl.id;
             const isUnlocked = isLevelUnlocked(lvl.id);
             const isCertified = userProgress.passedLevelExamIds?.includes(lvl.id);
-            const score = userProgress.levelExamScores?.[lvl.id];
 
             return (
               <button
                 key={lvl.id}
                 onClick={() => setSelectedLevel(lvl.id)}
-                className={`text-left p-3 rounded-2xl border transition-all relative ${
+                className={`text-left p-3.5 rounded-2xl border transition-all relative cursor-pointer ${
                   isSelected
-                    ? 'bg-white dark:bg-stone-900 border-amber-400 dark:border-amber-500 shadow-md ring-2 ring-amber-400/20'
-                    : 'bg-white/80 dark:bg-stone-900/60 hover:bg-white dark:hover:bg-stone-900 border-stone-200 dark:border-stone-800'
+                    ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md font-extrabold'
+                    : isUnlocked
+                    ? 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-800 dark:text-stone-200 hover:border-amber-500/50'
+                    : 'bg-stone-100 dark:bg-stone-950 border-stone-200 dark:border-stone-850 text-stone-400 opacity-75'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase text-white bg-gradient-to-r ${lvl.color}`}>
-                      {lvl.id}
-                    </span>
-                    {!isUnlocked && (
-                      <LockKeyhole className="w-3.5 h-3.5 text-stone-400" />
-                    )}
-                    {isCertified && (
-                      <span className="text-[10px] font-black text-amber-500 flex items-center gap-0.5">
-                        ★ {score ? `${score}%` : 'Certified'}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold text-stone-400 font-arabic" dir="rtl">
-                    {lvl.title_ar}
-                  </span>
+                  <span className="text-xs font-black uppercase tracking-wider">{lvl.id} Level</span>
+                  {isCertified ? (
+                    <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  ) : !isUnlocked ? (
+                    <Lock className="w-3.5 h-3.5 text-stone-400" />
+                  ) : null}
                 </div>
-                <p className="text-xs font-black text-stone-900 dark:text-white mt-1 line-clamp-1">
+                <p className={`text-xs font-black mt-1 line-clamp-1 ${isSelected ? 'text-stone-950' : 'text-stone-900 dark:text-white'}`}>
                   {lvl.title_en}
+                </p>
+                <p className={`text-[10px] mt-0.5 line-clamp-1 ${isSelected ? 'text-stone-900/80' : 'text-stone-500'}`}>
+                  {lvl.desc}
                 </p>
               </button>
             );
           })}
         </div>
 
-        {/* View Mode Toggle & Level Exam Action */}
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
-          <button
-            onClick={() => handleOpenAssessment(selectedLevel)}
-            className="px-3.5 py-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-1.5 transition shadow-sm"
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>Take {selectedLevel} Level Exam</span>
-          </button>
-
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-700 flex-wrap">
-            <button
-              onClick={() => setPathMode('scenarios')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                pathMode === 'scenarios'
-                  ? 'bg-amber-500 text-stone-950 shadow-sm font-black'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Street Survival Matrix</span>
-            </button>
-            <button
-              onClick={() => setPathMode('a0')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                pathMode === 'a0'
-                  ? 'bg-amber-500 text-stone-950 shadow-sm font-black'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span>A0 Scaffolding</span>
-            </button>
-            <button
-              onClick={() => setPathMode('linear')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                pathMode === 'linear'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-xs font-black'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              <Compass className="w-3.5 h-3.5 text-amber-500" />
-              <span>Skills Path</span>
-            </button>
-            <button
-              onClick={() => setPathMode('grid')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                pathMode === 'grid'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-xs font-black'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 text-amber-500" />
-              <span>Unit Matrix</span>
-            </button>
-          </div>
-        </div>
+        {/* Level End Assessment Modal Button */}
+        <button
+          onClick={() => handleOpenAssessment(selectedLevel)}
+          className="px-4 py-3 rounded-2xl bg-stone-900 dark:bg-stone-800 hover:bg-stone-800 dark:hover:bg-stone-700 text-amber-400 font-extrabold text-xs flex items-center justify-center gap-2 border border-stone-700 shadow-sm shrink-0 cursor-pointer"
+        >
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <span>{selectedLevel} Certification Exam</span>
+        </button>
       </div>
 
-      {/* Locked Level Gateway Warning & Fast-Track Assessment Callout */}
-      {isCurrentLevelLocked && (
-        <div className="bg-stone-900 border-2 border-dashed border-amber-500/40 rounded-3xl p-6 sm:p-8 text-center text-white space-y-4 shadow-xl animate-fadeIn">
-          <div className="w-16 h-16 rounded-full bg-stone-800 border border-stone-700 mx-auto flex items-center justify-center text-amber-400">
-            <LockKeyhole className="w-8 h-8" />
-          </div>
+      {/* Structured View Mode Selector Switcher */}
+      <div className="bg-stone-100 dark:bg-stone-900 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-wrap gap-1">
+        <button
+          onClick={() => setPathMode('worlds')}
+          className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            pathMode === 'worlds'
+              ? 'bg-amber-500 text-stone-950 shadow-xs'
+              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Worlds &amp; Lessons Path</span>
+        </button>
 
-          <div className="space-y-1 max-w-lg mx-auto">
-            <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-              CEFR Gateway Requirement
-            </span>
-            <h3 className="text-xl sm:text-2xl font-black text-white">
-              Level {selectedLevel} is Currently Locked
-            </h3>
-            <p className="text-xs sm:text-sm text-stone-300">
-              To unlock Level {selectedLevel} ({currentLvlConfig.title_en}), you must complete all lessons in Level {currentLvlConfig.prevLevel || 'A1'} or pass the official 15-Question End-of-Level Assessment (≥80% passing grade).
-            </p>
-          </div>
+        <button
+          onClick={() => setPathMode('grammar')}
+          className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            pathMode === 'grammar'
+              ? 'bg-amber-500 text-stone-950 shadow-xs'
+              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span>Core Grammar Blueprints</span>
+        </button>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            {currentLvlConfig.prevLevel && (
-              <button
-                onClick={() => handleOpenAssessment(currentLvlConfig.prevLevel || 'A1')}
-                className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-lg transition flex items-center gap-2"
+        <button
+          onClick={() => setPathMode('vocab')}
+          className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            pathMode === 'vocab'
+              ? 'bg-amber-500 text-stone-950 shadow-xs'
+              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Vocabulary &amp; Chunks Decks</span>
+        </button>
+
+        {selectedLevel === 'A1' && (
+          <button
+            onClick={() => setPathMode('a0')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+              pathMode === 'a0'
+                ? 'bg-amber-500 text-stone-950 shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span>A0 Absolute Zero</span>
+          </button>
+        )}
+      </div>
+
+      {/* ============================================================ */}
+      {/* MODE 1: PROGRESSIVE WORLDS & LESSONS PATH                    */}
+      {/* ============================================================ */}
+      {pathMode === 'worlds' && (
+        <div className="space-y-6">
+          {currentUnits.map((unit) => {
+            const spec = WORLD_CURRICULUM_SPECS[unit.unitNumber];
+            const totalInUnit = unit.lessons.length;
+            const completedInUnit = unit.lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
+            const isUnitMastered = completedInUnit === totalInUnit && totalInUnit > 0;
+
+            return (
+              <div
+                key={unit.id}
+                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6"
               >
-                <Trophy className="w-4 h-4" />
-                <span>Take {currentLvlConfig.prevLevel} End-of-Level Assessment (15 Questions)</span>
-              </button>
-            )}
+                {/* World Header Landmark */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 dark:border-stone-800 pb-5">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-xl text-xs font-black bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 shadow-xs">
+                        World {unit.unitNumber}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                        {unit.level} Domain
+                      </span>
+                    </div>
 
-            <button
-              onClick={onOpenPlacementTest}
-              className="px-5 py-3 rounded-2xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs flex items-center gap-2 border border-stone-700 transition"
-            >
-              <Award className="w-4 h-4 text-amber-400" />
-              <span>Or Take Placement Test to Calibrate</span>
-            </button>
-          </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white mt-1">
+                      {unit.title_es}
+                    </h2>
+                    <p className="text-xs sm:text-sm font-semibold text-stone-600 dark:text-stone-300">
+                      🇬🇧 {unit.title_en} • <span className="font-arabic" dir="rtl">{unit.title_ar}</span>
+                    </p>
+                  </div>
+
+                  {/* World Mastery Status Box */}
+                  <div className="flex items-center gap-3 bg-stone-50 dark:bg-stone-800 px-4 py-3 rounded-2xl border border-stone-200 dark:border-stone-700 shrink-0">
+                    <div className="text-right">
+                      <span className="text-[10px] font-black uppercase text-stone-400 block tracking-wider">
+                        World Cleared
+                      </span>
+                      <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+                        {completedInUnit} / {totalInUnit} Lessons
+                      </span>
+                    </div>
+                    {isUnitMastered ? (
+                      <div className="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-black">
+                        <Check className="w-5 h-5" />
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-black text-xs">
+                        {Math.round((completedInUnit / totalInUnit) * 100)}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Explicit Separation: Grammar Blueprint vs Vocabulary Deck Pillars */}
+                {spec && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Grammar Pillar Card */}
+                    <div className="bg-amber-500/10 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-800/60 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-amber-500 text-stone-950 font-black">
+                          <GraduationCap className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-amber-800 dark:text-amber-300 tracking-wider block">
+                            Core Grammar Blueprint
+                          </span>
+                          <h4 className="text-xs font-black text-stone-900 dark:text-white">
+                            {spec.grammar.grammarTitle_es}
+                          </h4>
+                        </div>
+                      </div>
+
+                      <ul className="space-y-1 pt-1 text-[11px] text-stone-700 dark:text-stone-300">
+                        {spec.grammar.keyRules.map((rule, rIdx) => (
+                          <li key={rIdx} className="flex items-start gap-1.5">
+                            <span className="text-amber-500 font-bold">•</span>
+                            <span>{rule.rule_es}: <span className="font-bold text-amber-700 dark:text-amber-400">"{rule.example}"</span></span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Vocabulary Pillar Card */}
+                    <div className="bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-stone-900 dark:bg-stone-700 text-amber-400 font-black">
+                            <BookOpen className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase text-stone-400 tracking-wider block">
+                              Essential Vocabulary Deck
+                            </span>
+                            <h4 className="text-xs font-black text-stone-900 dark:text-white">
+                              {spec.vocabulary.vocabTitle_es} ({spec.vocabulary.targetCount} Words)
+                            </h4>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleAddSampleChunksToSRS(spec.vocabulary.sampleChunks)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-[10px] transition cursor-pointer"
+                        >
+                          + Add Deck
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {spec.vocabulary.sampleChunks.map((chunk, cIdx) => (
+                          <span
+                            key={cIdx}
+                            onClick={() => speakSpanish(chunk.spanish)}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 hover:border-amber-500 cursor-pointer flex items-center gap-1"
+                          >
+                            <span>{chunk.spanish}</span>
+                            <Volume2 className="w-3 h-3 text-amber-500" />
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* World Lessons Grid */}
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-2">
+                    <span>Lessons Progression in World {unit.unitNumber}</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {unit.lessons.map((lesson, lIdx) => {
+                      const isCompleted = userProgress.completedLessonIds.includes(lesson.id);
+                      const isUnlocked = lIdx === 0 || userProgress.completedLessonIds.includes(unit.lessons[lIdx - 1].id);
+
+                      return (
+                        <div
+                          key={lesson.id}
+                          className={`p-4 rounded-2xl border transition flex flex-col justify-between space-y-3 ${
+                            isCompleted
+                              ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                              : isUnlocked
+                              ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 hover:border-amber-500'
+                              : 'bg-stone-50 dark:bg-stone-950/50 border-stone-200 dark:border-stone-850 opacity-75'
+                          }`}
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-bold">
+                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300">
+                                Lesson {lesson.lessonNumber}
+                              </span>
+                              {isCompleted ? (
+                                <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-black flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Cleared
+                                </span>
+                              ) : !isUnlocked ? (
+                                <Lock className="w-3.5 h-3.5 text-stone-400" />
+                              ) : null}
+                            </div>
+
+                            <h4 className="font-extrabold text-stone-900 dark:text-white text-sm">
+                              {lesson.title_es}
+                            </h4>
+                            <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
+                              🇬🇧 {lesson.title_en}
+                            </p>
+
+                            <div className="bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/50 p-2 rounded-xl text-[10px] text-amber-900 dark:text-amber-300 font-medium space-y-0.5">
+                              <span className="font-extrabold block">🎯 Goal:</span>
+                              <span className="line-clamp-2">{lesson.objectives_en?.[0] || lesson.title_en}</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-stone-200/60 dark:border-stone-700/60 flex justify-end">
+                            <button
+                              onClick={() => setActiveLesson(lesson)}
+                              disabled={!isUnlocked && !isCompleted}
+                              className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                                isCompleted
+                                  ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
+                                  : isUnlocked
+                                  ? 'bg-amber-500 hover:bg-amber-400 text-stone-950'
+                                  : 'bg-stone-200 dark:bg-stone-700 text-stone-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <Play className="w-3 h-3 fill-current" />
+                              <span>{isCompleted ? 'Review' : 'Start Lesson'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* MODE 0: REAL-WORLD MEXICAN SPANISH SURVIVAL SCENARIOS */}
-      {pathMode === 'scenarios' && (() => {
-        const selectedScenarios = HIGH_UTILITY_LEARNING_PATH.filter(s => s.level === selectedLevel);
-        if (selectedScenarios.length === 0) return null;
-
-        return (
-          <div className="bg-gradient-to-br from-amber-500/10 via-stone-900 to-stone-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl text-white">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800 pb-5">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span>Real-World Mexican Spanish Survival Scenarios ({selectedLevel})</span>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                  <span>Authentic Street Conversations (Conversaciones Reales)</span>
+      {/* ============================================================ */}
+      {/* MODE 2: CORE GRAMMAR BLUEPRINTS HIERARCHY                     */}
+      {/* ============================================================ */}
+      {pathMode === 'grammar' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-amber-500 text-stone-950 font-black">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-stone-900 dark:text-white">
+                  Core Grammar Blueprints Hierarchy
                 </h2>
-                <p className="text-xs sm:text-sm text-stone-300 max-w-2xl">
-                  Zero textbook filler. Passes the 48-hour street test: real phrases, natural contrast vs formal textbooks, modular variations, and interactive survival drills.
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Comprehensive breakdown of grammatical structures mapped directly to every World in {selectedLevel}.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              {selectedScenarios.map((scen) => {
-                const mainPhrase = scen.core_phrases[0];
-                const drillState = scenarioDrillState[scen.id];
-                const drillCorrectAns = mainPhrase ? mainPhrase.phrase_es : '';
-                const drillOptions = mainPhrase ? [
-                  mainPhrase.phrase_es,
-                  scen.contrast_examples[0]?.textbook_formal || 'Opción de libro antigua',
-                  scen.example_variations[0]?.varied_es || 'Opción variada',
-                  scen.core_phrases[1]?.phrase_es || 'Opción alternativa'
-                ].sort(() => 0.5 - Math.random()) : [];
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {currentUnits.map((unit) => {
+                const spec = WORLD_CURRICULUM_SPECS[unit.unitNumber];
+                if (!spec) return null;
 
                 return (
-                  <div key={scen.id} className="bg-stone-950/80 border border-stone-800 rounded-2xl p-5 sm:p-6 space-y-6">
-                    {/* Scenario Context Header */}
-                    <div className="flex items-start justify-between gap-3 bg-stone-900/90 p-4 rounded-xl border border-stone-800">
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl p-2 bg-stone-800/80 rounded-2xl">{scen.emoji}</span>
-                        <div>
-                          <span className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                            {scen.category} • {scen.level}
-                          </span>
-                          <h3 className="text-lg font-black text-white">{scen.title}</h3>
-                          <p className="text-xs text-stone-300 font-medium mt-0.5">
-                            📍 <strong>Scenario Context:</strong> {scen.scenario_context}
+                  <div
+                    key={unit.id}
+                    className="bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-2xl p-5 space-y-3"
+                  >
+                    <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-amber-500 text-stone-950">
+                        World {unit.unitNumber}
+                      </span>
+                      <span className="text-xs font-bold text-stone-500">
+                        {unit.title_es}
+                      </span>
+                    </div>
+
+                    <h3 className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-2">
+                      <span>{spec.grammar.grammarTitle_es}</span>
+                    </h3>
+
+                    <div className="space-y-2 pt-1">
+                      {spec.grammar.keyRules.map((rule, idx) => (
+                        <div key={idx} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl p-3 text-xs space-y-1">
+                          <p className="font-extrabold text-stone-900 dark:text-stone-100">
+                            📌 {rule.rule_es}
+                          </p>
+                          <p className="text-stone-600 dark:text-stone-300 font-medium">
+                            🇬🇧 {rule.rule_en}
+                          </p>
+                          <p className="text-amber-700 dark:text-amber-400 font-extrabold bg-amber-50 dark:bg-amber-950/50 p-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60 mt-1">
+                            Example: "{rule.example}"
                           </p>
                         </div>
-                      </div>
+                      ))}
                     </div>
-
-                    {/* 1. Core Real-World Phrases (6 Phrases) */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                        <MessageSquare className="w-4 h-4 text-amber-400" />
-                        <span>Core Real-World Native Phrases ({scen.core_phrases.length})</span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {scen.core_phrases.map((cp, idx) => (
-                          <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-3.5 space-y-1.5 hover:border-amber-500/40 transition">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-black text-white flex items-center gap-2">
-                                <span>{cp.phrase_es}</span>
-                              </p>
-                              <button
-                                onClick={() => speakSpanish(cp.audio_text)}
-                                className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition cursor-pointer shrink-0"
-                                title="Listen audio"
-                              >
-                                <Volume2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                            <p className="text-xs text-stone-300 font-medium">🇬🇧 {cp.phrase_en}</p>
-                            <p className="text-[11px] text-amber-300 font-mono italic">🗣️ {cp.phonetic}</p>
-                            <p className="text-[11px] text-stone-400 border-t border-stone-800 pt-1.5 mt-1">
-                              💡 {cp.context_note}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 2. Contrast Examples (Textbook Formal vs Natural Mexican Spanish) */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                        <Zap className="w-4 h-4 text-amber-400" />
-                        <span>Formal Textbook vs Natural Mexican Spanish Contrast</span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {scen.contrast_examples.map((ce, idx) => (
-                          <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-4 space-y-2">
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-black uppercase text-red-400 bg-red-950/60 px-2 py-0.5 rounded">
-                                ❌ Formal Textbook (Avoid)
-                              </span>
-                              <p className="text-xs text-stone-300 line-through font-mono">{ce.textbook_formal}</p>
-                            </div>
-                            <div className="space-y-1 border-t border-stone-800 pt-2">
-                              <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded">
-                                ✅ Authentic Natural Mexican Spanish
-                              </span>
-                              <p className="text-sm font-black text-emerald-300 flex items-center gap-2">
-                                <span>{ce.natural_mexican}</span>
-                                <button
-                                  onClick={() => speakSpanish(ce.natural_mexican)}
-                                  className="p-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-stone-950 transition cursor-pointer"
-                                >
-                                  <Volume2 className="w-3 h-3" />
-                                </button>
-                              </p>
-                              <p className="text-xs text-stone-300 font-medium">🇬🇧 {ce.english_translation}</p>
-                              <p className="text-[11px] text-stone-400 italic">💬 {ce.why_natural}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 3. Example Modular Variations (4 Variations) */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-amber-400" />
-                        <span>4 Modular Element Variations</span>
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-                        {scen.example_variations.map((ev, idx) => (
-                          <div key={idx} className="bg-stone-900/80 border border-stone-800 rounded-xl p-3 space-y-1">
-                            <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded block w-max">
-                              Swapped: {ev.swapped_element}
-                            </span>
-                            <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
-                              <span>{ev.varied_es}</span>
-                              <button
-                                onClick={() => speakSpanish(ev.varied_es)}
-                                className="p-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition"
-                              >
-                                <Volume2 className="w-3 h-3" />
-                              </button>
-                            </p>
-                            <p className="text-[11px] text-stone-300">🇬🇧 {ev.varied_en}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 4. Interactive Street Recall Drill Card */}
-                    {mainPhrase && (
-                      <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-4 sm:p-5 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                            <Target className="w-4 h-4 text-amber-400" />
-                            <span>Interactive Street Recall Drill (+25 XP)</span>
-                          </span>
-                          {drillState?.isCorrect && (
-                            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Passed Drill!
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm font-extrabold text-stone-100">
-                          🎯 Scenario Challenge: How do you say "{mainPhrase.phrase_en}" in authentic Mexican Spanish?
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          {drillOptions.map((opt, optIdx) => {
-                            const isSelected = drillState?.selected === opt;
-                            const isCorrectOpt = opt.trim().toLowerCase() === drillCorrectAns.trim().toLowerCase();
-                            let btnStyle = "bg-stone-900/90 border-stone-800 hover:border-amber-500/50 text-stone-200";
-
-                            if (drillState) {
-                              if (isCorrectOpt) {
-                                btnStyle = "bg-emerald-950 border-emerald-500 text-emerald-200 font-bold";
-                              } else if (isSelected && !drillState.isCorrect) {
-                                btnStyle = "bg-rose-950 border-rose-500 text-rose-200 line-through";
-                              }
-                            }
-
-                            return (
-                              <button
-                                key={optIdx}
-                                onClick={() => {
-                                  speakSpanish(opt);
-                                  const isCorrect = isCorrectOpt;
-                                  setScenarioDrillState(prev => ({
-                                    ...prev,
-                                    [scen.id]: { selected: opt, isCorrect }
-                                  }));
-                                  if (isCorrect) {
-                                    soundEffects.playCorrect();
-                                    setUserProgress(prev => ({ ...prev, xp: prev.xp + 25 }));
-                                  } else {
-                                    soundEffects.playIncorrect();
-                                  }
-                                }}
-                                className={`p-3 rounded-xl border text-left text-xs font-medium flex items-center justify-between gap-2 transition ${btnStyle}`}
-                              >
-                                <span>{opt}</span>
-                                <Volume2 className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {drillState && (
-                          <div className={`p-3 rounded-xl border text-xs font-medium ${
-                            drillState.isCorrect
-                              ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-                              : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
-                          }`}>
-                            {drillState.isCorrect
-                              ? `¡Excelente! "${drillCorrectAns}" is natural and widely used in Mexico. ${scen.contrast_examples[0]?.why_natural || ''}`
-                              : `Not quite. The authentic natural phrase is: "${drillCorrectAns}".`}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
-      {/* MODE 1: A0 ABSOLUTE ZERO SCAFFOLDING UNITS */}
+      {/* ============================================================ */}
+      {/* MODE 3: VOCABULARY & CHUNKS DECKS HIERARCHY                   */}
+      {/* ============================================================ */}
+      {pathMode === 'vocab' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-amber-500 text-stone-950 font-black">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-stone-900 dark:text-white">
+                  Essential Vocabulary &amp; Chunks Hierarchy
+                </h2>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Target collocations and vocabulary decks organized by World for Spaced Repetition Memory practice.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {currentUnits.map((unit) => {
+                const spec = WORLD_CURRICULUM_SPECS[unit.unitNumber];
+                if (!spec) return null;
+
+                return (
+                  <div
+                    key={unit.id}
+                    className="bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-2xl p-5 space-y-3"
+                  >
+                    <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950">
+                          World {unit.unitNumber}
+                        </span>
+                        <span className="text-xs font-bold text-stone-500">
+                          {unit.title_es}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleAddSampleChunksToSRS(spec.vocabulary.sampleChunks)}
+                        className="px-2 py-1 rounded-md bg-amber-500 text-stone-950 font-bold text-[10px] hover:bg-amber-400 transition cursor-pointer"
+                      >
+                        + Queue SRS
+                      </button>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-black text-stone-900 dark:text-white">
+                        {spec.vocabulary.vocabTitle_es}
+                      </h3>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">
+                        Target Deck: {spec.vocabulary.targetCount} Core Collocations
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      {spec.vocabulary.sampleChunks.map((chunk, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => speakSpanish(chunk.spanish)}
+                          className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl p-3 text-xs flex items-center justify-between gap-3 hover:border-amber-500 transition cursor-pointer"
+                        >
+                          <div>
+                            <p className="font-black text-stone-900 dark:text-stone-100 text-sm">
+                              {chunk.spanish}
+                            </p>
+                            <p className="text-stone-600 dark:text-stone-300 font-medium mt-0.5">
+                              🇬🇧 {chunk.english}
+                            </p>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 font-arabic mt-0.5" dir="rtl">
+                              🇦🇪 {chunk.arabic}
+                            </p>
+                          </div>
+                          <Volume2 className="w-4 h-4 text-amber-500 shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODE 4: A0 ABSOLUTE ZERO SCAFFOLDING UNITS                   */}
+      {/* ============================================================ */}
       {pathMode === 'a0' && (() => {
         const activeUnit = A0_BEGINNER_UNITS[activeA0UnitIndex] || A0_BEGINNER_UNITS[0];
 
         return (
           <div className="space-y-6">
-            {/* Unit Selector Strip */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               {A0_BEGINNER_UNITS.map((u, idx) => (
                 <button
                   key={u.unit_id}
                   onClick={() => setActiveA0UnitIndex(idx)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black shrink-0 transition flex items-center gap-1.5 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
                     activeA0UnitIndex === idx
                       ? 'bg-amber-500 text-stone-950 shadow-md'
                       : 'bg-stone-900 border border-stone-800 text-stone-300 hover:border-stone-700'
@@ -629,7 +774,6 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
               ))}
             </div>
 
-            {/* Active A0 Scaffolding Unit Detail */}
             <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 space-y-6 text-white shadow-xl">
               <div className="border-b border-stone-800 pb-4 space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded">
@@ -666,347 +810,31 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
                   ))}
                 </div>
               </div>
-
-              {/* Chunk Building Ladder */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Layers className="w-4 h-4" />
-                  <span>4-Step Sentence Building Ladder</span>
-                </h3>
-                <div className="space-y-2">
-                  {activeUnit.chunk_building_ladder.map((step) => (
-                    <div key={step.step} className="bg-stone-950 border border-stone-800 rounded-xl p-3.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-amber-500 text-stone-950 font-black text-xs flex items-center justify-center shrink-0">
-                          {step.step}
-                        </span>
-                        <div>
-                          <p className="text-sm font-black text-white flex items-center gap-2">
-                            <span>{step.text_es}</span>
-                            <button onClick={() => speakSpanish(step.audio_text)} className="p-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition">
-                              <Volume2 className="w-3 h-3" />
-                            </button>
-                          </p>
-                          <p className="text-xs text-stone-300">🇬🇧 {step.text_en}</p>
-                        </div>
-                      </div>
-                      <span className="text-[11px] text-stone-400 italic hidden sm:block">{step.explanation}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Micro Drills */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Target className="w-4 h-4" />
-                  <span>Micro Drills ({activeUnit.micro_drills.length})</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {activeUnit.micro_drills.map((drill) => {
-                    const ansState = a0DrillAnswers[drill.id];
-
-                    return (
-                      <div key={drill.id} className="bg-stone-950 border border-stone-800 rounded-xl p-4 space-y-3">
-                        <p className="text-xs font-extrabold text-stone-200">
-                          ❓ {drill.prompt}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {drill.options.map((opt, oIdx) => {
-                            const isSelected = ansState?.selected === opt;
-                            const isCorrectOpt = opt.trim().toLowerCase() === drill.correct_answer.trim().toLowerCase();
-                            let style = "bg-stone-900 border-stone-800 hover:border-amber-500/50 text-stone-200";
-
-                            if (ansState) {
-                              if (isCorrectOpt) style = "bg-emerald-950 border-emerald-500 text-emerald-200 font-bold";
-                              else if (isSelected && !ansState.isCorrect) style = "bg-rose-950 border-rose-500 text-rose-200 line-through";
-                            }
-
-                            return (
-                              <button
-                                key={oIdx}
-                                onClick={() => {
-                                  if (drill.audio_text) speakSpanish(drill.audio_text);
-                                  const isCorrect = isCorrectOpt;
-                                  setA0DrillAnswers(prev => ({ ...prev, [drill.id]: { selected: opt, isCorrect } }));
-                                  if (isCorrect) {
-                                    soundEffects.playCorrect();
-                                    setUserProgress(prev => ({ ...prev, xp: prev.xp + 15 }));
-                                  } else {
-                                    soundEffects.playIncorrect();
-                                  }
-                                }}
-                                className={`p-2.5 rounded-xl border text-xs font-medium text-center transition ${style}`}
-                              >
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {ansState && (
-                          <p className={`text-[11px] p-2 rounded-lg ${ansState.isCorrect ? 'bg-emerald-950/60 text-emerald-300' : 'bg-rose-950/60 text-rose-300'}`}>
-                            💡 {drill.explanation}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </div>
         );
       })()}
 
-      {/* ============================================================ */}
-      {/* MODE 1: LINEAR DUOLINGO-STYLE PATH MAP                       */}
-      {/* ============================================================ */}
-      {pathMode === 'linear' && (
-        <div className="space-y-6">
-          {currentUnits.map((unit, uIdx) => {
-            const totalInUnit = unit.lessons.length;
-            const completedInUnit = unit.lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
-            const isUnitMastered = completedInUnit === totalInUnit && totalInUnit > 0;
-
-            return (
-              <div
-                key={unit.id}
-                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6"
-              >
-                {/* Unit Header Landmark */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 shadow-xs">
-                        Unit {unit.unitNumber}
-                      </span>
-                      <h2 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
-                        {unit.title_es}
-                      </h2>
-                    </div>
-                    <p className="text-xs sm:text-sm font-semibold text-stone-600 dark:text-stone-300">
-                      🇬🇧 {unit.title_en} • <span className="font-arabic" dir="rtl">{unit.title_ar}</span>
-                    </p>
-                    <p className="text-xs text-stone-500 dark:text-stone-400">
-                      {unit.description_en}
-                    </p>
-                  </div>
-
-                  {/* Unit Mastery Status */}
-                  <div className="flex items-center gap-3 bg-stone-50 dark:bg-stone-800 px-4 py-2 rounded-2xl border border-stone-200 dark:border-stone-700 shrink-0">
-                    <div className="text-right">
-                      <span className="text-[11px] font-bold text-stone-400 block">Unit Mastery</span>
-                      <span className="text-xs font-black text-amber-700 dark:text-amber-400">
-                        {completedInUnit} / {totalInUnit} Cleared
-                      </span>
-                    </div>
-                    {isUnitMastered ? (
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-bold">
-                        <Check className="w-5 h-5" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold text-xs">
-                        {Math.round((completedInUnit / totalInUnit) * 100)}%
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Stepping-Stone Linear Path Nodes */}
-                <div className="relative py-4 flex flex-col items-center space-y-8">
-                  {/* Connection Line */}
-                  <div className="absolute top-8 bottom-8 w-1 bg-stone-200 dark:bg-stone-800 -z-0" />
-
-                  {unit.lessons.map((lesson, lIdx) => {
-                    const isCompleted = userProgress.completedLessonIds.includes(lesson.id);
-                    // Determine if unlocked: first lesson of unit or previous lesson completed
-                    const isUnlocked = lIdx === 0 || userProgress.completedLessonIds.includes(unit.lessons[lIdx - 1].id);
-                    const isNextActive = isUnlocked && !isCompleted;
-
-                    // Stepping stone lateral offsets (winding path)
-                    const offsets = ['translate-x-0', 'translate-x-6 sm:translate-x-12', '-translate-x-6 sm:-translate-x-12', 'translate-x-0'];
-                    const offsetClass = offsets[lIdx % offsets.length];
-
-                    return (
-                      <div
-                        key={lesson.id}
-                        className={`flex flex-col items-center gap-2 z-10 transition-transform ${offsetClass}`}
-                      >
-                        {/* Stepping Stone Node Button */}
-                        <button
-                          onClick={() => setActiveLesson(lesson)}
-                          className={`relative group w-18 h-18 sm:w-20 sm:h-20 rounded-3xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105 active:scale-95 ${
-                            isCompleted
-                              ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white ring-4 ring-emerald-400/20'
-                              : isNextActive
-                              ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-stone-950 ring-4 ring-amber-400/40 animate-bounce hover:animate-none'
-                              : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 border border-stone-300 dark:border-stone-700'
-                          }`}
-                        >
-                          {isCompleted ? (
-                            <CheckCircle2 className="w-8 h-8" />
-                          ) : isNextActive ? (
-                            <Play className="w-8 h-8 fill-current ml-0.5" />
-                          ) : (
-                            <LockKeyhole className="w-6 h-6" />
-                          )}
-
-                          <span className="text-[10px] font-black uppercase mt-1">
-                            L{lesson.lessonNumber}
-                          </span>
-
-                          {/* Floating Star / XP Badge */}
-                          {isCompleted && (
-                            <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center text-xs font-black shadow-md">
-                              ★
-                            </div>
-                          )}
-                        </button>
-
-                        {/* Node Tooltip Label Card */}
-                        <div className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-2 text-center shadow-xs max-w-[220px]">
-                          <p className="text-xs font-extrabold text-stone-900 dark:text-white line-clamp-1">
-                            {lesson.title_es}
-                          </p>
-                          <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-1">
-                            {lesson.title_en}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* MODE 2: CURRICULUM GRID MATRIX                               */}
-      {/* ============================================================ */}
-      {pathMode === 'grid' && (
-        <div className="space-y-5">
-          {currentUnits.map(unit => {
-            const totalLessons = unit.lessons.length;
-            const completedInUnit = unit.lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
-
-            return (
-              <div
-                key={unit.id}
-                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-sm space-y-4"
-              >
-                <div className="flex justify-between items-center border-b border-stone-100 dark:border-stone-800 pb-3">
-                  <div>
-                    <span className="px-2 py-0.5 rounded text-xs font-black bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950">
-                      Unit {unit.unitNumber}
-                    </span>
-                    <h3 className="text-lg font-black text-stone-900 dark:text-white mt-1">
-                      {unit.title_es}
-                    </h3>
-                  </div>
-                  <span className="text-xs font-bold text-stone-500">
-                    {completedInUnit}/{totalLessons} Done
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {unit.lessons.map(lesson => {
-                    const isCompleted = userProgress.completedLessonIds.includes(lesson.id);
-                    return (
-                      <div
-                        key={lesson.id}
-                        className={`p-4 rounded-xl border flex flex-col justify-between ${
-                          isCompleted
-                            ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
-                            : 'bg-stone-50/60 dark:bg-stone-800/40 border-stone-200 dark:border-stone-800'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold text-stone-400">
-                            <span>Lesson {lesson.lessonNumber}</span>
-                            {isCompleted && <span className="text-emerald-600 font-extrabold">✓ Cleared</span>}
-                          </div>
-                          <h4 className="font-extrabold text-stone-900 dark:text-white mt-1">
-                            {lesson.title_es}
-                          </h4>
-                          <p className="text-xs text-stone-600 dark:text-stone-300">
-                            {lesson.title_en}
-                          </p>
-                        </div>
-
-                        <div className="pt-3 mt-3 border-t border-stone-200/50 flex justify-end">
-                          <button
-                            onClick={() => setActiveLesson(lesson)}
-                            className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs"
-                          >
-                            {isCompleted ? 'Review' : 'Start'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* End of Level CEFR Certification Gateway Banner */}
-      <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/80 border border-amber-500/30 rounded-3xl p-6 sm:p-8 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-2 max-w-xl">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-stone-950">
-              Official Level Milestone
-            </span>
-            <span className="text-xs text-amber-300 font-bold">
-              {selectedLevel} Comprehensive Retention Assessment
-            </span>
-          </div>
-          <h3 className="text-xl sm:text-2xl font-black text-white">
-            Ready to Certify {selectedLevel} Spanish Mastery?
-          </h3>
-          <p className="text-xs sm:text-sm text-stone-300 leading-relaxed">
-            Take a randomized 15-question examination drawn directly from {selectedLevel}'s active vocabulary vault, listening audio, grammar blueprints, and syntax exercises. Pass with ≥80% to earn your official diploma and unlock Level {currentLvlConfig.nextLevel || 'Mastery'}!
-          </p>
-        </div>
-
-        <button
-          onClick={() => handleOpenAssessment(selectedLevel)}
-          className="px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-xl transition flex items-center gap-2.5 shrink-0 transform hover:scale-105 active:scale-95"
-        >
-          <Trophy className="w-5 h-5" />
-          <span>Launch {selectedLevel} Level Exam (15 Qs)</span>
-        </button>
-      </div>
-
-      {/* Active Lesson Modal */}
+      {/* Lesson Modal */}
       {activeLesson && (
         <LessonModal
           lesson={activeLesson}
-          onClose={() => setActiveLesson(null)}
           userProgress={userProgress}
           setUserProgress={setUserProgress}
-          onLessonCompleted={(lId) => {
-            if (onLessonCompleted) {
-              onLessonCompleted(lId);
-            }
+          onClose={() => setActiveLesson(null)}
+          onCompleted={(lessonId) => {
+            if (onLessonCompleted) onLessonCompleted(lessonId);
           }}
         />
       )}
 
-      {/* End of Level Assessment Modal */}
+      {/* End of Level Certification Assessment Modal */}
       {isAssessmentModalOpen && (
         <EndOfLevelAssessmentModal
           level={assessmentLevel}
-          nextLevel={currentLvlConfig.nextLevel}
-          onClose={() => setIsAssessmentModalOpen(false)}
           userProgress={userProgress}
           setUserProgress={setUserProgress}
-          onLevelUnlocked={(unlockedLvl) => {
-            setSelectedLevel(unlockedLvl);
-          }}
+          onClose={() => setIsAssessmentModalOpen(false)}
         />
       )}
     </div>

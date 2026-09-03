@@ -1,6 +1,7 @@
 import { ComprehensibleStory } from '../types';
+import { MEXICO_ARGENTINA_STORIES } from './mexicoArgentinaStories';
 
-export const COMPREHENSIBLE_STORIES: ComprehensibleStory[] = [
+const BASE_STORIES: ComprehensibleStory[] = [
   {
     id: 'story-1',
     title_es: 'Un Paseo por Coyoacán',
@@ -191,4 +192,9 @@ export const COMPREHENSIBLE_STORIES: ComprehensibleStory[] = [
       }
     ]
   }
+];
+
+export const COMPREHENSIBLE_STORIES: ComprehensibleStory[] = [
+  ...BASE_STORIES,
+  ...MEXICO_ARGENTINA_STORIES
 ];

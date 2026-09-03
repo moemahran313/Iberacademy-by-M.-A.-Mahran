@@ -119,33 +119,35 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const learnItems = [
-    { id: 'dashboard', label_en: 'Dashboard', label_ar: 'الرئيسية', icon: Compass, desc: 'Overview & Daily Goals' },
-    { id: 'a0_foundation', label_en: 'Absolute Zero (A0)', label_ar: 'أساسيات المبتدئ Zero', icon: Zap, desc: '25 Scaffolding Micro-Units' },
-    { id: 'planner', label_en: 'Curriculum Planner', label_ar: 'المخطط', icon: Target, desc: 'AI Milestones & Weaknesses' },
-    { id: 'stories', label_en: 'Reader & Stories', label_ar: 'القارئ الذكي', icon: Sparkles, desc: 'Comprehensible Input' },
-    { id: 'path', label_en: 'Learning Path', label_ar: 'مسار التعلم', icon: Layers, desc: 'CEFR Roadmap' }
+  const roadmapItems = [
+    { id: 'path', label_en: 'CEFR Roadmap', label_ar: 'مسار التعلم', icon: Layers, desc: 'Structured A1-B2 CEFR Path' },
+    { id: 'a0_foundation', label_en: 'A0 Beginner Scaffolding', label_ar: 'أساسيات المبتدئ Zero', icon: Zap, desc: '25 Micro-Guided Units' },
+    { id: 'planner', label_en: 'Curriculum Planner', label_ar: 'مخطط المنهج', icon: Target, desc: 'Milestones & Diagnostics' }
   ];
 
-  const practiceItems = [
-    { id: 'shadowing', label_en: 'Oral Shadowing Studio', label_ar: 'الاستوديو الصوتي', icon: Mic, desc: '3-Stage Speak Production' },
-    { id: 'linglooper', label_en: 'AI Tutor Chat', label_ar: 'الدردشة', icon: MessageSquare, desc: 'Interactive Role-Play' },
-    { id: 'vocabulary', label_en: 'SRS Vocabulary', label_ar: 'المفردات', icon: BookOpen, desc: 'Flashcards & Spaced Repetition' },
-    { id: 'verbs', label_en: 'Verb Conjugator', label_ar: 'الأفعال', icon: TrendingUp, desc: 'Conjugations & Drills' },
-    { id: 'grammar', label_en: 'Grammar Encyclopedia', label_ar: 'القواعد', icon: GraduationCap, desc: 'Comprehensive Rules' },
-    { id: 'videos', label_en: 'Video Lessons', label_ar: 'الدروس', icon: Video, desc: 'Interactive Video Input' }
+  const immersionItems = [
+    { id: 'stories', label_en: 'Reader & Stories', label_ar: 'القارئ الذكي', icon: Sparkles, desc: 'Comprehensible Input Stories' },
+    { id: 'videos', label_en: 'Video Lessons', label_ar: 'دروس الفيديو', icon: Video, desc: 'Interactive Video Practice' }
   ];
 
-  const allNavItems = [...learnItems, ...practiceItems, 
-    { id: 'profile', label_en: 'Profile', label_ar: 'الحساب', icon: UserIcon, desc: 'Account Settings' }
+  const studioItems = [
+    { id: 'tutor', label_en: 'AI Native Tutor', label_ar: 'الدردشة الذكية', icon: MessageSquare, desc: 'Interactive Roleplay & Chat' },
+    { id: 'shadowing', label_en: 'Oral Shadowing Studio', label_ar: 'الاستوديو الصوتي', icon: Mic, desc: '3-Stage Speaking Drills' },
+    { id: 'linglooper', label_en: 'Interactive Practice Game', label_ar: 'لعبة المحادثة', icon: Trophy, desc: 'Gamified Roleplay Scenarios' }
+  ];
+
+  const knowledgeItems = [
+    { id: 'vocabulary', label_en: 'SRS Vocabulary', label_ar: 'المفردات', icon: BookOpen, desc: 'Spaced Repetition Memory Deck' },
+    { id: 'verbs', label_en: 'Verb Conjugator', label_ar: 'تصريف الأفعال', icon: TrendingUp, desc: 'Conjugations & Drills' },
+    { id: 'grammar', label_en: 'Grammar Encyclopedia', label_ar: 'موسوعة القواعد', icon: GraduationCap, desc: 'Comprehensive Grammar Blueprint' }
   ];
 
   const mobileBottomTabs = [
-    { id: 'dashboard', label_en: 'Dashboard', label_ar: 'الرئيسية', icon: Compass },
-    { id: 'planner', label_en: 'Planner', label_ar: 'المخطط', icon: Target },
-    { id: 'stories', label_en: 'Reader', label_ar: 'القارئ', icon: Sparkles },
-    { id: 'linglooper', label_en: 'Chat', label_ar: 'دردشة', icon: MessageSquare },
-    { id: 'profile', label_en: 'Profile', label_ar: 'الحساب', icon: UserIcon }
+    { id: 'dashboard', label_en: 'Home', label_ar: 'الرئيسية', icon: Compass },
+    { id: 'path', label_en: 'Roadmap', label_ar: 'مسار التعلم', icon: Layers },
+    { id: 'stories', label_en: 'Immersion', label_ar: 'القصص', icon: Sparkles },
+    { id: 'tutor', label_en: 'Studio', label_ar: 'الدردشة', icon: MessageSquare },
+    { id: 'vocabulary', label_en: 'Knowledge', label_ar: 'المعرفة', icon: BookOpen }
   ];
 
   const handleNavClick = (tabId: string) => {
@@ -191,43 +193,15 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const isDarkMode = userProgress.settings.theme === 'dark';
-  const isLearnActive = learnItems.some(i => i.id === activeTab);
-  const isPracticeActive = practiceItems.some(i => i.id === activeTab);
+  const isRoadmapActive = roadmapItems.some(i => i.id === activeTab);
+  const isImmersionActive = immersionItems.some(i => i.id === activeTab);
+  const isStudioActive = studioItems.some(i => i.id === activeTab);
+  const isKnowledgeActive = knowledgeItems.some(i => i.id === activeTab);
 
   return (
     <>
-      {/* Dev Mode Warning Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-stone-950 px-4 py-2 text-center text-[11px] font-bold shadow-xs z-50 flex items-center justify-center gap-2 flex-wrap border-b border-orange-400">
-        <span className="px-2 py-0.5 rounded-full bg-stone-950 text-amber-400 font-mono text-[9px] uppercase font-black tracking-widest shrink-0 animate-pulse">
-          🚧 DEV MODE IN PROGRESS
-        </span>
-        <span className="font-medium text-stone-950">
-          Actively building! Honestly, half of this works by pure luck &amp; coffee ☕ (and I have no idea why lol). Ideas?
-        </span>
-        <div className="flex items-center gap-1.5 ml-1">
-          <a
-            href="https://www.facebook.com/mhdmahran/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Message on Facebook"
-            className="p-1 rounded bg-stone-950 text-amber-400 hover:bg-stone-900 transition-all flex items-center justify-center shadow-xs hover:scale-105 active:scale-95"
-          >
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-          </a>
-          <a
-            href="mailto:moemahran@gmail.com"
-            title="Send an Email"
-            className="p-1 rounded bg-stone-950 text-amber-400 hover:bg-stone-900 transition-all flex items-center justify-center shadow-xs hover:scale-105 active:scale-95"
-          >
-            <Mail className="w-3.5 h-3.5" />
-          </a>
-        </div>
-      </div>
-
-      {/* Streamlined Premium Header */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-b border-stone-200/80 dark:border-stone-800/80 text-stone-900 dark:text-stone-100 shadow-xs transition-all duration-300">
+      {/* Streamlined Clean Header */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-b border-stone-200/80 dark:border-stone-800/80 text-stone-900 dark:text-stone-100 shadow-2xs transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 gap-3">
             
@@ -249,23 +223,37 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
 
-            {/* Streamlined Desktop Navigation Bar (4 Primary Views) */}
-            <nav className="hidden md:flex items-center space-x-1.5" ref={navDropdownRef} aria-label="Desktop Navigation">
-              {/* 1. Learn Dropdown */}
+            {/* Structured 5-Hub Desktop Navigation System */}
+            <nav className="hidden md:flex items-center space-x-1" ref={navDropdownRef} aria-label="System Navigation">
+              
+              {/* 1. Dashboard Direct Hub */}
+              <button
+                onClick={() => handleNavClick('dashboard')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'dashboard'
+                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Home</span>
+              </button>
+
+              {/* 2. Roadmap Hub Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => {
                     soundEffects.playPop();
                     setOpenDropdown(openDropdown === 'learn' ? null : 'learn');
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    isLearnActive
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    isRoadmapActive
                       ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
                       : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
                   }`}
                 >
-                  <Compass className="w-3.5 h-3.5" />
-                  <span>Learn</span>
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Roadmap</span>
                   <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'learn' ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -277,65 +265,7 @@ export const Header: React.FC<HeaderProps> = ({
                       exit={{ opacity: 0, y: 5, scale: 0.98 }}
                       className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
                     >
-                      {learnItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item.id)}
-                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
-                              isActive
-                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
-                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
-                            }`}
-                          >
-                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-extrabold flex items-center gap-1.5">
-                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
-                              </div>
-                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
-                                {item.desc}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* 2. Practice Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    soundEffects.playPop();
-                    setOpenDropdown(openDropdown === 'practice' ? null : 'practice');
-                  }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    isPracticeActive
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Practice</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'practice' ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence>
-                  {openDropdown === 'practice' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
-                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
-                    >
-                      {practiceItems.map(item => {
+                      {roadmapItems.map(item => {
                         const Icon = item.icon;
                         const isActive = activeTab === item.id;
                         return (
@@ -367,23 +297,184 @@ export const Header: React.FC<HeaderProps> = ({
                 </AnimatePresence>
               </div>
 
-              {/* 3. Progress Direct Tab */}
-              <button
-                onClick={() => handleNavClick('planner')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'planner'
-                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                }`}
-              >
-                <Target className="w-3.5 h-3.5" />
-                <span>Progress</span>
-              </button>
+              {/* 3. Immersion Hub Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    soundEffects.playPop();
+                    setOpenDropdown(openDropdown === 'practice' ? null : 'practice');
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    isImmersionActive
+                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Immersion</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'practice' ? 'rotate-180' : ''}`} />
+                </button>
 
-              {/* 4. Profile Direct Tab */}
+                <AnimatePresence>
+                  {openDropdown === 'practice' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
+                    >
+                      {immersionItems.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleNavClick(item.id)}
+                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
+                              isActive
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
+                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-extrabold">
+                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
+                              </div>
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
+                                {item.desc}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 4. Interactive Studio Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    soundEffects.playPop();
+                    setOpenDropdown(openDropdown === ('studio' as any) ? null : ('studio' as any));
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    isStudioActive
+                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Studio</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === ('studio' as any) ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {openDropdown === ('studio' as any) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
+                    >
+                      {studioItems.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleNavClick(item.id)}
+                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
+                              isActive
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
+                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-extrabold">
+                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
+                              </div>
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
+                                {item.desc}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 5. Knowledge Hub Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    soundEffects.playPop();
+                    setOpenDropdown(openDropdown === ('knowledge' as any) ? null : ('knowledge' as any));
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    isKnowledgeActive
+                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Knowledge</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === ('knowledge' as any) ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {openDropdown === ('knowledge' as any) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
+                    >
+                      {knowledgeItems.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleNavClick(item.id)}
+                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
+                              isActive
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
+                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-extrabold">
+                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
+                              </div>
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
+                                {item.desc}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Profile Direct Tab */}
               <button
                 onClick={() => handleNavClick('profile')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'profile'
                     ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
                     : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
@@ -736,14 +827,14 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                 </div>
 
-                {/* Section: Learn */}
+                {/* Section: Roadmap */}
                 <div className="space-y-2.5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-stone-400 dark:text-stone-500 font-mono px-1">
-                    LEARN ESPAÑOL
+                    ROADMAP & CURRICULUM
                   </p>
                   
                   <div className="grid grid-cols-1 gap-2">
-                    {learnItems.map(item => {
+                    {roadmapItems.map(item => {
                       const Icon = item.icon;
                       const isActive = activeTab === item.id;
                       return (
@@ -774,14 +865,14 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-                {/* Section: Practice */}
+                {/* Section: Immersion & Studio */}
                 <div className="space-y-2.5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-stone-400 dark:text-stone-500 font-mono px-1">
-                    PRACTICE MODULES
+                    IMMERSION & STUDIO
                   </p>
                   
                   <div className="grid grid-cols-1 gap-2">
-                    {practiceItems.map(item => {
+                    {[...immersionItems, ...studioItems].map(item => {
                       const Icon = item.icon;
                       const isActive = activeTab === item.id;
                       return (

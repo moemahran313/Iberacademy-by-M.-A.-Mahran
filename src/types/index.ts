@@ -40,7 +40,7 @@ export interface VocabularyItem {
   topic?: string;
   partOfSpeech?: PartOfSpeech | string;
   pos?: PartOfSpeech | string;
-  frequencyRank: number;
+  frequencyRank?: number;
   collocations?: Collocation[] | string[];
   examples?: {
     es: string;
@@ -267,6 +267,19 @@ export interface Exercise {
   audioText?: string;
 }
 
+export interface RevisitedVocabItem {
+  id: string;
+  spanish: string;
+  english: string;
+  arabic: string;
+  originalWorld: string;
+  freshContextSentence_es: string;
+  freshContextSentence_en: string;
+  freshContextSentence_ar: string;
+  reviewChallenge_en?: string;
+  reviewChallenge_ar?: string;
+}
+
 export interface Lesson {
   id: string;
   unitId: string;
@@ -278,6 +291,7 @@ export interface Lesson {
   objectives_en: string[];
   objectives_ar: string[];
   vocabWordIds: string[];
+  revisitedVocab?: RevisitedVocabItem[];
   grammarTopicId?: string;
   culturalNote?: {
     title: string;

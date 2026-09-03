@@ -84,6 +84,18 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     strengths: string[];
   } | null>(null);
 
+  // Interactive Communication Scenario State
+  const [scenarioStep, setScenarioStep] = useState<number>(0);
+  const [scenarioSelectedOpt, setScenarioSelectedOpt] = useState<string | null>(null);
+  const [scenarioInputText, setScenarioInputText] = useState<string>('');
+  const [scenarioFeedback, setScenarioFeedback] = useState<{
+    isCorrect: boolean;
+    text_en: string;
+    text_ar: string;
+  } | null>(null);
+  const [scenarioHistory, setScenarioHistory] = useState<Array<{ speaker: string; text: string; isUser?: boolean }>>([]);
+
+
   // Retrieve or generate at least 15 multimodal flashcard items for this lesson
   const lessonVocabulary: VocabularyItem[] = useMemo(() => {
     return getLessonVocabulary(lesson, ALL_VOCABULARY);
@@ -409,6 +421,51 @@ export const LessonModal: React.FC<LessonModalProps> = ({
               );
             })}
           </div>
+
+          {/* Lesson Objective Preview Card */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 dark:from-amber-950/40 dark:to-stone-900 border border-amber-300/60 dark:border-amber-700/50 rounded-2xl p-4 shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center text-sm font-black shadow-xs">
+                  🎯
+                </span>
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-700 dark:text-amber-400">
+                    Real-World Communication Mission
+                  </span>
+                  <h4 className="text-sm font-black text-stone-900 dark:text-white leading-tight">
+                    {lesson.objectives_en?.[0] || lesson.title_en}
+                  </h4>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-stone-900 text-amber-300 dark:bg-stone-800 dark:text-amber-400 shrink-0">
+                {lesson.cefr} Practical Fluency
+              </span>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-300">
+              {lesson.objectives_ar?.[0] ? (
+                <span className="font-arabic" dir="rtl">🇦🇪 الهدف التواصلي: {lesson.objectives_ar[0]}</span>
+              ) : (
+                `By completing this scenario, you will master real-life Spanish communication for ${lesson.title_en}.`
+              )}
+            </p>
+
+            {/* Core Chunks & Collocations Teaser */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[10px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                Key Collocations:
+              </span>
+              {lessonVocabulary.slice(0, 4).map((v, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100/80 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                >
+                  {v.spanish}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ============================================================ */}
@@ -598,60 +655,308 @@ export const LessonModal: React.FC<LessonModalProps> = ({
         )}
 
         {/* ============================================================ */}
-        {/* PHASE 1: CONTEXTUAL IMMERSION DIALOGUE                      */}
+        {/* PHASE 1: INTERACTIVE COMMUNICATION SCENARIO & REVIEW SYSTEM  */}
         {/* ============================================================ */}
         {currentPhase === 1 && (
           <div className="space-y-5 animate-fadeIn">
             <div className="flex justify-between items-center">
               <div>
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  Phase 2: Contextual Immersion Dialogue
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Phase 2: Interactive Communication Scenario & Cross-World Review
                 </span>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  Listen to native conversational speech and read sentence-by-sentence
+                  Simulated native speaker dialogue • Select or type your response in real-world contexts
                 </p>
               </div>
 
-              {lesson.dialogue && (
-                <button
-                  onClick={() => {
-                    const full = lesson.dialogue?.map(d => d.es).join(' ');
-                    if (full) speakSpanish(full);
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 px-3 py-1.5 rounded-xl hover:bg-amber-200"
-                >
-                  <Volume2 className="w-4 h-4" />
-                  Play All
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                  Step {Math.min(scenarioStep + 1, (lesson.dialogue?.length || 1))} / {lesson.dialogue?.length || 1}
+                </span>
+              </div>
             </div>
 
-            {/* Dialogue turns */}
-            {lesson.dialogue && lesson.dialogue.length > 0 ? (
-              <div className="space-y-3">
-                {lesson.dialogue.map((turn, i) => (
-                  <div
-                    key={i}
-                    onClick={() => speakSpanish(turn.es)}
-                    className="p-4 bg-stone-50 dark:bg-stone-800/70 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 rounded-2xl border border-stone-200 dark:border-stone-700 cursor-pointer transition space-y-1.5"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        {turn.speaker}
-                      </span>
-                      <Volume2 className="w-4 h-4 text-stone-400" />
-                    </div>
-                    <p className="text-base font-bold text-stone-900 dark:text-white leading-relaxed">
-                      {turn.es}
-                    </p>
-                    <div className="pt-1 text-xs space-y-0.5 border-t border-stone-200/50 dark:border-stone-700/50">
-                      <p className="text-stone-600 dark:text-stone-300">🇬🇧 {turn.en}</p>
-                      <p className="text-amber-900 dark:text-amber-300 font-arabic" dir="rtl">🇦🇪 {turn.ar}</p>
+            {/* Cross-World Review System Showcase Card */}
+            {lesson.revisitedVocab && lesson.revisitedVocab.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 border border-amber-300/80 dark:border-amber-700/80 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-500 text-stone-950 text-xs font-black">
+                      🔄
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-black text-stone-900 dark:text-white uppercase tracking-wider">
+                        Cross-World Vocabulary Review System
+                      </h4>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Consistently re-using earlier vocabulary in fresh, challenging, and varied contexts
+                      </p>
                     </div>
                   </div>
-                ))}
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300">
+                    Spaced Recycling
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {lesson.revisitedVocab.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700/80 p-3 rounded-xl text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-amber-900 dark:text-amber-300">
+                          {item.spanish}
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300">
+                          {item.originalWorld}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-800 dark:text-stone-200 font-semibold italic">
+                        "{item.freshContextSentence_es}"
+                      </p>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                        🇬🇧 {item.freshContextSentence_en}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Interactive Scenario Interface */}
+            {lesson.dialogue && lesson.dialogue.length > 0 ? (
+              <div className="space-y-4">
+                {/* Conversation History Thread */}
+                <div className="space-y-3 bg-stone-50 dark:bg-stone-800/50 p-4 rounded-3xl border border-stone-200 dark:border-stone-700/80 max-h-[380px] overflow-y-auto">
+                  {lesson.dialogue.slice(0, scenarioStep + 1).map((turn, idx) => {
+                    const isNativeSpeaker = idx % 2 === 0;
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex gap-3 ${isNativeSpeaker ? 'justify-start' : 'justify-end'}`}
+                      >
+                        {isNativeSpeaker && (
+                          <div className="w-9 h-9 rounded-2xl bg-amber-500 text-stone-950 font-black flex items-center justify-center text-sm shrink-0 shadow-xs">
+                            🗣️
+                          </div>
+                        )}
+
+                        <div
+                          className={`max-w-[82%] p-3.5 rounded-2xl space-y-1 ${
+                            isNativeSpeaker
+                              ? 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white shadow-xs'
+                              : 'bg-amber-500 text-stone-950 font-medium shadow-xs'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${isNativeSpeaker ? 'text-amber-700 dark:text-amber-400' : 'text-stone-900/80'}`}>
+                              {turn.speaker || (isNativeSpeaker ? 'Native Speaker' : 'You (Learner)')}
+                            </span>
+                            <button
+                              onClick={() => speakSpanish(turn.es)}
+                              className="p-1 rounded-full hover:bg-stone-200/50 dark:hover:bg-stone-700/50 transition cursor-pointer"
+                              title="Listen"
+                            >
+                              <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <p className="text-sm font-bold leading-snug">
+                            {turn.es}
+                          </p>
+
+                          <div className={`pt-1 text-[11px] border-t ${isNativeSpeaker ? 'border-stone-100 dark:border-stone-700 text-stone-500 dark:text-stone-400' : 'border-stone-900/10 text-stone-900/80'}`}>
+                            <p>🇬🇧 {turn.en}</p>
+                            {turn.ar && <p className="font-arabic" dir="rtl">🇦🇪 {turn.ar}</p>}
+                          </div>
+                        </div>
+
+                        {!isNativeSpeaker && (
+                          <div className="w-9 h-9 rounded-2xl bg-stone-900 dark:bg-stone-100 text-amber-400 dark:text-stone-950 font-black flex items-center justify-center text-sm shrink-0 shadow-xs">
+                            👤
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Scenario Response Input Options */}
+                {scenarioStep < lesson.dialogue.length ? (
+                  <div className="bg-amber-500/5 dark:bg-amber-950/20 border border-amber-300/60 dark:border-amber-800/60 p-4 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                        Select or Type your Response in Spanish:
+                      </span>
+                      <span className="text-[10px] text-stone-500 dark:text-stone-400">
+                        Real-world Communication Target
+                      </span>
+                    </div>
+
+                    {/* Option Cards */}
+                    <div className="space-y-2">
+                      {[
+                        lesson.dialogue[scenarioStep].es,
+                        lessonVocabulary[0]?.spanish || 'No entiendo, ¿puede repetir?',
+                        lessonVocabulary[1]?.spanish || 'Muchas gracias por todo.'
+                      ].map((choice, cIdx) => {
+                        const targetTurn = lesson.dialogue[scenarioStep];
+                        const isSelected = scenarioSelectedOpt === choice;
+                        const isCorrect = choice.trim().toLowerCase() === targetTurn.es.trim().toLowerCase();
+
+                          return (
+                            <button
+                              key={cIdx}
+                              onClick={() => {
+                                setScenarioSelectedOpt(choice);
+                                speakSpanish(choice);
+                                const correct = choice.trim().toLowerCase() === targetTurn.es.trim().toLowerCase();
+                                if (correct) {
+                                  soundEffects.playCorrect();
+                                  setScenarioFeedback({
+                                    isCorrect: true,
+                                    text_en: '¡Excelente! Natural response used in real Spanish conversations.',
+                                    text_ar: 'ممتاز! إجابة طبيعية تستخدم في المحادثات الإسبانية الحقيقية.'
+                                  });
+                                } else {
+                                  soundEffects.playIncorrect();
+                                  setScenarioFeedback({
+                                    isCorrect: false,
+                                    text_en: `Recommended response: "${targetTurn.es}"`,
+                                    text_ar: `الإجابة الموصى بها: "${targetTurn.es}"`
+                                  });
+                                }
+                              }}
+                              className={`w-full p-3.5 rounded-xl text-left border font-bold text-sm transition flex items-center justify-between cursor-pointer ${
+                                isSelected
+                                  ? isCorrect
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-900 dark:text-emerald-200'
+                                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-400 text-rose-900 dark:text-rose-200'
+                                  : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:border-amber-400 text-stone-900 dark:text-white'
+                              }`}
+                            >
+                              <span>{choice}</span>
+                              <span className="text-xs text-stone-400">🔊</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    {/* Custom Typed Response Input Box */}
+                    <div className="pt-2 border-t border-amber-200 dark:border-amber-800/60 space-y-2">
+                      <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 block">
+                        ✍️ Or type custom response in Spanish:
+                      </span>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={scenarioInputText}
+                          onChange={(e) => setScenarioInputText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && scenarioInputText.trim()) {
+                              const typed = scenarioInputText.trim();
+                              setScenarioSelectedOpt(typed);
+                              speakSpanish(typed);
+                              const targetTurn = lesson.dialogue?.[scenarioStep];
+                              const isClose = targetTurn && typed.toLowerCase().includes(targetTurn.es.toLowerCase().slice(0, 5));
+                              if (isClose) {
+                                soundEffects.playCorrect();
+                                setScenarioFeedback({
+                                  isCorrect: true,
+                                  text_en: '¡Bien hecho! Your custom response fits this conversational branch.',
+                                  text_ar: 'أحسنت! إجابتك المخصصة تناسب هذا السياق الحواري.'
+                                });
+                              } else {
+                                soundEffects.playCorrect();
+                                setScenarioFeedback({
+                                  isCorrect: true,
+                                  text_en: `Response registered! Target native collocation: "${targetTurn?.es}"`,
+                                  text_ar: `تم تسجيل الرد! التركيب المحلي المستهدف: "${targetTurn?.es}"`
+                                });
+                              }
+                              setScenarioInputText('');
+                            }
+                          }}
+                          placeholder="Type response in Spanish and press Enter..."
+                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                        />
+                        <button
+                          onClick={() => {
+                            if (!scenarioInputText.trim()) return;
+                            const typed = scenarioInputText.trim();
+                            setScenarioSelectedOpt(typed);
+                            speakSpanish(typed);
+                            const targetTurn = lesson.dialogue?.[scenarioStep];
+                            soundEffects.playCorrect();
+                            setScenarioFeedback({
+                              isCorrect: true,
+                              text_en: `Response submitted! Target native collocation: "${targetTurn?.es}"`,
+                              text_ar: `تم إرسال الرد! التركيب المستهدف: "${targetTurn?.es}"`
+                            });
+                            setScenarioInputText('');
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-amber-400 dark:text-stone-950 font-bold text-xs transition hover:bg-stone-800 cursor-pointer"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                    {/* AI Scenario Step Feedback */}
+                    {scenarioFeedback && (
+                      <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+                        scenarioFeedback.isCorrect
+                          ? 'bg-emerald-100/80 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                          : 'bg-amber-100/80 dark:bg-amber-950/80 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                      }`}>
+                        <p className="font-bold flex items-center gap-1.5">
+                          {scenarioFeedback.isCorrect ? '✓ Communicative Intent Achieved!' : '💡 Language Hint:'}
+                        </p>
+                        <p>{scenarioFeedback.text_en}</p>
+                        <p className="font-arabic" dir="rtl">{scenarioFeedback.text_ar}</p>
+                      </div>
+                    )}
+
+                    {/* Advance Scenario Button */}
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={() => {
+                          setScenarioFeedback(null);
+                          setScenarioSelectedOpt(null);
+                          if (scenarioStep + 1 < lesson.dialogue.length) {
+                            setScenarioStep(prev => prev + 1);
+                          } else {
+                            setCurrentPhase(2); // Move to Grammar Blueprint
+                          }
+                        }}
+                        className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                      >
+                        <span>{scenarioStep + 1 < lesson.dialogue.length ? 'Next Dialogue Turn' : 'Scenario Complete! Advance to Grammar'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-center space-y-3">
+                    <span className="text-3xl">🏆</span>
+                    <h4 className="text-base font-black text-emerald-900 dark:text-emerald-200">
+                      Scenario Communication Mission Cleared!
+                    </h4>
+                    <p className="text-xs text-stone-600 dark:text-stone-300">
+                      You successfully navigated all conversational branches for this real-world scenario.
+                    </p>
+                    <button
+                      onClick={() => setCurrentPhase(2)}
+                      className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-md cursor-pointer"
+                    >
+                      Proceed to Grammar Blueprint
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="p-6 bg-stone-50 dark:bg-stone-800 rounded-2xl text-center space-y-2">

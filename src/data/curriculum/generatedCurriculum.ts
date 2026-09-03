@@ -1,4 +1,79 @@
-import { Unit, Lesson, Exercise, ExerciseType, CEFRLevel } from '../../types';
+import { Unit, Lesson, Exercise, ExerciseType, CEFRLevel, RevisitedVocabItem } from '../../types';
+
+export const WORLD_RECYCLE_BANK: RevisitedVocabItem[] = [
+  {
+    id: 'rev_cafe',
+    spanish: 'Me pones...',
+    english: 'Get me / Bring me...',
+    arabic: 'ضع لي / أحضر لي...',
+    originalWorld: 'World 1: Street Greetings & Cafe Bar',
+    freshContextSentence_es: 'Disculpa, ¿me pones la clave del Wi-Fi de la habitación del hotel por favor?',
+    freshContextSentence_en: 'Excuse me, can you write down the hotel Wi-Fi password for me please?',
+    freshContextSentence_ar: 'لو سمحت، هل تسجل لي كلمة مرور الواي فاي في الفندق؟',
+    reviewChallenge_en: 'Revisit "Me pones..." in a hotel front desk scenario.',
+    reviewChallenge_ar: 'إعادة استخدام "Me pones..." في موقف استقبال الفندق.'
+  },
+  {
+    id: 'rev_cuenta',
+    spanish: 'La cuenta',
+    english: 'The bill / check',
+    arabic: 'الفاتورة / الحساب',
+    originalWorld: 'World 1: Cafe & Restaurant Hacks',
+    freshContextSentence_es: 'En la agencia de alquileres pedí la cuenta total con los gastos de luz e internet incluidos.',
+    freshContextSentence_en: 'At the rental agency I asked for the total bill with electricity and internet included.',
+    freshContextSentence_ar: 'في وكالة الإيجار طلبت الحساب الإجمالي شاملاً الكهرباء والإنترنت.',
+    reviewChallenge_en: 'Revisit "La cuenta" in a housing & utility bill dispute.',
+    reviewChallenge_ar: 'إعادة استخدام "La cuenta" في نزاع فواتير السكن.'
+  },
+  {
+    id: 'rev_clave',
+    spanish: 'La clave',
+    english: 'The code / password',
+    arabic: 'كلمة المرور / الرمز',
+    originalWorld: 'World 2: Hotel & Social Registration',
+    freshContextSentence_es: 'Para entrar en la estación de metro o en la biblioteca necesitas introducir la clave de acceso.',
+    freshContextSentence_en: 'To enter the subway station or library you need to enter the access code.',
+    freshContextSentence_ar: 'لدخول محطة المترو أو المكتبة تحتاج إلى إدخال رمز الدخول.',
+    reviewChallenge_en: 'Revisit "La clave" in urban transit & Wi-Fi hubs.',
+    reviewChallenge_ar: 'إعادة استخدام "La clave" في المواصلات وشبكات الواي فاي.'
+  },
+  {
+    id: 'rev_billete',
+    spanish: 'Un billete de diez viajes',
+    english: 'A ten-trip transit card',
+    arabic: 'تذكرة عشر رحلات',
+    originalWorld: 'World 3: Urban Transit & Metro',
+    freshContextSentence_es: 'Compré un billete de diez viajes para visitar los museos y las boutiques del centro con mis amigos.',
+    freshContextSentence_en: 'I bought a 10-trip ticket to visit museums and downtown shops with my friends.',
+    freshContextSentence_ar: 'اشتريت تذكرة عشر رحلات لزيارة المتاحف والمحلات في وسط المدينة مع أصدقائي.',
+    reviewChallenge_en: 'Revisit "Billete" in a city tour & shopping excursion context.',
+    reviewChallenge_ar: 'إعادة استخدام "Billete" في جولة السياحة والتسوق.'
+  },
+  {
+    id: 'rev_excesivo',
+    spanish: 'Me parece un precio excesivo',
+    english: 'It seems an excessive price to me',
+    arabic: 'يبدو لي السعر مبالغاً فيه',
+    originalWorld: 'World 4: Housing & Rent Negotiation',
+    freshContextSentence_es: 'En el restaurante de la plaza le dije al mesero que la tarifa del servicio me parecía un precio excesivo.',
+    freshContextSentence_en: 'At the plaza restaurant I told the waiter that the service charge seemed excessive.',
+    freshContextSentence_ar: 'في مطعم الساحة قلت للنادل إن رسم الخدمة يبدو مبالغاً فيه.',
+    reviewChallenge_en: 'Revisit rent negotiation phrase in a fine-dining service dispute.',
+    reviewChallenge_ar: 'إعادة استخدام عبارة التفاوض في موقف الاعتراض على فاتورة المطعم.'
+  },
+  {
+    id: 'rev_calefaccion',
+    spanish: 'La calefacción no funciona',
+    english: 'The heating is not working',
+    arabic: 'التدفئة لا تعمل',
+    originalWorld: 'World 5: Apartment Maintenance & Home Hacks',
+    freshContextSentence_es: 'En el autobús de larga distancia la calefacción no funcionaba y le pedí una manta al conductor.',
+    freshContextSentence_en: 'On the long-distance bus the heating was not working and I asked the driver for a blanket.',
+    freshContextSentence_ar: 'في حافلة السفر الطويلة كانت التدفئة لا تعمل وطلبت بطانية من السائق.',
+    reviewChallenge_en: 'Revisit maintenance phrase in a cold travel transportation scenario.',
+    reviewChallenge_ar: 'إعادة استخدام عبارة الأعطال في رحلة سفر باردة.'
+  }
+];
 
 // Raw specifications for A1: 16 Units, exactly 81 Lessons total
 const a1Specs = [
@@ -533,6 +608,10 @@ export function generateLessons(level: CEFRLevel, startUnit: number, totalLesson
       }
     }
 
+    // Pick 2 cross-world recycled vocabulary items for the Review System
+    const rev1 = WORLD_RECYCLE_BANK[(startUnit + i) % WORLD_RECYCLE_BANK.length];
+    const rev2 = WORLD_RECYCLE_BANK[(startUnit + i + 1) % WORLD_RECYCLE_BANK.length];
+
     lessons.push({
       id: lessonId,
       unitId: unitId,
@@ -544,6 +623,7 @@ export function generateLessons(level: CEFRLevel, startUnit: number, totalLesson
       objectives_en: objectives_en,
       objectives_ar: objectives_ar,
       vocabWordIds: ['comida', 'gracias', 'amigo', 'ayuda'],
+      revisitedVocab: [rev1, rev2],
       dialogue: dialogue,
       exercises: exercises,
       productionPrompt: {
