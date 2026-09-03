@@ -89,85 +89,94 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     return getLessonVocabulary(lesson, ALL_VOCABULARY);
   }, [lesson]);
 
-  // Generate comprehensive 15-exercise set engaging ALL cognitive skills (Listening, Reading, Writing, Situational Reasoning)
+  // Generate comprehensive, non-repetitive exercise set engaging ALL cognitive skills
   const allLessonExercises: Exercise[] = useMemo(() => {
-    const multiSkillExercises: Exercise[] = [];
+    const list: Exercise[] = [];
+    const usedAnswers = new Set<string>();
 
-    // For each vocabulary item in this lesson, generate multi-skill contextual exercises
-    lessonVocabulary.forEach((vocab, vocabIdx) => {
-      const variations = generate3ContextClozeExercises(vocab, lessonVocabulary);
+    // 1. Include hand-crafted custom exercises from the lesson definition first
+    if (lesson.exercises && lesson.exercises.length > 0) {
+      lesson.exercises.forEach(ex => {
+        list.push(ex);
+        if (ex.correctAnswer) usedAnswers.add(ex.correctAnswer.toLowerCase().trim());
+      });
+    }
 
-      variations.forEach((varItem, varIdx) => {
-        // Cycle through 4 distinct cognitive skill modalities
-        const skillModality = (vocabIdx + varIdx) % 4;
+    // 2. Generate dynamic exercises from the lesson's actual dialogue lines if available
+    if (lesson.dialogue && lesson.dialogue.length > 0) {
+      lesson.dialogue.forEach((line, idx) => {
+        if (!line.es || line.es.length < 10) return;
+        const words = line.es.replace(/[.,?!¿¡"']/g, '').split(/\s+/).filter(w => w.length >= 4);
+        if (words.length === 0) return;
 
-        if (skillModality === 0) {
-          // 🎧 LISTENING COMPREHENSION SKILL
-          multiSkillExercises.push({
-            id: `ex-listen-${lesson.id}-${vocabIdx}-${varIdx}`,
-            type: 'listening_recall',
-            prompt_es: `🎧 Escucha el audio atentamente y selecciona la palabra que completa el contexto natural:`,
-            prompt_en: `🎧 Listening Skill: Listen to the authentic audio prompt and select the word that completes the sentence ("${varItem.sentence_en}")`,
-            prompt_ar: `🎧 مهارة الاستماع: استمع للتسجيل الصوتي واختار الكلمة الناقصة ("${varItem.sentence_ar}")`,
-            options: varItem.options,
-            correctAnswer: varItem.targetWordForm || varItem.targetWord,
-            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
-            explanation_ar: varItem.explanation_ar,
-            audioText: varItem.sentence_es
-          });
-        } else if (skillModality === 1) {
-          // 📖 READING & CONTEXTUAL ANALYSIS SKILL
-          multiSkillExercises.push({
-            id: `ex-read-${lesson.id}-${vocabIdx}-${varIdx}`,
-            type: 'multiple_choice',
-            prompt_es: `📖 Contexto Real: "${varItem.sentence_es}"`,
-            prompt_en: `📖 Reading Analysis: What does the target expression in this context mean?\n"${varItem.sentence_en}"`,
-            prompt_ar: `📖 القراءة والتحليل السياقي: ماذا يعني التعبير في هذا السياق؟\n"${varItem.sentence_ar}"`,
-            options: varItem.options,
-            correctAnswer: varItem.targetWordForm || varItem.targetWord,
-            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
-            explanation_ar: varItem.explanation_ar,
-            audioText: varItem.sentence_es
-          });
-        } else if (skillModality === 2) {
-          // ✍️ ACTIVE WRITING & RECALL SKILL
-          multiSkillExercises.push({
-            id: `ex-write-${lesson.id}-${vocabIdx}-${varIdx}`,
+        const targetWord = words[idx % words.length];
+        const cleanTarget = targetWord.toLowerCase().trim();
+
+        if (!usedAnswers.has(cleanTarget)) {
+          usedAnswers.add(cleanTarget);
+          const regex = new RegExp(`\\b${targetWord}\\b`, 'i');
+          const clozeEs = line.es.replace(regex, '________');
+
+          const distractors = ['café', 'agua', 'gracias', 'ayuda', 'mañana', 'amigo', 'tiempo', 'billete', 'hotel', 'número']
+            .filter(d => d.toLowerCase() !== cleanTarget);
+          const options = [targetWord, distractors[0] || 'otro', distractors[1] || 'mismo', distractors[2] || 'siempre']
+            .sort(() => (idx % 2 === 0 ? 1 : -1));
+
+          list.push({
+            id: `ex-dialogue-${lesson.id}-${idx}`,
             type: 'fill_blank',
-            prompt_es: `${varItem.clozeSentence}`,
-            prompt_en: `✍️ Active Recall: Fill in the missing Spanish word for "${varItem.sentence_en}"`,
-            prompt_ar: `✍️ الكتابة والاستدعاء النشط: أكمل الكلمة الناقصة في الجملة ("${varItem.sentence_ar}")`,
-            options: varItem.options,
-            correctAnswer: varItem.targetWordForm || varItem.targetWord,
-            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
-            explanation_ar: varItem.explanation_ar,
-            audioText: varItem.sentence_es
-          });
-        } else {
-          // 🧠 SITUATIONAL REASONING & APPLICATION SKILL
-          multiSkillExercises.push({
-            id: `ex-situation-${lesson.id}-${vocabIdx}-${varIdx}`,
-            type: 'error_correction',
-            prompt_es: `🧠 Situación Práctica: "${varItem.sentence_en}"`,
-            prompt_en: `🧠 Situational Application: Select the correct natural Spanish term for this scenario ("${varItem.sentence_ar}")`,
-            prompt_ar: `🧠 التفكير والتطبيق الموقفي: اختر التعبير الإسباني المناسب لهذا الموقف الواقعي`,
-            options: varItem.options,
-            correctAnswer: varItem.targetWordForm || varItem.targetWord,
-            explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
-            explanation_ar: varItem.explanation_ar,
-            audioText: varItem.sentence_es
+            prompt_es: `Completa la frase del diálogo: "${clozeEs}"`,
+            prompt_en: `Complete the dialogue sentence: "${line.en}"`,
+            prompt_ar: `أكمل الجملة من حوار الدرس: "${line.ar}"`,
+            options,
+            correctAnswer: targetWord,
+            explanation_en: `In the dialogue, ${line.speaker} says: "${line.es}"`,
+            explanation_ar: `في حوار الدرس، يقول ${line.speaker}: "${line.es}"`,
+            audioText: line.es
           });
         }
       });
-    });
-
-    if (multiSkillExercises.length >= 15) {
-      return multiSkillExercises.slice(0, 15);
     }
 
-    // Include existing exercises if needed to reach 15
-    const existing = [...(lesson.exercises || [])];
-    return [...multiSkillExercises, ...existing].slice(0, 15);
+    // 3. Generate EXACTLY ONE high-quality contextual exercise per vocabulary item (no repetition)
+    lessonVocabulary.forEach((vocab, vocabIdx) => {
+      const spanishWord = (vocab.spanish || vocab.word || '').trim();
+      const cleanTarget = spanishWord.toLowerCase();
+      if (!cleanTarget || usedAnswers.has(cleanTarget)) return;
+
+      usedAnswers.add(cleanTarget);
+
+      const variations = generate3ContextClozeExercises(vocab, lessonVocabulary);
+      if (variations.length > 0) {
+        const varItem = variations[0]; // Take only 1 distinct variation
+        list.push({
+          id: `ex-vocab-${lesson.id}-${vocabIdx}`,
+          type: vocabIdx % 2 === 0 ? 'multiple_choice' : 'fill_blank',
+          prompt_es: `📖 Contexto Real: "${varItem.sentence_es}"`,
+          prompt_en: `✍️ Active Recall: Select the correct term for "${vocab.english || varItem.sentence_en}"`,
+          prompt_ar: `✍️ الاستدعاء النشط: اختر المصطلح المناسب لـ "${vocab.arabic || varItem.sentence_ar}"`,
+          options: varItem.options,
+          correctAnswer: varItem.targetWordForm || varItem.targetWord,
+          explanation_en: `${varItem.variationTitle}\n${varItem.explanation_en}`,
+          explanation_ar: varItem.explanation_ar,
+          audioText: varItem.sentence_es
+        });
+      }
+    });
+
+    // 4. Filter duplicate prompts and limit to 8-10 diverse, non-repetitive exercises
+    const deduplicated: Exercise[] = [];
+    const seenPrompts = new Set<string>();
+
+    for (const ex of list) {
+      const key = (ex.prompt_es || ex.prompt_en || '').toLowerCase().trim();
+      if (!seenPrompts.has(key)) {
+        seenPrompts.add(key);
+        deduplicated.push(ex);
+      }
+    }
+
+    return deduplicated.slice(0, 10);
   }, [lesson, lessonVocabulary]);
 
   // Handle auto-enrolling lesson words into user's SRS spaced repetition system

@@ -19,11 +19,16 @@ import {
   LockKeyhole,
   Check,
   Volume2,
-  MessageSquare
+  MessageSquare,
+  Target,
+  RotateCw,
+  X,
+  Lightbulb
 } from 'lucide-react';
 import { Unit, Lesson, CEFRLevel, UserProgress, ImportedContent } from '../types';
 import { CURRICULUM_UNITS, HIGH_UTILITY_LEARNING_PATH } from '../data';
-import { speakSpanish } from '../utils/audio';
+import { A0_BEGINNER_UNITS } from '../data/a0BeginnerFoundation';
+import { speakSpanish, soundEffects } from '../utils/audio';
 import { LessonModal } from './LessonModal';
 import { EndOfLevelAssessmentModal } from './EndOfLevelAssessmentModal';
 import { RecommendedReadingModule } from './RecommendedReadingModule';
@@ -45,9 +50,14 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
 }) => {
   const [selectedLevel, setSelectedLevel] = useState<CEFRLevel>(userProgress.currentLevel || 'A1');
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [pathMode, setPathMode] = useState<'linear' | 'grid'>('linear');
+  const [pathMode, setPathMode] = useState<'scenarios' | 'a0' | 'linear' | 'grid'>('scenarios');
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState<boolean>(false);
   const [assessmentLevel, setAssessmentLevel] = useState<CEFRLevel>('A1');
+
+  // Interactive Drill Answers state for Scenarios
+  const [scenarioDrillState, setScenarioDrillState] = useState<Record<string, { selected: string; isCorrect: boolean }>>({});
+  const [activeA0UnitIndex, setActiveA0UnitIndex] = useState<number>(0);
+  const [a0DrillAnswers, setA0DrillAnswers] = useState<Record<string, { selected: string; isCorrect: boolean }>>({});
 
   const levels: { id: CEFRLevel; title_en: string; title_ar: string; desc: string; color: string; badge: string; prevLevel: CEFRLevel | null; nextLevel: CEFRLevel | null }[] = [
     { id: 'A1', title_en: 'Absolute Beginner', title_ar: 'المبتدئ الأساسي', desc: 'Greetings, survival Spanish, present tense, gender & articles', color: 'from-amber-500 to-orange-600', badge: '🌱 A1 Survival', prevLevel: null, nextLevel: 'A2' },
@@ -279,7 +289,29 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
             <span>Take {selectedLevel} Level Exam</span>
           </button>
 
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl border border-stone-200 dark:border-stone-700">
+          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-700 flex-wrap">
+            <button
+              onClick={() => setPathMode('scenarios')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                pathMode === 'scenarios'
+                  ? 'bg-amber-500 text-stone-950 shadow-sm font-black'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Street Survival Matrix</span>
+            </button>
+            <button
+              onClick={() => setPathMode('a0')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                pathMode === 'a0'
+                  ? 'bg-amber-500 text-stone-950 shadow-sm font-black'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>A0 Scaffolding</span>
+            </button>
             <button
               onClick={() => setPathMode('linear')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
@@ -289,7 +321,7 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
               }`}
             >
               <Compass className="w-3.5 h-3.5 text-amber-500" />
-              <span>Path Map</span>
+              <span>Skills Path</span>
             </button>
             <button
               onClick={() => setPathMode('grid')}
@@ -347,8 +379,8 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
         </div>
       )}
 
-      {/* High-Utility Real-World Mexican Spanish Scenarios (Berlitz Survival Matrix) */}
-      {(() => {
+      {/* MODE 0: REAL-WORLD MEXICAN SPANISH SURVIVAL SCENARIOS */}
+      {pathMode === 'scenarios' && (() => {
         const selectedScenarios = HIGH_UTILITY_LEARNING_PATH.filter(s => s.level === selectedLevel);
         if (selectedScenarios.length === 0) return null;
 
@@ -361,128 +393,366 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
                   <span>Real-World Mexican Spanish Survival Scenarios ({selectedLevel})</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                  <span>Authentic Conversations (Conversaciones Reales)</span>
+                  <span>Authentic Street Conversations (Conversaciones Reales)</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-stone-300 max-w-2xl">
-                  Zero textbook filler. Passes the 48-hour street test: real phrases, natural contrast vs formal textbooks, and modular variations.
+                  Zero textbook filler. Passes the 48-hour street test: real phrases, natural contrast vs formal textbooks, modular variations, and interactive survival drills.
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-              {selectedScenarios.map((scen) => (
-                <div key={scen.id} className="bg-stone-950/80 border border-stone-800 rounded-2xl p-5 sm:p-6 space-y-6">
-                  {/* Scenario Context Header */}
-                  <div className="flex items-start justify-between gap-3 bg-stone-900/90 p-4 rounded-xl border border-stone-800">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl p-2 bg-stone-800/80 rounded-2xl">{scen.emoji}</span>
-                      <div>
-                        <span className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                          {scen.category} • {scen.level}
-                        </span>
-                        <h3 className="text-lg font-black text-white">{scen.title}</h3>
-                        <p className="text-xs text-stone-300 font-medium mt-0.5">
-                          📍 <strong>Scenario Context:</strong> {scen.scenario_context}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              {selectedScenarios.map((scen) => {
+                const mainPhrase = scen.core_phrases[0];
+                const drillState = scenarioDrillState[scen.id];
+                const drillCorrectAns = mainPhrase ? mainPhrase.phrase_es : '';
+                const drillOptions = mainPhrase ? [
+                  mainPhrase.phrase_es,
+                  scen.contrast_examples[0]?.textbook_formal || 'Opción de libro antigua',
+                  scen.example_variations[0]?.varied_es || 'Opción variada',
+                  scen.core_phrases[1]?.phrase_es || 'Opción alternativa'
+                ].sort(() => 0.5 - Math.random()) : [];
 
-                  {/* 1. Core Real-World Phrases (6 Phrases) */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <MessageSquare className="w-4 h-4 text-amber-400" />
-                      <span>Core Real-World Native Phrases ({scen.core_phrases.length})</span>
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {scen.core_phrases.map((cp, idx) => (
-                        <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-3.5 space-y-1.5 hover:border-amber-500/40 transition">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-black text-white flex items-center gap-2">
-                              <span>{cp.phrase_es}</span>
-                            </p>
-                            <button
-                              onClick={() => speakSpanish(cp.audio_text)}
-                              className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition cursor-pointer shrink-0"
-                              title="Listen audio"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-stone-300 font-medium">🇬🇧 {cp.phrase_en}</p>
-                          <p className="text-[11px] text-amber-300 font-mono italic">🗣️ {cp.phonetic}</p>
-                          <p className="text-[11px] text-stone-400 border-t border-stone-800 pt-1.5 mt-1">
-                            💡 {cp.context_note}
+                return (
+                  <div key={scen.id} className="bg-stone-950/80 border border-stone-800 rounded-2xl p-5 sm:p-6 space-y-6">
+                    {/* Scenario Context Header */}
+                    <div className="flex items-start justify-between gap-3 bg-stone-900/90 p-4 rounded-xl border border-stone-800">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl p-2 bg-stone-800/80 rounded-2xl">{scen.emoji}</span>
+                        <div>
+                          <span className="text-[10px] uppercase font-black tracking-widest text-amber-400">
+                            {scen.category} • {scen.level}
+                          </span>
+                          <h3 className="text-lg font-black text-white">{scen.title}</h3>
+                          <p className="text-xs text-stone-300 font-medium mt-0.5">
+                            📍 <strong>Scenario Context:</strong> {scen.scenario_context}
                           </p>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* 2. Contrast Examples (Textbook Formal vs Natural Mexican Spanish) */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <Zap className="w-4 h-4 text-amber-400" />
-                      <span>Formal Textbook vs Natural Mexican Spanish Contrast</span>
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {scen.contrast_examples.map((ce, idx) => (
-                        <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-4 space-y-2">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase text-red-400 bg-red-950/60 px-2 py-0.5 rounded">
-                              ❌ Formal Textbook (Avoid)
-                            </span>
-                            <p className="text-xs text-stone-300 line-through font-mono">{ce.textbook_formal}</p>
-                          </div>
-                          <div className="space-y-1 border-t border-stone-800 pt-2">
-                            <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded">
-                              ✅ Authentic Natural Mexican Spanish
-                            </span>
-                            <p className="text-sm font-black text-emerald-300 flex items-center gap-2">
-                              <span>{ce.natural_mexican}</span>
+                    {/* 1. Core Real-World Phrases (6 Phrases) */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4 text-amber-400" />
+                        <span>Core Real-World Native Phrases ({scen.core_phrases.length})</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {scen.core_phrases.map((cp, idx) => (
+                          <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-3.5 space-y-1.5 hover:border-amber-500/40 transition">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-black text-white flex items-center gap-2">
+                                <span>{cp.phrase_es}</span>
+                              </p>
                               <button
-                                onClick={() => speakSpanish(ce.natural_mexican)}
-                                className="p-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-stone-950 transition cursor-pointer"
+                                onClick={() => speakSpanish(cp.audio_text)}
+                                className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition cursor-pointer shrink-0"
+                                title="Listen audio"
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-stone-300 font-medium">🇬🇧 {cp.phrase_en}</p>
+                            <p className="text-[11px] text-amber-300 font-mono italic">🗣️ {cp.phonetic}</p>
+                            <p className="text-[11px] text-stone-400 border-t border-stone-800 pt-1.5 mt-1">
+                              💡 {cp.context_note}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Contrast Examples (Textbook Formal vs Natural Mexican Spanish) */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-amber-400" />
+                        <span>Formal Textbook vs Natural Mexican Spanish Contrast</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {scen.contrast_examples.map((ce, idx) => (
+                          <div key={idx} className="bg-stone-900/90 border border-stone-800 rounded-xl p-4 space-y-2">
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase text-red-400 bg-red-950/60 px-2 py-0.5 rounded">
+                                ❌ Formal Textbook (Avoid)
+                              </span>
+                              <p className="text-xs text-stone-300 line-through font-mono">{ce.textbook_formal}</p>
+                            </div>
+                            <div className="space-y-1 border-t border-stone-800 pt-2">
+                              <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded">
+                                ✅ Authentic Natural Mexican Spanish
+                              </span>
+                              <p className="text-sm font-black text-emerald-300 flex items-center gap-2">
+                                <span>{ce.natural_mexican}</span>
+                                <button
+                                  onClick={() => speakSpanish(ce.natural_mexican)}
+                                  className="p-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-stone-950 transition cursor-pointer"
+                                >
+                                  <Volume2 className="w-3 h-3" />
+                                </button>
+                              </p>
+                              <p className="text-xs text-stone-300 font-medium">🇬🇧 {ce.english_translation}</p>
+                              <p className="text-[11px] text-stone-400 italic">💬 {ce.why_natural}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Example Modular Variations (4 Variations) */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-amber-400" />
+                        <span>4 Modular Element Variations</span>
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                        {scen.example_variations.map((ev, idx) => (
+                          <div key={idx} className="bg-stone-900/80 border border-stone-800 rounded-xl p-3 space-y-1">
+                            <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded block w-max">
+                              Swapped: {ev.swapped_element}
+                            </span>
+                            <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
+                              <span>{ev.varied_es}</span>
+                              <button
+                                onClick={() => speakSpanish(ev.varied_es)}
+                                className="p-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition"
                               >
                                 <Volume2 className="w-3 h-3" />
                               </button>
                             </p>
-                            <p className="text-xs text-stone-300 font-medium">🇬🇧 {ce.english_translation}</p>
-                            <p className="text-[11px] text-stone-400 italic">💬 {ce.why_natural}</p>
+                            <p className="text-[11px] text-stone-300">🇬🇧 {ev.varied_en}</p>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* 3. Example Modular Variations (4 Variations) */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <Layers className="w-4 h-4 text-amber-400" />
-                      <span>4 Modular Element Variations</span>
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-                      {scen.example_variations.map((ev, idx) => (
-                        <div key={idx} className="bg-stone-900/80 border border-stone-800 rounded-xl p-3 space-y-1">
-                          <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded block w-max">
-                            Swapped: {ev.swapped_element}
+                    {/* 4. Interactive Street Recall Drill Card */}
+                    {mainPhrase && (
+                      <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-4 sm:p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                            <Target className="w-4 h-4 text-amber-400" />
+                            <span>Interactive Street Recall Drill (+25 XP)</span>
                           </span>
-                          <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
-                            <span>{ev.varied_es}</span>
-                            <button
-                              onClick={() => speakSpanish(ev.varied_es)}
-                              className="p-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition"
-                            >
+                          {drillState?.isCorrect && (
+                            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Passed Drill!
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm font-extrabold text-stone-100">
+                          🎯 Scenario Challenge: How do you say "{mainPhrase.phrase_en}" in authentic Mexican Spanish?
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {drillOptions.map((opt, optIdx) => {
+                            const isSelected = drillState?.selected === opt;
+                            const isCorrectOpt = opt.trim().toLowerCase() === drillCorrectAns.trim().toLowerCase();
+                            let btnStyle = "bg-stone-900/90 border-stone-800 hover:border-amber-500/50 text-stone-200";
+
+                            if (drillState) {
+                              if (isCorrectOpt) {
+                                btnStyle = "bg-emerald-950 border-emerald-500 text-emerald-200 font-bold";
+                              } else if (isSelected && !drillState.isCorrect) {
+                                btnStyle = "bg-rose-950 border-rose-500 text-rose-200 line-through";
+                              }
+                            }
+
+                            return (
+                              <button
+                                key={optIdx}
+                                onClick={() => {
+                                  speakSpanish(opt);
+                                  const isCorrect = isCorrectOpt;
+                                  setScenarioDrillState(prev => ({
+                                    ...prev,
+                                    [scen.id]: { selected: opt, isCorrect }
+                                  }));
+                                  if (isCorrect) {
+                                    soundEffects.playCorrect();
+                                    setUserProgress(prev => ({ ...prev, xp: prev.xp + 25 }));
+                                  } else {
+                                    soundEffects.playIncorrect();
+                                  }
+                                }}
+                                className={`p-3 rounded-xl border text-left text-xs font-medium flex items-center justify-between gap-2 transition ${btnStyle}`}
+                              >
+                                <span>{opt}</span>
+                                <Volume2 className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {drillState && (
+                          <div className={`p-3 rounded-xl border text-xs font-medium ${
+                            drillState.isCorrect
+                              ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                              : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                          }`}>
+                            {drillState.isCorrect
+                              ? `¡Excelente! "${drillCorrectAns}" is natural and widely used in Mexico. ${scen.contrast_examples[0]?.why_natural || ''}`
+                              : `Not quite. The authentic natural phrase is: "${drillCorrectAns}".`}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* MODE 1: A0 ABSOLUTE ZERO SCAFFOLDING UNITS */}
+      {pathMode === 'a0' && (() => {
+        const activeUnit = A0_BEGINNER_UNITS[activeA0UnitIndex] || A0_BEGINNER_UNITS[0];
+
+        return (
+          <div className="space-y-6">
+            {/* Unit Selector Strip */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {A0_BEGINNER_UNITS.map((u, idx) => (
+                <button
+                  key={u.unit_id}
+                  onClick={() => setActiveA0UnitIndex(idx)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black shrink-0 transition flex items-center gap-1.5 ${
+                    activeA0UnitIndex === idx
+                      ? 'bg-amber-500 text-stone-950 shadow-md'
+                      : 'bg-stone-900 border border-stone-800 text-stone-300 hover:border-stone-700'
+                  }`}
+                >
+                  <span>{u.emoji}</span>
+                  <span>U{idx + 1}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Active A0 Scaffolding Unit Detail */}
+            <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 space-y-6 text-white shadow-xl">
+              <div className="border-b border-stone-800 pb-4 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded">
+                  {activeUnit.category} • Beginner Scaffolding
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                  <span>{activeUnit.emoji}</span>
+                  <span>{activeUnit.title}</span>
+                </h2>
+                <p className="text-xs text-stone-300 font-medium">
+                  💡 {activeUnit.zero_jargon_explanation}
+                </p>
+              </div>
+
+              {/* Anchor Words */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Anchor Vocabulary ({activeUnit.anchor_words.length})</span>
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                  {activeUnit.anchor_words.map((w, idx) => (
+                    <div key={idx} className="bg-stone-950 border border-stone-800 rounded-xl p-3 text-center space-y-1">
+                      <span className="text-xl block">{w.emoji}</span>
+                      <p className="text-sm font-black text-white flex items-center justify-center gap-1">
+                        <span>{w.word}</span>
+                        <button onClick={() => speakSpanish(w.audio_cue)} className="text-amber-400 hover:text-amber-300">
+                          <Volume2 className="w-3 h-3" />
+                        </button>
+                      </p>
+                      <p className="text-xs text-stone-300 font-medium">{w.translation}</p>
+                      <p className="text-[10px] text-amber-300 font-mono">{w.phonetic_guide}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chunk Building Ladder */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4" />
+                  <span>4-Step Sentence Building Ladder</span>
+                </h3>
+                <div className="space-y-2">
+                  {activeUnit.chunk_building_ladder.map((step) => (
+                    <div key={step.step} className="bg-stone-950 border border-stone-800 rounded-xl p-3.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-amber-500 text-stone-950 font-black text-xs flex items-center justify-center shrink-0">
+                          {step.step}
+                        </span>
+                        <div>
+                          <p className="text-sm font-black text-white flex items-center gap-2">
+                            <span>{step.text_es}</span>
+                            <button onClick={() => speakSpanish(step.audio_text)} className="p-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 transition">
                               <Volume2 className="w-3 h-3" />
                             </button>
                           </p>
-                          <p className="text-[11px] text-stone-300">🇬🇧 {ev.varied_en}</p>
+                          <p className="text-xs text-stone-300">🇬🇧 {step.text_en}</p>
                         </div>
-                      ))}
+                      </div>
+                      <span className="text-[11px] text-stone-400 italic hidden sm:block">{step.explanation}</span>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Micro Drills */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Target className="w-4 h-4" />
+                  <span>Micro Drills ({activeUnit.micro_drills.length})</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeUnit.micro_drills.map((drill) => {
+                    const ansState = a0DrillAnswers[drill.id];
+
+                    return (
+                      <div key={drill.id} className="bg-stone-950 border border-stone-800 rounded-xl p-4 space-y-3">
+                        <p className="text-xs font-extrabold text-stone-200">
+                          ❓ {drill.prompt}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {drill.options.map((opt, oIdx) => {
+                            const isSelected = ansState?.selected === opt;
+                            const isCorrectOpt = opt.trim().toLowerCase() === drill.correct_answer.trim().toLowerCase();
+                            let style = "bg-stone-900 border-stone-800 hover:border-amber-500/50 text-stone-200";
+
+                            if (ansState) {
+                              if (isCorrectOpt) style = "bg-emerald-950 border-emerald-500 text-emerald-200 font-bold";
+                              else if (isSelected && !ansState.isCorrect) style = "bg-rose-950 border-rose-500 text-rose-200 line-through";
+                            }
+
+                            return (
+                              <button
+                                key={oIdx}
+                                onClick={() => {
+                                  if (drill.audio_text) speakSpanish(drill.audio_text);
+                                  const isCorrect = isCorrectOpt;
+                                  setA0DrillAnswers(prev => ({ ...prev, [drill.id]: { selected: opt, isCorrect } }));
+                                  if (isCorrect) {
+                                    soundEffects.playCorrect();
+                                    setUserProgress(prev => ({ ...prev, xp: prev.xp + 15 }));
+                                  } else {
+                                    soundEffects.playIncorrect();
+                                  }
+                                }}
+                                className={`p-2.5 rounded-xl border text-xs font-medium text-center transition ${style}`}
+                              >
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {ansState && (
+                          <p className={`text-[11px] p-2 rounded-lg ${ansState.isCorrect ? 'bg-emerald-950/60 text-emerald-300' : 'bg-rose-950/60 text-rose-300'}`}>
+                            💡 {drill.explanation}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         );
