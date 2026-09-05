@@ -65,7 +65,6 @@ export const TactileFeedback: React.FC<TactileFeedbackProps> = ({
 
   return (
     <motion.div
-      layout
       variants={triggerVariants}
       animate={triggerKey ? 'pulse' : 'idle'}
       whileHover={preset.hover}

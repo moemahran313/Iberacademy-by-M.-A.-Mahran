@@ -1161,7 +1161,6 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                   piSelectedTiles.map((tile, tIdx) => (
                     <motion.button
                       key={tIdx}
-                      layout
                       onClick={() => handleTileClick(tile)}
                       className="px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 text-xs font-black shadow-xs cursor-pointer"
                     >

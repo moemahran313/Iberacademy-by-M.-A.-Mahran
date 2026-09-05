@@ -64,7 +64,7 @@ function AppContent() {
   return (
     <>
       <ProtectedRoute>
-        <div className="min-h-screen max-w-full overflow-x-clip bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col selection:bg-amber-500 selection:text-stone-950 transition-colors duration-200">
+        <div className="min-h-screen w-full bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col selection:bg-amber-500 selection:text-stone-950 transition-colors duration-200">
           {/* World-Class Header with Duolingo Stats & Firebase Database Auth */}
           <Header
             activeTab={activeTab}
@@ -79,7 +79,7 @@ function AppContent() {
           />
 
           {/* Main Tab Content */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 sm:pb-12 overflow-hidden">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 sm:pb-12">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}

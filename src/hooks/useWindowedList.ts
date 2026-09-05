@@ -17,10 +17,12 @@ export function useWindowedList<T>(
   const [visibleCount, setVisibleCount] = useState<number>(pageSize);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  const resetKey = JSON.stringify(resetDeps);
+
   // Reset window count whenever underlying items or search dependencies change
   useEffect(() => {
     setVisibleCount(pageSize);
-  }, [items.length, pageSize, ...resetDeps]);
+  }, [items.length, pageSize, resetKey]);
 
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => Math.min(prev + pageSize, items.length));

@@ -933,7 +933,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         activeTab="landing"
         setActiveTab={(tab) => {
           if (tab === 'landing') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo(0, 0);
           } else {
             onExploreDemo();
           }

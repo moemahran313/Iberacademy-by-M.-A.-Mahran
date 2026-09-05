@@ -156,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
     setIsMobileMenuOpen(false);
     setIsProfileDropdownOpen(false);
     setOpenDropdown(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   };
 
   const handleLanguageToggle = () => {
@@ -549,7 +549,7 @@ export const Header: React.FC<HeaderProps> = ({
                       initial={{ opacity: 0, y: 5, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-80 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
+                      className="absolute -right-2 sm:right-0 mt-2 w-[88vw] max-w-xs sm:w-80 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
                     >
                       <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
                         <div className="flex items-center gap-1.5">
@@ -639,7 +639,7 @@ export const Header: React.FC<HeaderProps> = ({
                       initial={{ opacity: 0, scale: 0.95, y: -5 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                      className="absolute right-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
+                      className="absolute right-0 mt-2 w-[88vw] max-w-xs sm:w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
                     >
                       <div className="flex items-center gap-3 pb-3 border-b border-stone-200 dark:border-stone-800">
                         <AvatarDisplay

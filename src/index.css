@@ -3,12 +3,13 @@
 @variant dark (&:where(.dark, .dark *));
 
 html {
-  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 body {
-  scroll-behavior: smooth;
-  overflow-x: clip;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 @layer base {
