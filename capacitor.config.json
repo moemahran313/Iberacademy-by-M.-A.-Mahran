@@ -1,0 +1,15 @@
+{
+  "appId": "com.iberio.spanish",
+  "appName": "Iberio",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#ea580c",
+      "showSpinner": false
+    }
+  }
+}

@@ -26,7 +26,7 @@ export const Footer: React.FC<FooterProps> = ({
   };
 
   return (
-    <footer className="w-full bg-stone-900 text-stone-300 border-t border-stone-800/80 mt-16 pb-24 md:pb-12 pt-12">
+    <footer className="w-full bg-stone-900 text-stone-300 border-t border-stone-800/80 mt-16 pb-24 md:pb-12 pt-12 pb-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Emblem & Philosophy */}

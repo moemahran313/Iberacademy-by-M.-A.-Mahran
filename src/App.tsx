@@ -22,6 +22,7 @@ import { AuthModal } from './components/AuthModal';
 import { WelcomeVerificationModal } from './components/WelcomeVerificationModal';
 import { EmailVerificationEnforcementModal } from './components/EmailVerificationEnforcementModal';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { AppProvider, useApp } from './context/AppContext';
 import { ImportedContent } from './types';
 import { TactileFeedback } from './components/TactileFeedback';
@@ -207,6 +208,9 @@ function AppContent() {
             userEmail={authUser?.email}
             userName={authUser?.displayName}
           />
+
+          {/* Floating Mobile PWA Install Banner */}
+          <PWAInstallBanner />
         </div>
       </ProtectedRoute>
 

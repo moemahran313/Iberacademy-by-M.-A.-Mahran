@@ -201,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       {/* Streamlined Clean Header */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-b border-stone-200/80 dark:border-stone-800/80 text-stone-900 dark:text-stone-100 shadow-2xs transition-all duration-300">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-b border-stone-200/80 dark:border-stone-800/80 text-stone-900 dark:text-stone-100 shadow-2xs transition-all duration-300 pt-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 gap-3">
             

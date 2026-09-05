@@ -68,3 +68,24 @@ body {
   -webkit-backdrop-filter: blur(16px);
 }
 
+/* Safe area inset paddings for iOS notch and Android gesture bars */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Minimum mobile touch targets (44px) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+
