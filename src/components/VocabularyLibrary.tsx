@@ -1,4 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import * as ReactWindow from 'react-window';
+// @ts-ignore
+const List = (ReactWindow as any).FixedSizeList || (ReactWindow as any).default?.FixedSizeList;
 import { motion } from 'motion/react';
 import {
   Search,
@@ -1435,133 +1438,107 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
             <span>Click any card to play native audio</span>
           </div>
 
-          <motion.div
-            variants={{
-              hidden: { opacity: 0 },
-              show: {
-                opacity: 1,
-                transition: {
-                  staggerChildren: 0.08
-                }
-              }
-            }}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
-          >
-            {visibleWords.map((item) => {
-              const isMastered = userProgress.masteredWordIds.includes(item.id);
-              const isSaved = userProgress.savedWordIds.includes(item.id);
-              const srsRecord = userProgress.srsData?.[item.id];
+          {/* React-Window Virtualized Card Renderer */}
+          <div className="w-full min-h-[600px]">
+            <List
+              height={680}
+              itemCount={filteredWords.length}
+              itemSize={190}
+              width="100%"
+              className="no-scrollbar"
+            >
+              {({ index, style }: { index: number; style: React.CSSProperties }) => {
+                const item = filteredWords[index];
+                if (!item) return null;
+                const isMastered = userProgress.masteredWordIds.includes(item.id);
+                const isSaved = userProgress.savedWordIds.includes(item.id);
+                const srsRecord = userProgress.srsData?.[item.id];
 
-              return (
-                <motion.div
-                  key={item.id}
-                  variants={{
-                    hidden: { opacity: 0, y: 24 },
-                    show: { 
-                      opacity: 1, 
-                      y: 0, 
-                      transition: { 
-                        duration: 0.8,
-                        ease: [0.16, 1, 0.3, 1] 
-                      } 
-                    }
-                  }}
-                  whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 20 } }}
-                  onClick={() => speakSpanish(item.spanish)}
-                  className={`group relative bg-white dark:bg-stone-900 border rounded-xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer ${
-                    isMastered
-                      ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30 dark:bg-emerald-950/20'
-                      : 'border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500'
-                  }`}
-                >
-                  {/* Word Top Bar */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-stone-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
-                          {item.gender ? <span className="text-xs font-medium text-stone-400 mr-1">{item.gender}</span> : null}
-                          {item.spanish}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 uppercase">
-                          {item.cefr}
-                        </span>
+                return (
+                  <div style={{ ...style, paddingBottom: 12 }}>
+                    <div
+                      onClick={() => speakSpanish(item.spanish)}
+                      className={`group relative bg-white dark:bg-stone-900 border rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer h-full flex flex-col justify-between ${
+                        isMastered
+                          ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30 dark:bg-emerald-950/20'
+                          : 'border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500'
+                      }`}
+                    >
+                      {/* Word Top Bar */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-black text-stone-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                              {item.gender ? <span className="text-xs font-medium text-stone-400 mr-1">{item.gender}</span> : null}
+                              {item.spanish}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 uppercase">
+                              {item.cefr}
+                            </span>
+                          </div>
+                          {item.phonetic && (
+                            <span className="text-[11px] font-mono text-stone-400 dark:text-stone-500">
+                              /{item.phonetic}/
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              speakSpanish(item.spanish);
+                            }}
+                            className="p-1 rounded-md text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                            title="Listen"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => toggleSaveWord(item.id, e)}
+                            className="p-1 rounded-md text-stone-400 hover:text-amber-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                            title="Bookmark"
+                          >
+                            <Star className={`w-4 h-4 ${isSaved ? 'fill-amber-400 text-amber-400' : ''}`} />
+                          </button>
+                          <button
+                            onClick={(e) => toggleMasterWord(item.id, e)}
+                            className="p-1 rounded-md text-stone-400 hover:text-emerald-600 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                            title="Mastered"
+                          >
+                            <CheckCircle className={`w-4 h-4 ${isMastered ? 'fill-emerald-500 text-white' : ''}`} />
+                          </button>
+                        </div>
                       </div>
-                      {item.phonetic && (
-                        <span className="text-[11px] font-mono text-stone-400 dark:text-stone-500">
-                          /{item.phonetic}/
-                        </span>
-                      )}
-                    </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          speakSpanish(item.spanish);
-                        }}
-                        className="p-1 rounded-md text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
-                        title="Listen"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => toggleSaveWord(item.id, e)}
-                        className="p-1 rounded-md text-stone-400 hover:text-amber-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
-                        title="Bookmark"
-                      >
-                        <Star className={`w-4 h-4 ${isSaved ? 'fill-amber-400 text-amber-400' : ''}`} />
-                      </button>
-                      <button
-                        onClick={(e) => toggleMasterWord(item.id, e)}
-                        className="p-1 rounded-md text-stone-400 hover:text-emerald-600 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
-                        title="Mastered"
-                      >
-                        <CheckCircle className={`w-4 h-4 ${isMastered ? 'fill-emerald-500 text-white' : ''}`} />
-                      </button>
+                      {/* Translations */}
+                      <div className="mt-2 space-y-0.5">
+                        <p className="text-sm font-semibold text-stone-800 dark:text-stone-200">
+                          {item.english}
+                        </p>
+                        <p className="text-sm font-bold text-amber-800 dark:text-amber-300 font-arabic" dir="rtl">
+                          {item.arabic}
+                        </p>
+                      </div>
+
+                      {/* Frequency rank & category tag + SRS interval */}
+                      <div className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between text-[10px] text-stone-400 dark:text-stone-500 font-medium">
+                        <span className="capitalize">{item.category} • {item.partOfSpeech}</span>
+                        <div className="flex items-center gap-1.5">
+                          {srsRecord && (
+                            <span className="text-amber-600 dark:text-amber-400 font-bold">
+                              SRS: {srsRecord.interval}d
+                            </span>
+                          )}
+                          <span>Rank #{item.frequencyRank}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Translations */}
-                  <div className="mt-2.5 space-y-1">
-                    <p className="text-sm font-semibold text-stone-800 dark:text-stone-200">
-                      {item.english}
-                    </p>
-                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300 font-arabic" dir="rtl">
-                      {item.arabic}
-                    </p>
-                  </div>
-
-                  {/* Example Sentence */}
-                  {item.examples?.[0] && (
-                    <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-stone-800 text-xs">
-                      <p className="font-medium text-stone-700 dark:text-stone-300 leading-relaxed">
-                        "{item.examples[0].es}"
-                      </p>
-                      <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
-                        {item.examples[0].en}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Frequency rank & category tag + SRS interval */}
-                  <div className="mt-3 flex items-center justify-between text-[10px] text-stone-400 dark:text-stone-500 font-medium">
-                    <span className="capitalize">{item.category} • {item.partOfSpeech}</span>
-                    <div className="flex items-center gap-1.5">
-                      {srsRecord && (
-                        <span className="text-amber-600 dark:text-amber-400 font-bold">
-                          SRS: {srsRecord.interval}d
-                        </span>
-                      )}
-                      <span>Rank #{item.frequencyRank}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-            <div ref={sentinelRef} className="h-4 w-full col-span-full opacity-0 pointer-events-none" />
-          </motion.div>
+                );
+              }}
+            </List>
+          </div>
         </div>
       )}
     </div>

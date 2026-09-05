@@ -48,7 +48,7 @@ interface HeaderProps {
   isAuthLoading?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+const HeaderComponent: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   userProgress,
@@ -982,4 +982,6 @@ export const Header: React.FC<HeaderProps> = ({
     </>
   );
 };
+
+export const Header = React.memo(HeaderComponent);
 

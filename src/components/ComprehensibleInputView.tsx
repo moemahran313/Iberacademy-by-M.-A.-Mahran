@@ -1,4 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import * as ReactWindow from 'react-window';
+// @ts-ignore
+const List = (ReactWindow as any).FixedSizeList || (ReactWindow as any).default?.FixedSizeList;
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -461,51 +464,62 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
             </div>
           </div>
 
-          {/* Cards Grid */}
+          {/* Virtualized Cards Renderer */}
           {isLoading ? (
             <StoriesSkeleton />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {visibleStories.map(item => (
-                <div
-                  key={item.id}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 shadow-sm hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between group space-y-4"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-amber-500 text-stone-950">
-                        {item.cefr}
-                      </span>
-                      <span className="text-[11px] font-bold text-stone-400 font-mono">
-                        {item.wordCount} words
-                      </span>
+            <div className="w-full min-h-[600px]">
+              <List
+                height={680}
+                itemCount={filteredItems.length}
+                itemSize={220}
+                width="100%"
+                className="no-scrollbar"
+              >
+                {({ index, style }: { index: number; style: React.CSSProperties }) => {
+                  const item = filteredItems[index];
+                  if (!item) return null;
+
+                  return (
+                    <div style={{ ...style, paddingBottom: 14 }}>
+                      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between group h-full space-y-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-amber-500 text-stone-950">
+                              {item.cefr}
+                            </span>
+                            <span className="text-[11px] font-bold text-stone-400 font-mono">
+                              {item.wordCount} words
+                            </span>
+                          </div>
+
+                          <h3 className="text-base font-black text-stone-900 dark:text-stone-100 group-hover:text-amber-500 transition line-clamp-1">
+                            {item.title}
+                          </h3>
+
+                          <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed">
+                            {renderInteractiveContent(item.content)}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-stone-400 capitalize">
+                            {item.category}
+                          </span>
+
+                          <button
+                            onClick={() => handleOpenReader(item)}
+                            className="px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 group-hover:bg-amber-500 group-hover:text-stone-950 text-stone-800 dark:text-stone-200 font-black text-xs flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <span>Read in Interactive Mode</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-
-                    <h3 className="text-base font-black text-stone-900 dark:text-stone-100 group-hover:text-amber-500 transition line-clamp-2">
-                      {item.title}
-                    </h3>
-
-                    <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-3 leading-relaxed">
-                      {renderInteractiveContent(item.content)}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-stone-400">
-                      {item.category}
-                    </span>
-
-                    <button
-                      onClick={() => handleOpenReader(item)}
-                      className="px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 group-hover:bg-amber-500 group-hover:text-stone-950 text-stone-800 dark:text-stone-200 font-black text-xs flex items-center gap-1.5 transition"
-                    >
-                      <span>Read in Interactive Mode</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <div ref={storySentinelRef} className="h-4 w-full col-span-full opacity-0 pointer-events-none" />
+                  );
+                }}
+              </List>
             </div>
           )}
         </div>

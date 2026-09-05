@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, useCallback } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { Flame, X } from 'lucide-react';
 import { Header } from './components/Header';
@@ -6,17 +6,8 @@ import { Footer } from './components/Footer';
 import { LearningPathView } from './components/LearningPathView';
 import { ReadingDashboard } from './components/ReadingDashboard';
 import { VocabularyLibrary } from './components/VocabularyLibrary';
-import { VerbConjugator } from './components/VerbConjugator';
 import { ComprehensibleInputView } from './components/ComprehensibleInputView';
-import { GrammarEncyclopediaView } from './components/GrammarEncyclopediaView';
-import { AITutorChat } from './components/AITutorChat';
-import { VideoCoursesView } from './components/VideoCoursesView';
 import { PlacementTestModal } from './components/PlacementTestModal';
-import { LingLooperGame } from './components/LingLooperGame';
-import { ProfileView } from './components/ProfileView';
-import { CurriculumPlannerView } from './components/CurriculumPlannerView';
-import { A0BeginnerFoundationView } from './components/A0BeginnerFoundationView';
-import { OralShadowingDrill } from './components/OralShadowingDrill';
 import { OnboardingModal } from './components/OnboardingModal';
 import { AuthModal } from './components/AuthModal';
 import { WelcomeVerificationModal } from './components/WelcomeVerificationModal';
@@ -26,6 +17,19 @@ import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { AppProvider, useApp } from './context/AppContext';
 import { ImportedContent } from './types';
 import { TactileFeedback } from './components/TactileFeedback';
+import { LazyViewWrapper } from './components/LazyViewWrapper';
+import { DashboardSkeleton, StoriesSkeleton } from './components/Skeletons';
+
+// Code-split non-critical feature views to reduce initial JS payload size
+const VerbConjugator = React.lazy(() => import('./components/VerbConjugator').then(m => ({ default: m.VerbConjugator })));
+const GrammarEncyclopediaView = React.lazy(() => import('./components/GrammarEncyclopediaView').then(m => ({ default: m.GrammarEncyclopediaView })));
+const AITutorChat = React.lazy(() => import('./components/AITutorChat').then(m => ({ default: m.AITutorChat })));
+const VideoCoursesView = React.lazy(() => import('./components/VideoCoursesView').then(m => ({ default: m.VideoCoursesView })));
+const LingLooperGame = React.lazy(() => import('./components/LingLooperGame').then(m => ({ default: m.LingLooperGame })));
+const ProfileView = React.lazy(() => import('./components/ProfileView').then(m => ({ default: m.ProfileView })));
+const CurriculumPlannerView = React.lazy(() => import('./components/CurriculumPlannerView').then(m => ({ default: m.CurriculumPlannerView })));
+const A0BeginnerFoundationView = React.lazy(() => import('./components/A0BeginnerFoundationView').then(m => ({ default: m.A0BeginnerFoundationView })));
+const OralShadowingDrill = React.lazy(() => import('./components/OralShadowingDrill').then(m => ({ default: m.OralShadowingDrill })));
 
 function AppContent() {
   const {
@@ -53,6 +57,15 @@ function AppContent() {
     closeVerificationGate,
   } = useApp();
 
+  const handleOpenPlacementTest = useCallback(() => setIsPlacementTestOpen(true), [setIsPlacementTestOpen]);
+  const handleOpenStories = useCallback(() => setActiveTab('stories'), [setActiveTab]);
+  const handleOpenPath = useCallback(() => setActiveTab('path'), [setActiveTab]);
+  const handleOpenVocabulary = useCallback(() => setActiveTab('vocabulary'), [setActiveTab]);
+  const handleOpenDashboard = useCallback(() => setActiveTab('dashboard'), [setActiveTab]);
+  const handleAddXp = useCallback((amount: number) => {
+    setUserProgress(prev => ({ ...prev, xp: prev.xp + amount }));
+  }, [setUserProgress]);
+
   React.useEffect(() => {
     if (dailyGoalToast && dailyGoalToast.show) {
       import('./utils/confetti').then(({ triggerConfettiBurst }) => {
@@ -71,7 +84,7 @@ function AppContent() {
             setActiveTab={setActiveTab}
             userProgress={userProgress}
             setUserProgress={setUserProgress}
-            onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
+            onOpenPlacementTest={handleOpenPlacementTest}
             authUser={authUser}
             onOpenAuthModal={openAuthModal}
             onLogout={handleLogout}
@@ -93,109 +106,103 @@ function AppContent() {
                   <ReadingDashboard
                     userProgress={userProgress}
                     setUserProgress={setUserProgress}
-                    onOpenStory={(_story: ImportedContent) => {
-                      setActiveTab('stories');
-                    }}
-                    onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
-                    onSwitchToPath={() => setActiveTab('path')}
-                    onOpenVocabulary={() => setActiveTab('vocabulary')}
+                    onOpenStory={handleOpenStories}
+                    onOpenPlacementTest={handleOpenPlacementTest}
+                    onSwitchToPath={handleOpenPath}
+                    onOpenVocabulary={handleOpenVocabulary}
                   />
                 )}
 
-                {activeTab === 'a0_foundation' && (
-                  <A0BeginnerFoundationView
-                    onAddXp={(amount) => {
-                      setUserProgress(prev => ({ ...prev, xp: prev.xp + amount }));
-                    }}
-                    onBackToDashboard={() => setActiveTab('dashboard')}
-                  />
-                )}
+                <Suspense fallback={<DashboardSkeleton />}>
+                  {activeTab === 'a0_foundation' && (
+                    <A0BeginnerFoundationView
+                      onAddXp={handleAddXp}
+                      onBackToDashboard={handleOpenDashboard}
+                    />
+                  )}
 
-                {activeTab === 'planner' && (
-                  <CurriculumPlannerView
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                    setActiveTab={setActiveTab}
-                  />
-                )}
+                  {activeTab === 'planner' && (
+                    <CurriculumPlannerView
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                      setActiveTab={setActiveTab}
+                    />
+                  )}
 
-                {activeTab === 'path' && (
-                  <LearningPathView
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                    onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
-                    onOpenStory={() => {
-                      setActiveTab('stories');
-                    }}
-                    onLessonCompleted={handleLessonCompleted}
-                  />
-                )}
+                  {activeTab === 'path' && (
+                    <LearningPathView
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                      onOpenPlacementTest={handleOpenPlacementTest}
+                      onOpenStory={handleOpenStories}
+                      onLessonCompleted={handleLessonCompleted}
+                    />
+                  )}
 
-                {activeTab === 'vocabulary' && (
-                  <VocabularyLibrary
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                  />
-                )}
+                  {activeTab === 'vocabulary' && (
+                    <VocabularyLibrary
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                    />
+                  )}
 
-                {activeTab === 'verbs' && (
-                  <VerbConjugator />
-                )}
+                  {activeTab === 'verbs' && (
+                    <VerbConjugator />
+                  )}
 
-                {activeTab === 'stories' && (
-                  <ComprehensibleInputView
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                  />
-                )}
+                  {activeTab === 'stories' && (
+                    <ComprehensibleInputView
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                    />
+                  )}
 
-                {activeTab === 'grammar' && (
-                  <GrammarEncyclopediaView
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                  />
-                )}
+                  {activeTab === 'grammar' && (
+                    <GrammarEncyclopediaView
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                    />
+                  )}
 
-                {activeTab === 'tutor' && (
-                  <AITutorChat
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                  />
-                )}
+                  {activeTab === 'tutor' && (
+                    <AITutorChat
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                    />
+                  )}
 
-                {activeTab === 'linglooper' && (
-                  <LingLooperGame
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                  />
-                )}
+                  {activeTab === 'linglooper' && (
+                    <LingLooperGame
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                    />
+                  )}
 
-                {activeTab === 'shadowing' && (
-                  <OralShadowingDrill
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                    onAddXp={(amount) => {
-                      setUserProgress(prev => ({ ...prev, xp: prev.xp + amount }));
-                    }}
-                    onBackToDashboard={() => setActiveTab('dashboard')}
-                  />
-                )}
+                  {activeTab === 'shadowing' && (
+                    <OralShadowingDrill
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                      onAddXp={handleAddXp}
+                      onBackToDashboard={handleOpenDashboard}
+                    />
+                  )}
 
-                {activeTab === 'videos' && (
-                  <VideoCoursesView />
-                )}
+                  {activeTab === 'videos' && (
+                    <VideoCoursesView />
+                  )}
 
-                {activeTab === 'profile' && (
-                  <ProfileView
-                    userProgress={userProgress}
-                    setUserProgress={setUserProgress}
-                    authUser={authUser}
-                    onOpenAuthModal={openAuthModal}
-                    onLogout={handleLogout}
-                    onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
-                    isAuthLoading={isAuthLoading}
-                  />
-                )}
+                  {activeTab === 'profile' && (
+                    <ProfileView
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                      authUser={authUser}
+                      onOpenAuthModal={openAuthModal}
+                      onLogout={handleLogout}
+                      onOpenPlacementTest={handleOpenPlacementTest}
+                      isAuthLoading={isAuthLoading}
+                    />
+                  )}
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </main>
