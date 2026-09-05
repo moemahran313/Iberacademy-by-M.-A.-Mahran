@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   BookOpen,
@@ -25,6 +25,8 @@ import { SRSDailyReviewWidget } from './SRSDailyReviewWidget';
 import { GlobalLeague } from './GlobalLeague';
 import { soundEffects } from '../utils/audio';
 import { useApp } from '../context/AppContext';
+import { DashboardSkeleton } from './Skeletons';
+import { dataCache } from '../utils/dataCache';
 
 interface ReadingDashboardProps {
   userProgress: UserProgress;
@@ -43,8 +45,35 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
   onSwitchToPath,
   onOpenVocabulary
 }) => {
-  const [mobileTab, setMobileTab] = React.useState<'reading' | 'stats'>('reading');
+  const [mobileTab, setMobileTab] = useState<'reading' | 'stats'>('reading');
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // Check if we have cached stats to render immediately
+    const cached = dataCache.get<boolean>('dashboard_initialized');
+    return !cached;
+  });
+
   const { setActiveTab } = useApp();
+
+  useEffect(() => {
+    // Cache user progress stats locally for instant loading on repeat visits
+    dataCache.set('user_progress_summary', {
+      currentLevel: userProgress.currentLevel,
+      xp: userProgress.xp,
+      streakDays: userProgress.streakDays,
+      totalWordsRead: userProgress.totalWordsRead
+    });
+    dataCache.set('dashboard_initialized', true);
+
+    // Short loading timer for initial hydration
+    if (isLoading) {
+      const timer = setTimeout(() => setIsLoading(false), 180);
+      return () => clearTimeout(timer);
+    }
+  }, [userProgress, isLoading]);
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   const currentLevel = userProgress.currentLevel || 'A1';
   const totalWordsRead = userProgress.totalWordsRead || 0;

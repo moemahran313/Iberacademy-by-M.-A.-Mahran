@@ -284,52 +284,52 @@ export const CurriculumPlannerView: React.FC<CurriculumPlannerViewProps> = ({
 
       {/* Main View Mode Navigation Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-        <div className="bg-stone-100 dark:bg-stone-900 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-wrap gap-1 flex-1">
+        <div className="bg-stone-100 dark:bg-stone-900 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 flex overflow-x-auto no-scrollbar gap-1 flex-1">
           <button
             onClick={() => setActivePlannerTab('roadmap')}
-            className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
               activePlannerTab === 'roadmap'
                 ? 'bg-amber-500 text-stone-950 shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
             }`}
           >
-            <Layers className="w-4 h-4" />
+            <Layers className="w-4 h-4 shrink-0" />
             <span>Worlds &amp; Lessons Hierarchy</span>
           </button>
 
           <button
             onClick={() => setActivePlannerTab('grammar')}
-            className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
               activePlannerTab === 'grammar'
                 ? 'bg-amber-500 text-stone-950 shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
             }`}
           >
-            <GraduationCap className="w-4 h-4" />
+            <GraduationCap className="w-4 h-4 shrink-0" />
             <span>Core Grammar Blueprints</span>
           </button>
 
           <button
             onClick={() => setActivePlannerTab('vocab')}
-            className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
               activePlannerTab === 'vocab'
                 ? 'bg-amber-500 text-stone-950 shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
+            <BookOpen className="w-4 h-4 shrink-0" />
             <span>Vocabulary Decks &amp; Chunks</span>
           </button>
 
           <button
             onClick={() => setActivePlannerTab('milestones')}
-            className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
               activePlannerTab === 'milestones'
                 ? 'bg-amber-500 text-stone-950 shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
             }`}
           >
-            <Brain className="w-4 h-4" />
+            <Brain className="w-4 h-4 shrink-0" />
             <span>AI Diagnostic Weaknesses</span>
           </button>
         </div>

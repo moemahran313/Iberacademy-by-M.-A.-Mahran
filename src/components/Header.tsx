@@ -954,7 +954,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Sticky Mobile Bottom Navigation Bar */}
       <nav 
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-t border-stone-200/80 dark:border-stone-800/80 md:hidden flex items-center justify-around px-2 py-1.5 shadow-lg select-none"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-md border-t border-stone-200/80 dark:border-stone-800/80 md:hidden flex items-center justify-around px-1 py-1 shadow-lg select-none pb-safe"
       >
         {mobileBottomTabs.map(tab => {
           const Icon = tab.icon;
@@ -963,16 +963,16 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               key={tab.id}
               onClick={() => handleNavClick(tab.id)}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-2xl transition-all cursor-pointer min-h-[44px] min-w-[44px] ${
                 isActive
-                  ? 'text-amber-600 dark:text-amber-400 font-extrabold scale-105'
+                  ? 'text-amber-600 dark:text-amber-400 font-extrabold'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-medium'
               }`}
             >
               <div className={`p-1 rounded-xl transition ${isActive ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' : ''}`}>
                 <Icon className="w-4 h-4" />
               </div>
-              <span className="text-[10px] leading-tight mt-0.5">
+              <span className="text-[10px] leading-tight mt-0.5 font-sans">
                 {userProgress.settings.nativeLanguage === 'ar' ? tab.label_ar : tab.label_en}
               </span>
             </button>

@@ -34,6 +34,10 @@ import {
   getTodayDateString,
   generateChunksAndCollocationsPracticeSet
 } from '../utils/srs';
+import { useDebounce } from '../hooks/useDebounce';
+import { useWindowedList } from '../hooks/useWindowedList';
+import { VocabularySkeleton } from './Skeletons';
+import { dataCache } from '../utils/dataCache';
 
 interface VocabularyLibraryProps {
   userProgress: UserProgress;
@@ -45,9 +49,23 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
   setUserProgress
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 200);
+
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'flashcards' | 'srs' | 'high_frequency'>('high_frequency');
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    return !dataCache.get('vocab_cached_flag');
+  });
+
+  useEffect(() => {
+    dataCache.set('vocab_cached_flag', true);
+    if (isLoading) {
+      const timer = setTimeout(() => setIsLoading(false), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
 
   // Standard flashcard state
   const [flashcardIdx, setFlashcardIdx] = useState(0);
@@ -132,21 +150,27 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
     return ['all', 'Mexican Gastronomy', ...Array.from(set)];
   }, []);
 
-  // Filtered vocabulary for Grid & Simple Flashcard
+  // Filtered vocabulary using debounced search term
   const filteredWords = useMemo(() => {
     return ALL_VOCABULARY.filter(item => {
       const matchesSearch =
-        searchTerm === '' ||
-        (item.spanish || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.english || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.arabic || '').includes(searchTerm);
+        debouncedSearchTerm === '' ||
+        (item.spanish || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (item.english || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (item.arabic || '').includes(debouncedSearchTerm);
 
       const matchesLevel = selectedLevel === 'all' || item.cefr === selectedLevel;
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
 
       return matchesSearch && matchesLevel && matchesCategory;
     });
-  }, [searchTerm, selectedLevel, selectedCategory]);
+  }, [debouncedSearchTerm, selectedLevel, selectedCategory]);
+
+  // Windowed list hook for high-performance mobile scrolling
+  const { visibleItems: visibleWords, sentinelRef } = useWindowedList<VocabularyItem>(filteredWords, {
+    pageSize: 24,
+    resetDeps: [debouncedSearchTerm, selectedLevel, selectedCategory]
+  });
 
   // Overall SRS Stats
   const srsStats = useMemo(() => {
@@ -402,6 +426,10 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
   const isCurrentMastered = currentFlashcard && userProgress.masteredWordIds.includes(currentFlashcard.id);
   const isCurrentSaved = currentFlashcard && userProgress.savedWordIds.includes(currentFlashcard.id);
 
+  if (isLoading) {
+    return <VocabularySkeleton />;
+  }
+
   return (
     <div className="space-y-6 text-stone-900 dark:text-stone-100">
       {/* Top Banner & Stats */}
@@ -429,7 +457,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
           </div>
 
           {/* Mastered Progress Bar & SRS Due Badge */}
-          <div className="flex flex-col sm:flex-row md:flex-col gap-2 min-w-[220px]">
+          <div className="flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-auto">
             <div className="bg-stone-950/70 border border-stone-800 rounded-xl p-3">
               <div className="flex justify-between text-xs font-semibold mb-1">
                 <span className="text-stone-400">Total Mastery</span>
@@ -1403,7 +1431,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
       {viewMode === 'grid' && (
         <div>
           <div className="flex justify-between items-center text-xs font-semibold text-stone-500 dark:text-stone-400 mb-3 px-1">
-            <span>Showing {filteredWords.length} words</span>
+            <span>Showing {visibleWords.length} of {filteredWords.length} words</span>
             <span>Click any card to play native audio</span>
           </div>
 
@@ -1421,7 +1449,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
           >
-            {filteredWords.map((item) => {
+            {visibleWords.map((item) => {
               const isMastered = userProgress.masteredWordIds.includes(item.id);
               const isSaved = userProgress.savedWordIds.includes(item.id);
               const srsRecord = userProgress.srsData?.[item.id];
@@ -1532,6 +1560,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
                 </motion.div>
               );
             })}
+            <div ref={sentinelRef} className="h-4 w-full col-span-full opacity-0 pointer-events-none" />
           </motion.div>
         </div>
       )}

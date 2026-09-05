@@ -341,40 +341,40 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
       </div>
 
       {/* Structured View Mode Selector Switcher */}
-      <div className="bg-stone-100 dark:bg-stone-900 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-wrap gap-1">
+      <div className="bg-stone-100 dark:bg-stone-900 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 flex overflow-x-auto no-scrollbar gap-1">
         <button
           onClick={() => setPathMode('worlds')}
-          className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
             pathMode === 'worlds'
               ? 'bg-amber-500 text-stone-950 shadow-xs'
               : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
           }`}
         >
-          <Layers className="w-4 h-4" />
+          <Layers className="w-4 h-4 shrink-0" />
           <span>Worlds &amp; Lessons Path</span>
         </button>
 
         <button
           onClick={() => setPathMode('grammar')}
-          className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
             pathMode === 'grammar'
               ? 'bg-amber-500 text-stone-950 shadow-xs'
               : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
           }`}
         >
-          <GraduationCap className="w-4 h-4" />
+          <GraduationCap className="w-4 h-4 shrink-0" />
           <span>Core Grammar Blueprints</span>
         </button>
 
         <button
           onClick={() => setPathMode('vocab')}
-          className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-h-[44px] ${
             pathMode === 'vocab'
               ? 'bg-amber-500 text-stone-950 shadow-xs'
               : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 shrink-0" />
           <span>Vocabulary &amp; Chunks Decks</span>
         </button>
 
