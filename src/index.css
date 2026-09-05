@@ -2,14 +2,38 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* Enforce font-display: swap for web fonts */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cairo';
+  font-display: swap;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
+  touch-action: pan-y;
 }
 
 body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* Hardware accelerated smooth scroll containers */
+main, .scroll-container, .overflow-y-auto, .overflow-x-auto {
+  touch-action: pan-y;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 @layer base {
