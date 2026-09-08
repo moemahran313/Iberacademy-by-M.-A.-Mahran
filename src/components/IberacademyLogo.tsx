@@ -28,14 +28,14 @@ export const IberioLogo: React.FC<IberioLogoProps> = ({
       transition={logoTransition}
     >
       {/* World-class geometric "IB" Badge - Pure luxury orange design */}
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700 flex items-center justify-center shadow-lg shadow-orange-500/15 border border-white/10 relative overflow-hidden group">
+      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700 flex items-center justify-center shadow-lg shadow-orange-500/15 border border-white/10 relative overflow-hidden group">
         {/* Subtle inner light gloss effect */}
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Minimalist modern Mexican Aztec Bird Mascot */}
         <svg
           viewBox="0 0 100 100"
-          className="w-7 h-7 text-white"
+          className="w-5 h-5 sm:w-7 sm:h-7 text-white"
           fill="none"
         >
           {/* Beak lines */}
@@ -85,11 +85,11 @@ export const IberioLogo: React.FC<IberioLogoProps> = ({
   }
 
   return (
-    <div className={`inline-flex items-center gap-3 select-none ${className}`}>
+    <div className={`inline-flex items-center gap-2 sm:gap-3 select-none shrink-0 ${className}`}>
       {IconSymbol}
       <div className="flex flex-col justify-center leading-none">
         <div className="flex items-center gap-1">
-          <span className="text-2xl font-black tracking-tight text-orange-500 font-sans">
+          <span className="text-xl sm:text-2xl font-black tracking-tight text-orange-500 font-sans">
             Iberio
           </span>
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block shrink-0 animate-pulse" />

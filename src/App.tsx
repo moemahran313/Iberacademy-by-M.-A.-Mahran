@@ -18,6 +18,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ImportedContent } from './types';
 import { TactileFeedback } from './components/TactileFeedback';
 import { LazyViewWrapper } from './components/LazyViewWrapper';
+import { VirtualizedList } from './components/VirtualizedList';
 import { DashboardSkeleton, StoriesSkeleton } from './components/Skeletons';
 
 // Code-split non-critical feature views to reduce initial JS payload size
@@ -30,6 +31,7 @@ const ProfileView = React.lazy(() => import('./components/ProfileView').then(m =
 const CurriculumPlannerView = React.lazy(() => import('./components/CurriculumPlannerView').then(m => ({ default: m.CurriculumPlannerView })));
 const A0BeginnerFoundationView = React.lazy(() => import('./components/A0BeginnerFoundationView').then(m => ({ default: m.A0BeginnerFoundationView })));
 const OralShadowingDrill = React.lazy(() => import('./components/OralShadowingDrill').then(m => ({ default: m.OralShadowingDrill })));
+const SkillWorkshopView = React.lazy(() => import('./components/SkillWorkshopView').then(m => ({ default: m.SkillWorkshopView })));
 
 function AppContent() {
   const {
@@ -91,8 +93,8 @@ function AppContent() {
             isAuthLoading={isAuthLoading}
           />
 
-          {/* Main Tab Content */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 sm:pb-12">
+          {/* Main Tab Content - Virtualized Viewport Container */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 sm:pb-12 overflow-y-auto no-scrollbar scroll-container">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -100,7 +102,7 @@ function AppContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="w-full h-full"
+                className="w-full h-full min-h-[500px]"
               >
                 {activeTab === 'dashboard' && (
                   <ReadingDashboard
@@ -136,6 +138,14 @@ function AppContent() {
                       onOpenPlacementTest={handleOpenPlacementTest}
                       onOpenStory={handleOpenStories}
                       onLessonCompleted={handleLessonCompleted}
+                    />
+                  )}
+
+                  {activeTab === 'workshop' && (
+                    <SkillWorkshopView
+                      userProgress={userProgress}
+                      setUserProgress={setUserProgress}
+                      setActiveTab={setActiveTab}
                     />
                   )}
 

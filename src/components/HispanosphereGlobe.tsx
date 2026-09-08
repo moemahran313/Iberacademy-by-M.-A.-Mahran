@@ -1415,12 +1415,14 @@ export const HispanosphereGlobe: React.FC<HispanosphereGlobeProps> = ({
     window.addEventListener('touchend', onTouchEnd);
 
     const resizeObserver = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const { width: newW, height: newH } = entry.contentRect;
-        if (newW > 0 && newH > 0) {
-          handleCanvasResize();
+      window.requestAnimationFrame(() => {
+        for (const entry of entries) {
+          const { width: newW, height: newH } = entry.contentRect;
+          if (newW > 0 && newH > 0) {
+            handleCanvasResize();
+          }
         }
-      }
+      });
     });
     resizeObserver.observe(container);
 

@@ -143,11 +143,10 @@ const HeaderComponent: React.FC<HeaderProps> = ({
   ];
 
   const mobileBottomTabs = [
-    { id: 'dashboard', label_en: 'Home', label_ar: 'الرئيسية', icon: Compass },
-    { id: 'path', label_en: 'Roadmap', label_ar: 'مسار التعلم', icon: Layers },
+    { id: 'dashboard', label_en: 'Today', label_ar: 'الرئيسية', icon: Compass },
     { id: 'stories', label_en: 'Immersion', label_ar: 'القصص', icon: Sparkles },
-    { id: 'tutor', label_en: 'Studio', label_ar: 'الدردشة', icon: MessageSquare },
-    { id: 'vocabulary', label_en: 'Knowledge', label_ar: 'المعرفة', icon: BookOpen }
+    { id: 'workshop', label_en: 'Workshop', label_ar: 'الورشة', icon: GraduationCap },
+    { id: 'profile', label_en: 'Profile', label_ar: 'الملف', icon: UserIcon }
   ];
 
   const handleNavClick = (tabId: string) => {
@@ -223,10 +222,10 @@ const HeaderComponent: React.FC<HeaderProps> = ({
               </span>
             </button>
 
-            {/* Structured 5-Hub Desktop Navigation System */}
+            {/* Streamlined Desktop Navigation System */}
             <nav className="hidden md:flex items-center space-x-1" ref={navDropdownRef} aria-label="System Navigation">
               
-              {/* 1. Dashboard Direct Hub */}
+              {/* 1. Today Direct Hub */}
               <button
                 onClick={() => handleNavClick('dashboard')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
@@ -236,242 +235,49 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                 }`}
               >
                 <Compass className="w-3.5 h-3.5" />
-                <span>Home</span>
+                <span>Today</span>
               </button>
 
-              {/* 2. Roadmap Hub Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    soundEffects.playPop();
-                    setOpenDropdown(openDropdown === 'learn' ? null : 'learn');
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    isRoadmapActive
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Roadmap</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'learn' ? 'rotate-180' : ''}`} />
-                </button>
+              {/* 2. Immersion Hub */}
+              <button
+                onClick={() => handleNavClick('stories')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'stories' || activeTab === 'videos'
+                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Immersion</span>
+              </button>
 
-                <AnimatePresence>
-                  {openDropdown === 'learn' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
-                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
-                    >
-                      {roadmapItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item.id)}
-                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
-                              isActive
-                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
-                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
-                            }`}
-                          >
-                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-extrabold">
-                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
-                              </div>
-                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
-                                {item.desc}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              {/* 3. Skill Workshop Hub */}
+              <button
+                onClick={() => handleNavClick('workshop')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'workshop' || activeTab === 'vocabulary' || activeTab === 'verbs' || activeTab === 'grammar' || activeTab === 'tutor' || activeTab === 'shadowing' || activeTab === 'linglooper' || activeTab === 'a0_foundation'
+                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Workshop</span>
+              </button>
 
-              {/* 3. Immersion Hub Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    soundEffects.playPop();
-                    setOpenDropdown(openDropdown === 'practice' ? null : 'practice');
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    isImmersionActive
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Immersion</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'practice' ? 'rotate-180' : ''}`} />
-                </button>
+              {/* 4. CEFR Roadmap Hub */}
+              <button
+                onClick={() => handleNavClick('path')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'path' || activeTab === 'planner'
+                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
+                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Roadmap</span>
+              </button>
 
-                <AnimatePresence>
-                  {openDropdown === 'practice' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
-                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
-                    >
-                      {immersionItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item.id)}
-                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
-                              isActive
-                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
-                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
-                            }`}
-                          >
-                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-extrabold">
-                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
-                              </div>
-                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
-                                {item.desc}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* 4. Interactive Studio Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    soundEffects.playPop();
-                    setOpenDropdown(openDropdown === ('studio' as any) ? null : ('studio' as any));
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    isStudioActive
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Studio</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === ('studio' as any) ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence>
-                  {openDropdown === ('studio' as any) && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
-                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
-                    >
-                      {studioItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item.id)}
-                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
-                              isActive
-                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
-                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
-                            }`}
-                          >
-                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-extrabold">
-                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
-                              </div>
-                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
-                                {item.desc}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* 5. Knowledge Hub Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    soundEffects.playPop();
-                    setOpenDropdown(openDropdown === ('knowledge' as any) ? null : ('knowledge' as any));
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    isKnowledgeActive
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                  }`}
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>Knowledge</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === ('knowledge' as any) ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence>
-                  {openDropdown === ('knowledge' as any) && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.98 }}
-                      className="absolute left-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-2 z-50 space-y-1"
-                    >
-                      {knowledgeItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item.id)}
-                            className={`w-full flex items-start gap-3 p-2.5 rounded-xl transition text-left cursor-pointer ${
-                              isActive
-                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
-                                : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
-                            }`}
-                          >
-                            <div className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-extrabold">
-                                {userProgress.settings.nativeLanguage === 'ar' ? item.label_ar : item.label_en}
-                              </div>
-                              <div className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">
-                                {item.desc}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Profile Direct Tab */}
+              {/* 5. Profile Direct Tab */}
               <button
                 onClick={() => handleNavClick('profile')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
@@ -516,16 +322,17 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                 <span className="text-[11px]">{getLanguageLabel()}</span>
               </button>
 
+              {/* Theme Toggle - Visible sm:flex */}
               <button
                 onClick={handleThemeToggle}
-                className="p-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition"
+                className="hidden sm:flex p-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition shrink-0"
                 aria-label="Toggle Theme"
               >
                 {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
               </button>
 
               {/* Notification Center Bell */}
-              <div className="relative" ref={notificationDropdownRef}>
+              <div className="relative shrink-0" ref={notificationDropdownRef}>
                 <button
                   id="header-notification-bell"
                   onClick={() => {
@@ -605,8 +412,8 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                 </AnimatePresence>
               </div>
 
-              {/* Account Profile / Sign In Menu */}
-              <div className="relative" ref={profileDropdownRef}>
+              {/* Desktop Profile Menu */}
+              <div className="hidden md:block relative shrink-0" ref={profileDropdownRef}>
                 {authUser ? (
                   <button
                     onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -628,7 +435,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition cursor-pointer shadow-xs disabled:opacity-50"
                   >
                     <UserIcon className="w-3.5 h-3.5" />
-                    <span className="hidden xs:inline">Sign In</span>
+                    <span>Sign In</span>
                   </button>
                 )}
 
@@ -639,7 +446,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                       initial={{ opacity: 0, scale: 0.95, y: -5 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                      className="absolute right-0 mt-2 w-[88vw] max-w-xs sm:w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
+                      className="absolute right-0 mt-2 w-64 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
                     >
                       <div className="flex items-center gap-3 pb-3 border-b border-stone-200 dark:border-stone-800">
                         <AvatarDisplay
@@ -714,16 +521,31 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                 </AnimatePresence>
               </div>
 
-              {/* Mobile Menu Button */}
+              {/* Mobile Drawer Menu Button */}
               <button
                 onClick={() => {
                   soundEffects.playPop();
                   setIsMobileMenuOpen(!isMobileMenuOpen);
                 }}
-                className="md:hidden p-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-200"
+                className="md:hidden flex items-center gap-1.5 p-1 px-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer shrink-0"
                 aria-label="Toggle Navigation"
               >
-                {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                {authUser ? (
+                  <div className="flex items-center gap-1">
+                    <AvatarDisplay
+                      photoURL={authUser.photoURL}
+                      avatarId={userProgress.avatarId}
+                      name={authUser.displayName}
+                      email={authUser.email}
+                      size="xs"
+                    />
+                    <Menu className="w-3.5 h-3.5 text-stone-500" />
+                  </div>
+                ) : (
+                  <div className="p-0.5">
+                    {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                  </div>
+                )}
               </button>
             </div>
           </div>
@@ -954,7 +776,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
       {/* Sticky Mobile Bottom Navigation Bar */}
       <nav 
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-md border-t border-stone-200/80 dark:border-stone-800/80 md:hidden flex items-center justify-around px-1 py-1 shadow-lg select-none pb-safe"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-md border-t border-stone-200/80 dark:border-stone-800/80 md:hidden flex items-center justify-between px-2 py-1 shadow-lg select-none pb-safe"
       >
         {mobileBottomTabs.map(tab => {
           const Icon = tab.icon;
@@ -963,16 +785,16 @@ const HeaderComponent: React.FC<HeaderProps> = ({
             <button
               key={tab.id}
               onClick={() => handleNavClick(tab.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-2xl transition-all cursor-pointer min-h-[44px] min-w-[44px] ${
+              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer min-h-[44px] ${
                 isActive
                   ? 'text-amber-600 dark:text-amber-400 font-extrabold'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-medium'
               }`}
             >
-              <div className={`p-1 rounded-xl transition ${isActive ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' : ''}`}>
-                <Icon className="w-4 h-4" />
+              <div className={`p-1.5 rounded-xl transition ${isActive ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : ''}`}>
+                <Icon className="w-5 h-5" />
               </div>
-              <span className="text-[10px] leading-tight mt-0.5 font-sans">
+              <span className="text-[10px] font-bold leading-tight mt-0.5 truncate max-w-full px-0.5">
                 {userProgress.settings.nativeLanguage === 'ar' ? tab.label_ar : tab.label_en}
               </span>
             </button>

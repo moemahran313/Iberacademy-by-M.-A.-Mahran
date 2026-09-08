@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import * as ReactWindow from 'react-window';
-// @ts-ignore
-const List = (ReactWindow as any).FixedSizeList || (ReactWindow as any).default?.FixedSizeList;
+import { VirtualizedList } from './VirtualizedList';
 import { motion } from 'motion/react';
 import {
   Search,
@@ -1440,7 +1438,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
 
           {/* React-Window Virtualized Card Renderer */}
           <div className="w-full min-h-[600px]">
-            <List
+            <VirtualizedList
               height={680}
               itemCount={filteredWords.length}
               itemSize={190}
@@ -1537,7 +1535,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
                   </div>
                 );
               }}
-            </List>
+            </VirtualizedList>
           </div>
         </div>
       )}

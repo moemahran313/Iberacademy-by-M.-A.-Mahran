@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import * as ReactWindow from 'react-window';
-// @ts-ignore
-const List = (ReactWindow as any).FixedSizeList || (ReactWindow as any).default?.FixedSizeList;
+import { VirtualizedList } from './VirtualizedList';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -469,7 +467,7 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
             <StoriesSkeleton />
           ) : (
             <div className="w-full min-h-[600px]">
-              <List
+              <VirtualizedList
                 height={680}
                 itemCount={filteredItems.length}
                 itemSize={220}
@@ -519,7 +517,7 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
                     </div>
                   );
                 }}
-              </List>
+              </VirtualizedList>
             </div>
           )}
         </div>

@@ -103,6 +103,68 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [grammarPracticeTopic, setGrammarPracticeTopic] = useState<{ id: string; title_es: string; title_en: string; formula?: string } | null>(null);
 
+  // Predictive pre-fetching logic: Fetch component bundles for adjacent tabs when user lingers on current tab
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const prefetchMap: Record<string, (() => Promise<unknown>)[]> = {
+        dashboard: [
+          () => import('../components/ComprehensibleInputView'),
+          () => import('../components/VocabularyLibrary'),
+          () => import('../components/VerbConjugator')
+        ],
+        stories: [
+          () => import('../components/VocabularyLibrary'),
+          () => import('../components/VerbConjugator')
+        ],
+        vocabulary: [
+          () => import('../components/VerbConjugator'),
+          () => import('../components/GrammarEncyclopediaView')
+        ],
+        verbs: [
+          () => import('../components/GrammarEncyclopediaView'),
+          () => import('../components/OralShadowingDrill')
+        ],
+        grammar: [
+          () => import('../components/A0BeginnerFoundationView'),
+          () => import('../components/VerbConjugator')
+        ],
+        a0_foundation: [
+          () => import('../components/GrammarEncyclopediaView'),
+          () => import('../components/OralShadowingDrill')
+        ],
+        shadowing: [
+          () => import('../components/AITutorChat'),
+          () => import('../components/VerbConjugator')
+        ],
+        tutor: [
+          () => import('../components/VideoCoursesView'),
+          () => import('../components/LingLooperGame')
+        ],
+        videos: [
+          () => import('../components/LingLooperGame'),
+          () => import('../components/CurriculumPlannerView')
+        ],
+        linglooper: [
+          () => import('../components/CurriculumPlannerView'),
+          () => import('../components/ProfileView')
+        ],
+        planner: [
+          () => import('../components/ProfileView')
+        ],
+        profile: [
+          () => import('../components/LearningPathView')
+        ]
+      };
+
+      const loaders = prefetchMap[activeTab] || [];
+      loaders.forEach(loader => {
+        loader().catch(() => {});
+      });
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
   const openAuthModal = (mode: 'signin' | 'signup' = 'signin') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);

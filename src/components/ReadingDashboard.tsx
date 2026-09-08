@@ -23,6 +23,7 @@ import { ReadingProgressTracker } from './ReadingProgressTracker';
 import { StreakCounterWidget } from './StreakCounterWidget';
 import { SRSDailyReviewWidget } from './SRSDailyReviewWidget';
 import { GlobalLeague } from './GlobalLeague';
+import { DailyRoutineModal } from './DailyRoutineModal';
 import { soundEffects } from '../utils/audio';
 import { useApp } from '../context/AppContext';
 import { DashboardSkeleton } from './Skeletons';
@@ -46,6 +47,7 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
   onOpenVocabulary
 }) => {
   const [mobileTab, setMobileTab] = useState<'reading' | 'stats'>('reading');
+  const [isDailyRoutineOpen, setIsDailyRoutineOpen] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     // Check if we have cached stats to render immediately
     const cached = dataCache.get<boolean>('dashboard_initialized');
@@ -201,6 +203,34 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
           }`}
         >
           📊 Stats & Analytics
+        </button>
+      </motion.div>
+
+      {/* GUIDED 15-MIN DAILY STUDY PATH HERO BANNER */}
+      <motion.div variants={bentoItemVariants} className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 rounded-3xl p-6 sm:p-8 text-stone-950 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="space-y-2 max-w-xl relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-950/20 text-stone-950 font-black text-xs uppercase tracking-wider backdrop-blur-md">
+            <Zap className="w-4 h-4 text-amber-300" />
+            <span>Today's Guided 15-Minute Study Sequence</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-stone-950">
+            One Click. Complete Daily Routine.
+          </h2>
+          <p className="text-xs sm:text-sm font-medium text-stone-900/90 leading-relaxed">
+            1. Read 1 Graded Story (5m) &rarr; 2. Review SRS Flashcards (5m) &rarr; 3. Practice Shadowing (2m).
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            soundEffects.playLevelUp();
+            setIsDailyRoutineOpen(true);
+          }}
+          className="w-full md:w-auto px-6 py-4 rounded-2xl bg-stone-950 hover:bg-stone-900 text-white font-black text-sm sm:text-base flex items-center justify-center gap-3 shadow-2xl transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Sparkles className="w-5 h-5 text-amber-400" />
+          <span>Start Today's Routine (15m)</span>
+          <ArrowRight className="w-5 h-5 text-amber-400" />
         </button>
       </motion.div>
 
@@ -424,6 +454,13 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
         </div>
 
       </div>
+
+      <DailyRoutineModal
+        isOpen={isDailyRoutineOpen}
+        onClose={() => setIsDailyRoutineOpen(false)}
+        userProgress={userProgress}
+        setUserProgress={setUserProgress}
+      />
     </motion.div>
   );
 };

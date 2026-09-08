@@ -113,8 +113,16 @@ main, .scroll-container, .overflow-y-auto, .overflow-x-auto {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Minimum mobile touch targets (44px) */
-.touch-target {
+/* Minimum mobile touch targets (44px) and Fast-click 300ms delay bypass */
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+.touch-target,
+.fast-touch-target {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   min-width: 44px;
   min-height: 44px;
 }
