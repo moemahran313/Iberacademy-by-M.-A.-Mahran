@@ -170,11 +170,21 @@ export const VisualMatchingQuiz: React.FC = () => {
               }
 
               return (
-                <button
+                <div
                   key={option.id}
-                  disabled={hasAnswered}
+                  role="button"
+                  tabIndex={hasAnswered ? -1 : 0}
+                  aria-disabled={hasAnswered}
                   onClick={() => handleSelect(option)}
-                  className={`p-5 rounded-2xl border transition-all text-left space-y-3 cursor-pointer disabled:cursor-default ${borderStyle}`}
+                  onKeyDown={(e) => {
+                    if (!hasAnswered && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      handleSelect(option);
+                    }
+                  }}
+                  className={`p-5 rounded-2xl border transition-all text-left space-y-3 select-none ${
+                    hasAnswered ? 'cursor-default' : 'cursor-pointer hover:shadow-md'
+                  } focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${borderStyle}`}
                 >
                   <div className={`p-6 rounded-xl bg-gradient-to-br ${option.visual_bg_gradient} flex justify-center items-center text-4xl shadow-xs`}>
                     <span>{option.visual_emoji}</span>
@@ -185,11 +195,13 @@ export const VisualMatchingQuiz: React.FC = () => {
                       <span>{option.label_es}</span>
                     </span>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         speakSpanish(option.label_es);
                       }}
-                      className="p-1 bg-stone-100 dark:bg-stone-800 hover:bg-amber-500 hover:text-stone-950 rounded-lg text-stone-500 transition"
+                      className="p-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-amber-500 hover:text-stone-950 rounded-lg text-stone-500 transition cursor-pointer"
+                      title="Pronounce"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
                     </button>
@@ -198,7 +210,7 @@ export const VisualMatchingQuiz: React.FC = () => {
                   <p className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
                     🖼️ {option.visual_description}
                   </p>
-                </button>
+                </div>
               );
             })}
           </div>

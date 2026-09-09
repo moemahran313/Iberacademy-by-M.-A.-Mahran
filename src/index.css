@@ -169,16 +169,19 @@ html.lang-ar,
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Minimum mobile touch targets (44px) and Fast-click 300ms delay bypass */
+/* Mobile touch handling and fast-click 300ms delay bypass */
 button,
 a,
 [role="button"],
 input[type="button"],
-input[type="submit"],
-.touch-target,
-.fast-touch-target {
+input[type="submit"] {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Explicit touch-target utility classes for mobile touch accessibility */
+.touch-target,
+.fast-touch-target {
   min-width: 44px;
   min-height: 44px;
 }

@@ -299,20 +299,21 @@ const HeaderComponent: React.FC<HeaderProps> = ({
               {/* Language & Theme Controls */}
               <button
                 onClick={handleLanguageToggle}
-                className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition"
+                className="hidden sm:inline-flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer shrink-0"
                 title="Language Toggle"
               >
-                <Globe className="w-3.5 h-3.5 text-sky-500" />
-                <span className="text-[11px]">{getLanguageLabel()}</span>
+                <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                <span className="text-[11px] font-semibold">{getLanguageLabel()}</span>
               </button>
 
               {/* Theme Toggle - Visible sm:flex */}
               <button
                 onClick={handleThemeToggle}
-                className="hidden sm:flex p-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition shrink-0"
+                className="hidden sm:inline-flex items-center justify-center w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition shrink-0 cursor-pointer"
                 aria-label="Toggle Theme"
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
-                {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
               </button>
 
               {/* Notification Center Bell */}
@@ -323,12 +324,12 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                     soundEffects.playPop();
                     setIsNotificationsOpen(!isNotificationsOpen);
                   }}
-                  className="relative p-1.5 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
+                  className="relative w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer flex items-center justify-center shrink-0"
                   title="Notifications & Updates"
                 >
-                  <Bell className="w-3.5 h-3.5 text-amber-500" />
+                  <Bell className="w-4 h-4 text-amber-500" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white font-black text-[9px] rounded-full flex items-center justify-center animate-pulse shadow-2xs">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white font-black text-[9px] rounded-full flex items-center justify-center animate-pulse shadow-xs">
                       {unreadCount}
                     </span>
                   )}
@@ -401,7 +402,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                 {authUser ? (
                   <button
                     onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                    className="flex items-center gap-1.5 p-0.5 rounded-full hover:scale-105 transition cursor-pointer"
+                    className="flex items-center justify-center p-0.5 rounded-full hover:scale-105 transition cursor-pointer shrink-0"
                     title="User Account Menu"
                   >
                     <AvatarDisplay
