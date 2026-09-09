@@ -35,6 +35,7 @@ import {
   ChatMessage,
   LINGOPAL_SCENARIOS,
   ScenarioDefinition,
+  TutorAnalysis,
   analyzeUserSpanishInput,
   streamTutorMessage
 } from '../services/aiTutorService';
@@ -162,6 +163,12 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   const [showCelebrationModal, setShowCelebrationModal] = useState(false);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
+  const [revealedAnalyses, setRevealedAnalyses] = useState<Record<string, boolean>>({});
+
+  const toggleAnalysis = (id: string) => {
+    soundEffects.playPop();
+    setRevealedAnalyses(prev => ({ ...prev, [id]: prev[id] === false ? true : false }));
+  };
 
   // Dynamic suggested quick-replies (LingoPal smart chips)
   const [suggestedReplies, setSuggestedReplies] = useState<{ es: string; en: string }[]>([]);
@@ -504,14 +511,15 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
     soundEffects.playPop();
 
-    // Analyze grammar & phrasing
-    const { feedback } = analyzeUserSpanishInput(text);
-
+    const userMsgId = `u-${Date.now()}`;
     const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
+      id: userMsgId,
       sender: 'user',
       spanishText: text,
-      feedbackBadge: feedback
+      feedbackBadge: {
+        type: 'analyzing',
+        text: 'Analizando con IA...'
+      }
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -530,8 +538,8 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     // Evaluate conversation quests
     const questBonusXp = evaluateQuests(text, newTurnCount);
 
-    // Calculate XP
-    const baseEarnedXp = 10 + (feedback.xpBonus || 0) + questBonusXp;
+    // Base XP + Quest Bonus
+    const baseEarnedXp = 10 + questBonusXp;
     setSessionXpEarned(prev => prev + baseEarnedXp);
 
     const prevLevel = Math.floor((userProgress.xp || 0) / 250) + 1;
@@ -601,6 +609,56 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         }
       });
 
+      // Update user message badge based on AI analysis
+      if (response.analysis) {
+        const hasErrors = response.analysis.hasErrors;
+        const score = response.analysis.score ?? (hasErrors ? 75 : 95);
+        const corrCount = response.analysis.corrections?.length || 0;
+        const xpBonus = hasErrors ? 10 : 20;
+
+        setUserProgress(prev => ({ ...prev, xp: prev.xp + xpBonus }));
+
+        const verdict = response.analysis.verdict || '';
+        const isMeta = verdict.toLowerCase().includes('feedback') || /\b(robotic|robot|same|talk normal|speak normal)\b/i.test(text);
+        const isEnglish = verdict.toLowerCase().includes('inglés') || verdict.toLowerCase().includes('english') || /\b(what|understand|heard|repeat|slower|slow|dont|don't|huh|mean|say|saying|speak|same|robotic)\b/i.test(text);
+
+        let badgeText = '';
+        let badgeType: 'correct' | 'warning' | 'analyzing' = hasErrors ? 'warning' : 'correct';
+        if (isMeta) {
+          badgeText = '💬 Feedback conversacional recibido';
+          badgeType = 'correct';
+        } else if (isEnglish) {
+          badgeText = '💡 Expresión en inglés analizada';
+          badgeType = 'warning';
+        } else if (hasErrors) {
+          badgeText = corrCount > 0
+            ? `⚠️ ${corrCount} ${corrCount === 1 ? 'detalle lingüístico' : 'detalles lingüísticos'} por IA`
+            : '⚠️ Ajuste sugerido por IA';
+        } else {
+          badgeText = `✨ ¡Buen español! (${score}/100)`;
+        }
+
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === userMsgId
+              ? {
+                  ...m,
+                  feedbackBadge: {
+                    type: badgeType,
+                    text: badgeText,
+                    xpBonus
+                  }
+                }
+              : m
+          )
+        );
+      } else {
+        const { feedback } = analyzeUserSpanishInput(text);
+        setMessages(prev =>
+          prev.map(m => (m.id === userMsgId ? { ...m, feedbackBadge: feedback } : m))
+        );
+      }
+
       // Finalize completed message
       setMessages(prev =>
         prev.map(m =>
@@ -611,6 +669,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                 englishExplanation: response.englishExplanation,
                 arabicExplanation: response.arabicExplanation,
                 phase: response.phase,
+                analysis: response.analysis || undefined,
                 corrections: response.corrections,
                 vocabulary: response.vocabulary,
                 followUpQuestions: response.followUpQuestions
@@ -925,6 +984,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
             const isAI = msg.sender === 'ai';
             const isPlaying = currentlyPlayingId === msg.id;
             const isTranslationOpen = revealedTranslations[msg.id];
+            const isAnalysisOpen = revealedAnalyses[msg.id] !== false;
             const isCurrentlyStreaming = isStreaming && isAI && !msg.englishExplanation;
 
             return (
@@ -1067,12 +1127,141 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                       </div>
                     )}
 
+                    {/* 🧠 REAL-TIME AI LINGUISTIC ANALYSIS OF USER'S MESSAGE */}
+                    {isAI && msg.analysis && (
+                      <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-800">
+                        {/* Header with expand/collapse */}
+                        <div
+                          onClick={() => toggleAnalysis(msg.id)}
+                          className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+                        >
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-xs font-black text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                              Análisis Lingüístico IA
+                            </span>
+                            {msg.analysis.score !== undefined && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/60">
+                                {msg.analysis.score}/100
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                msg.analysis.hasErrors
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60'
+                                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60'
+                              }`}
+                            >
+                              {msg.analysis.verdict || (msg.analysis.hasErrors ? 'Atención a detalles' : '¡Excelente!')}
+                            </span>
+                            {isAnalysisOpen ? (
+                              <ChevronUp className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-600 transition" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-600 transition" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Detailed Analysis Body */}
+                        {isAnalysisOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="mt-2.5 space-y-2.5 text-xs bg-stone-50 dark:bg-stone-800/40 p-3 rounded-2xl border border-stone-200/70 dark:border-stone-800"
+                          >
+                            {/* Explanatory feedback */}
+                            {msg.analysis.feedback_es && (
+                              <p className="text-stone-800 dark:text-stone-200 font-medium leading-relaxed">
+                                {msg.analysis.feedback_es}
+                              </p>
+                            )}
+                            {msg.analysis.feedback_en && (
+                              <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-normal">
+                                <span className="font-bold text-stone-700 dark:text-stone-300">Feedback: </span>
+                                {msg.analysis.feedback_en}
+                              </p>
+                            )}
+                            {userProgress.settings?.nativeLanguage === 'ar' && msg.analysis.feedback_ar && (
+                              <p className="text-[11px] text-stone-600 dark:text-stone-400 font-arabic leading-normal" dir="rtl">
+                                <span className="font-bold text-stone-700 dark:text-stone-300">التقييم: </span>
+                                {msg.analysis.feedback_ar}
+                              </p>
+                            )}
+
+                            {/* Precise corrections breakdown */}
+                            {msg.analysis.corrections && msg.analysis.corrections.length > 0 && (
+                              <div className="space-y-1.5 pt-1">
+                                {msg.analysis.corrections.map((c, cIdx) => (
+                                  <div
+                                    key={cIdx}
+                                    className="p-2.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-1 text-xs"
+                                  >
+                                    <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap">
+                                      <span className="line-through text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded font-semibold">
+                                        ❌ {c.original}
+                                      </span>
+                                      <span className="text-stone-400 font-bold">➔</span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded font-bold">
+                                        ✅ {c.correction}
+                                      </span>
+                                    </div>
+                                    {c.explanation && (
+                                      <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-normal font-sans">
+                                        💡 {c.explanation}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Native natural alternative */}
+                            {msg.analysis.naturalAlternative && (
+                              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-start gap-1.5">
+                                <span className="font-bold text-amber-700 dark:text-amber-400 shrink-0">
+                                  🗣️ Nativo:
+                                </span>
+                                <span className="italic font-medium text-stone-900 dark:text-stone-100">
+                                  "{msg.analysis.naturalAlternative}"
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Persona regional/dialect note */}
+                            {msg.analysis.dialectTip && (
+                              <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-start gap-1.5 pt-0.5">
+                                <span className="font-bold text-stone-700 dark:text-stone-300 shrink-0">
+                                  {activePersonaObj.flag} Nota de {activePersonaObj.name}:
+                                </span>
+                                <span>{msg.analysis.dialectTip}</span>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </div>
+                    )}
+
                     {/* User feedback badge */}
                     {!isAI && msg.feedbackBadge && (
-                      <div className="mt-2 pt-1 border-t border-amber-600/30 flex items-center justify-between text-[11px]">
-                        <span className="font-bold">{msg.feedbackBadge.text}</span>
+                      <div className={`mt-2 pt-1.5 border-t border-amber-600/30 flex items-center justify-between text-[11px] ${
+                        msg.feedbackBadge.type === 'analyzing' ? 'animate-pulse text-amber-950' : ''
+                      }`}>
+                        <div className="flex items-center gap-1.5">
+                          {msg.feedbackBadge.type === 'analyzing' ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-stone-950" />
+                          ) : msg.feedbackBadge.type === 'warning' ? (
+                            <AlertCircle className="w-3 h-3 text-stone-950" />
+                          ) : (
+                            <CheckCircle2 className="w-3 h-3 text-stone-950" />
+                          )}
+                          <span className="font-bold text-stone-950">{msg.feedbackBadge.text}</span>
+                        </div>
                         {msg.feedbackBadge.xpBonus ? (
-                          <span className="font-black bg-stone-950/15 px-1.5 py-0.5 rounded text-[10px]">
+                          <span className="font-black bg-stone-950/20 px-1.5 py-0.5 rounded text-[10px] text-stone-950">
                             +{msg.feedbackBadge.xpBonus} XP
                           </span>
                         ) : null}

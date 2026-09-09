@@ -1,5 +1,23 @@
 import { TutorPersona, UserProgress } from '../types';
 
+export interface LinguisticCorrection {
+  original: string;
+  correction: string;
+  explanation: string;
+}
+
+export interface TutorAnalysis {
+  hasErrors: boolean;
+  score?: number;
+  verdict?: string;
+  feedback_es?: string;
+  feedback_en?: string;
+  feedback_ar?: string;
+  corrections?: LinguisticCorrection[];
+  naturalAlternative?: string;
+  dialectTip?: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
@@ -7,6 +25,7 @@ export interface ChatMessage {
   englishExplanation?: string;
   arabicExplanation?: string;
   phase?: string;
+  analysis?: TutorAnalysis;
   corrections?: string[];
   vocabulary?: {
     word: string;
@@ -16,7 +35,7 @@ export interface ChatMessage {
   }[];
   followUpQuestions?: string[];
   feedbackBadge?: {
-    type: 'correct' | 'warning' | 'tip';
+    type: 'correct' | 'warning' | 'tip' | 'analyzing';
     text: string;
     xpBonus?: number;
   };
@@ -355,6 +374,33 @@ export function analyzeUserSpanishInput(input: string): {
     };
   }
 
+  // Detect meta-feedback or comments about robotic tone
+  const isMetaFeedback = /\b(robotic|robot|same|generic|repetitive|boring|fake|real|human|ai|stop|talk normal|speak normal)\b/i.test(lower);
+  if (isMetaFeedback) {
+    return {
+      feedback: {
+        type: 'correct',
+        text: '💬 Feedback conversacional procesado',
+        xpBonus: 10
+      }
+    };
+  }
+
+  // Detect English or expressions of confusion
+  const englishConfusionMatch = /\b(what|understand|heard|repeat|slower|slow|dont|don't|huh|mean|say|saying|speak|how|why|who|where|when|can|could|please|yea|yeah|talk|tell)\b/i.test(lower);
+  const isPredominantlyEnglish = englishConfusionMatch || (clean.length > 3 && !/[áéíóúñ¿¡]|(hola|gracias|por favor|bueno|bien|si|no|que|para|por|con|como|donde|cuando)/i.test(lower) && /\b(the|is|are|you|i|my|we|they|he|she|it|to|and|same|robotic)\b/i.test(lower));
+
+  if (isPredominantlyEnglish) {
+    return {
+      feedback: {
+        type: 'warning',
+        text: '💡 Expresión en inglés detectada. En español di: "No entiendo" o "¿Puedes repetir?"',
+        xpBonus: 5
+      },
+      detectedCorrection: 'En español: "No entiendo" (I don\'t understand) o "¿Cómo?"'
+    };
+  }
+
   if (/\bestoy de acuerdo\b/i.test(lower) || /\bpor favor\b/i.test(lower) || /\bmuchas gracias\b/i.test(lower)) {
     return {
       feedback: {
@@ -395,6 +441,7 @@ export function generateClientSideLingoPalResponse(
   spanishResponse: string;
   englishExplanation: string;
   arabicExplanation: string;
+  analysis?: TutorAnalysis;
   vocabulary: { word: string; en: string; ar: string; contextSentence: string }[];
   followUpQuestions: string[];
 } {
@@ -410,12 +457,174 @@ export function generateClientSideLingoPalResponse(
     ? '¡Qué chévere! '
     : '¡Excelente! ';
 
+  const personaName = persona === 'juan'
+    ? 'Juan'
+    : persona === 'sofia'
+    ? 'Sofía'
+    : persona === 'camila'
+    ? 'Camila'
+    : 'el Profesor Mateo';
+
+  // Handling direct meta-feedback on conversational tone
+  const isMetaFeedback = /\b(robotic|robot|same|generic|repetitive|boring|fake|real|human|ai|stop|talk normal|speak normal)\b/i.test(lower);
+  if (isMetaFeedback) {
+    let spanishReply = '';
+    let englishExplanation = '';
+    let arabicExplanation = '';
+    if (persona === 'juan') {
+      spanishReply = '¡Jajaja, tienes toda la razón, perdóname! Me puse en modo profesor aburrido. Vamos a hablar normal, como compas de verdad. Dime, ¿qué música te late o qué hiciste hoy?';
+      englishExplanation = 'Haha, you are totally right, forgive me! I switched into stiff teacher mode. Let\'s chat normally, like real friends. Tell me, what music do you like or what did you do today?';
+      arabicExplanation = isArabic ? 'هههه، معك كامل الحق، اعذرني! تحولت إلى وضع المعلم الممل. لنتحدث بشكل طبيعي كأصدقاء حقيقيين. أخبرني، ما هي الموسيقى التي تحبها أو ماذا فعلت اليوم؟' : '';
+    } else if (persona === 'sofia') {
+      spanishReply = '¡Ostras, qué razón tienes! Qué vergüenza, parecía un contestador automático. Nada de rollos mecánicos: hablemos de tú a tú como amigos en una terraza. ¿Qué planes tienes o de qué te apetece hablar?';
+      englishExplanation = 'You are completely right! How embarrassing, I sounded like an answering machine. No more robotic scripts: let\'s talk like friends hanging out. What are your plans or what do you feel like talking about?';
+      arabicExplanation = isArabic ? 'معك حق تماماً! يا للإحراج، بدوت كجهاز رد آلي. دعنا من القوالب الآلية: لنتحدث كأصدقاء. ما هي خططك أو ماذا تحب أن نناقش؟' : '';
+    } else if (persona === 'camila') {
+      spanishReply = '¡Ay, qué pena contigo! Jajaja, me salió la voz de robot sin querer. Olvidémonos de formalidades y charlemos bien rico. Cuéntame algo de tu vida o de tu comida favorita.';
+      englishExplanation = 'Oh, forgive me! Haha, my robot voice slipped out by accident. Let\'s forget formalities and have a nice friendly chat. Tell me about your life or your favorite food.';
+      arabicExplanation = isArabic ? 'أعتذر منك بشدة! هههه، خرجت نبرة الروبوت بغير قصد. لننسَ الرسميات ونتحدث بود. أخبرني عن حياتك أو طعامك المفضل.' : '';
+    } else {
+      spanishReply = '¡Tienes toda la razón! A veces la costumbre pedagógica me hace sonar demasiado formal y rígido. Rompamos el protocolo: conversemos con espontaneidad. ¿Qué tema te apasiona?';
+      englishExplanation = 'You are absolutely right! Sometimes academic habit makes me sound overly formal and stiff. Let\'s drop the protocol: let\'s converse with total spontaneity. What topic are you passionate about?';
+      arabicExplanation = isArabic ? 'معك حق تماماً! أحياناً العادة الأكاديمية تجعلني أبدو رسمياً وقاسياً. لنكسر الرسميات ولنتحدث بعفوية. ما الموضوع الذي يشغلك؟' : '';
+    }
+
+    return {
+      spanishResponse: spanishReply,
+      englishExplanation,
+      arabicExplanation,
+      analysis: {
+        hasErrors: false,
+        score: 100,
+        verdict: 'Feedback conversacional honesto',
+        feedback_es: '¡Gracias por tu honestidad! Las conversaciones reales fluyen mejor cuando hablamos de forma directa y relajada.',
+        feedback_en: 'Thank you for your candid feedback! Real language acquisition thrives when conversation is natural and relaxed.',
+        feedback_ar: isArabic ? 'شكراً لصراحتك! المحادثات الحقيقية تكون أفضل عندما نتحدث بارتياح وعفوية.' : undefined,
+        corrections: [],
+        naturalAlternative: 'Hablemos de forma más natural y relajada.',
+        dialectTip: 'En la cultura hispanohablante la cercanía y la naturalidad son muy valoradas.'
+      },
+      vocabulary: [
+        { word: 'compas', en: 'buddies / friends (informal)', ar: 'أصدقاء / رفاق', contextSentence: 'Hablemos como buenos compas.' },
+        { word: 'de verdad', en: 'for real / genuine', ar: 'حقيقي / بصدق', contextSentence: 'Una conversación de verdad.' }
+      ],
+      followUpQuestions: [
+        'Hablemos de música o películas. (Let\'s talk about music or movies.)',
+        'Cuéntame de tu comida favorita. (Tell me about your favorite food.)',
+        '¿Cómo estuvo tu día hoy? (How was your day today?)'
+      ]
+    };
+  }
+
+  // Handling confusion, English input, and requests for clarification
+  const isConfusion = /\b(what|understand|heard|repeat|slower|slow|dont|don't|huh|mean|english|say|saying|speak|no entiendo|cómo|mande|repita)\b/i.test(lower) ||
+    (!/[áéíóúñ¿¡]|(hola|gracias|por favor|bueno|bien|si|no)/i.test(lower) && /\b(the|is|are|you|i|my|can|could|please|yea|yeah)\b/i.test(lower));
+
+  if (isConfusion) {
+    let spanishReply = `${personaIntro}¡No te preocupes, amigo! Es completamente normal no entender a la primera. En español decimos: "No entiendo" o "¿Puedes repetir más despacio?". ¿Quieres que te repita lo anterior?`;
+    if (persona === 'sofia') {
+      spanishReply = `${personaIntro}¡No pasa nada! Todos nos perdemos al aprender. En España decimos: "¿Cómo?" o "No te he entendido". ¿Quieres que te lo explique de otra forma?`;
+    } else if (persona === 'camila') {
+      spanishReply = `${personaIntro}¡Tranquilo! En Medellín decimos "¡Qué pena contigo, no te entendí!". Puedes decir: "No entiendo, habla más despacio por favor". ¿Te lo repito?`;
+    } else if (persona === 'mateo') {
+      spanishReply = `¡Totalmente comprensible! Cuando experimentes una duda comunicativa, puedes solicitar aclaración diciendo: "Disculpe, no he entendido, ¿podría repetir?". ¿Qué concepto deseas repasar?`;
+    }
+
+    return {
+      spanishResponse: spanishReply,
+      englishExplanation: "Don't worry at all! It's completely normal to get lost. In Spanish, you can say: 'No entiendo' (I don't understand) or '¿Puedes repetir más despacio?' (Can you repeat more slowly?). Let's practice that!",
+      arabicExplanation: isArabic ? 'لا تقلق على الإطلاق! هذا طبيعي عند تعلم لغة جديدة. في الإسبانية يمكنك قول "No entiendo" (لا أفهم) أو "¿Puedes repetir más despacio؟" (هل يمكنك التكرار ببطء أكثر؟).' : '',
+      analysis: {
+        hasErrors: true,
+        score: 60,
+        verdict: 'Expresión de duda en inglés detectada',
+        feedback_es: 'Expresaste duda en inglés. En español para decir que no entendiste usamos "No entiendo" o "¿Puedes repetir?".',
+        feedback_en: 'You expressed confusion in English. In Spanish, always use "No entiendo" (I don\'t understand) or "¿Puedes repetir más despacio?" (Can you repeat more slowly?).',
+        feedback_ar: isArabic ? 'عبرت عن عدم الفهم بالإنجليزية. في الإسبانية نستخدم "No entiendo" أو "¿Puedes repetir؟".' : undefined,
+        corrections: [{
+          original: message.trim(),
+          correction: 'No entiendo, ¿puedes repetir más despacio?',
+          explanation: 'Usa "No entiendo" para "I don\'t understand" y "¿Puedes repetir?" para "Can you repeat?".'
+        }],
+        naturalAlternative: 'No entiendo, ¿puedes repetir más despacio, por favor?',
+        dialectTip: persona === 'juan' ? 'En México se suele decir "¿Mande?" cuando no escuchas o no entiendes algo con educación.' : 'En España se suele decir "¿Cómo?" o "¿Puedes repetir?".'
+      },
+      vocabulary: [
+        { word: 'no entiendo', en: 'I don\'t understand', ar: 'لا أفهم', contextSentence: 'Disculpa, no entiendo la palabra.' },
+        { word: 'más despacio', en: 'more slowly', ar: 'ببطء أكثر', contextSentence: '¿Puedes hablar más despacio, por favor?' }
+      ],
+      followUpQuestions: [
+        '¿Puedes hablar más despacio? (Can you speak more slowly?)',
+        '¿Qué significa esa palabra? (What does that word mean?)',
+        'No entiendo bien, repite por favor. (I don\'t understand well, repeat please.)'
+      ]
+    };
+  }
+
+  // Contextual Name & Self-Introduction handling
+  const nameMatch = message.match(/(?:me llamo|mi illamo|mi llamo|soy|nombre es)\s+([A-Za-zÁ-ÿ]+)/i);
+  const userName = nameMatch ? nameMatch[1] : '';
+
+  if (userName || lower.includes('llamo') || lower.includes('illamo') || lower.includes('nombre')) {
+    const hasMiIllamo = lower.includes('mi illamo') || lower.includes('mi llamo');
+    const greeting = userName ? `¡Hola, ${userName}! Mucho gusto.` : '¡Mucho gusto!';
+    return {
+      spanishResponse: `${personaIntro}${greeting} Yo me llamo ${personaName}. Es un gran placer conversar contigo. ¿De dónde eres y qué te motivó a aprender español?`,
+      englishExplanation: `Nice to meet you! My name is ${personaName}. It is a great pleasure to chat with you. Where are you from and what motivated you to learn Spanish?`,
+      arabicExplanation: isArabic ? `سررت بلقائك! اسمي ${personaName}. يسعدني جداً التحدث معك. من أين أنت وما الذي شجعك لتعلم الإسبانية؟` : '',
+      analysis: hasMiIllamo ? {
+        hasErrors: true,
+        score: 75,
+        verdict: 'Buen intento con corrección',
+        feedback_es: 'Hiciste un buen intento al presentarte, pero en español usamos el pronombre reflexivo "me" (no "mi") y el verbo se escribe con doble "ll": "me llamo".',
+        feedback_en: 'Good communicative attempt! In Spanish we use the reflexive pronoun "me" (not "mi") and spell it with double "ll": "me llamo".',
+        feedback_ar: isArabic ? 'محاولة تواصل جيدة! في الإسبانية نستخدم الضمير الانعكاسي "me" (وليس "mi") مع الحرفين "ll": "me llamo".' : undefined,
+        corrections: [{
+          original: 'mi illamo',
+          correction: 'me llamo',
+          explanation: 'El verbo llamarse es reflexivo: "yo me llamo". "Mi" es adjetivo posesivo (mi casa).'
+        }],
+        naturalAlternative: `¡Hola! Me llamo ${userName || '...'}. Mucho gusto.`,
+        dialectTip: 'En todos los países hispanohablantes "me llamo..." es la forma más natural de presentarse.'
+      } : {
+        hasErrors: false,
+        score: 95,
+        verdict: '¡Excelente presentación!',
+        feedback_es: '¡Excelente estructura y presentación! Tu frase es clara y natural.',
+        feedback_en: 'Excellent self-introduction! Your sentence is clear, polite, and natural.',
+        feedback_ar: isArabic ? 'تقديم ممتاز للنفس! جملتك واضحة وسليمة وطبيعية.' : undefined,
+        corrections: [],
+        naturalAlternative: `¡Hola! Me llamo ${userName || '...'}.`,
+        dialectTip: 'En español usamos "mucho gusto" o "encantado/a" para responder con cortesía.'
+      },
+      vocabulary: [
+        { word: 'mucho gusto', en: 'nice to meet you', ar: 'سررت بلقائك', contextSentence: '¡Mucho gusto en saludarte!' },
+        { word: 'llamarse', en: 'to be called / named', ar: 'يُدعى / يُسمى', contextSentence: 'Me llamo Juan.' }
+      ],
+      followUpQuestions: [
+        'Soy de Egipto / Estados Unidos. (I am from Egypt / USA.)',
+        '¿De qué ciudad eres tú? (Which city are you from?)',
+        'Estoy aprendiendo español para viajar. (I am learning Spanish to travel.)'
+      ]
+    };
+  }
+
   if (scenarioId === 'cafe') {
     if (lower.includes('café') || lower.includes('tostada') || lower.includes('leche') || lower.includes('pedir') || lower.includes('favor')) {
       return {
         spanishResponse: `${personaIntro}Perfecto, te lo preparo enseguida. ¿Lo prefieres con azúcar blanca, morena o prefieres sacarina?`,
         englishExplanation: 'Perfect, I will prepare it for you right away. Do you prefer it with white sugar, brown sugar, or sweetener?',
         arabicExplanation: 'ممتاز، سأجهزه لك فوراً. هل تفضله بسكر أبيض، بني، أم محلي اصطناعي؟',
+        analysis: {
+          hasErrors: false,
+          score: 90,
+          verdict: '¡Excelente pedido!',
+          feedback_es: '¡Muy bien formulado el pedido en el café! Usaste vocabulario preciso.',
+          feedback_en: 'Well formulated cafe request! You used accurate vocabulary.',
+          corrections: [],
+          naturalAlternative: 'Un café con leche y una tostada, por favor.',
+          dialectTip: 'En España se suele pedir "un cortado" o "un café con leche", en México "un americano" o "un café de olla".'
+        },
         vocabulary: [
           { word: 'azúcar', en: 'sugar', ar: 'سكر', contextSentence: '¿Le pongo azúcar al café?' },
           { word: 'enseguida', en: 'right away / immediately', ar: 'فوراً / حالاً', contextSentence: 'Te lo traigo enseguida.' }
@@ -431,6 +640,16 @@ export function generateClientSideLingoPalResponse(
       spanishResponse: `${personaIntro}En este café tenemos una terraza muy agradable. ¿Quieres que nos sentemos afuera para disfrutar del buen tiempo?`,
       englishExplanation: 'In this café we have a very nice outdoor terrace. Would you like to sit outside to enjoy the nice weather?',
       arabicExplanation: 'في هذا المقهى لدينا شرفة خارجية جميلة جداً. هل ترغب بالجلوس في الخارج؟',
+      analysis: {
+        hasErrors: false,
+        score: 85,
+        verdict: 'Conversación fluida',
+        feedback_es: 'Buena iniciativa conversacional.',
+        feedback_en: 'Good conversational participation.',
+        corrections: [],
+        naturalAlternative: message,
+        dialectTip: 'La terraza es el punto de encuentro social preferido en el mundo hispano.'
+      },
       vocabulary: [
         { word: 'terraza', en: 'outdoor terrace / patio', ar: 'شرفة خارجية', contextSentence: 'Nos sentamos en la terraza.' },
         { word: 'agradable', en: 'pleasant / nice', ar: 'لطيف / ممتع', contextSentence: 'El lugar es muy agradable.' }
@@ -448,6 +667,16 @@ export function generateClientSideLingoPalResponse(
       spanishResponse: `${personaIntro}Aquí servimos los tacos al momento con tortillas recién hechas. ¿Te gustaría ponerles un poco de limón y guacamole?`,
       englishExplanation: 'Here we serve tacos fresh on the spot with freshly made tortillas. Would you like to add some lime and guacamole?',
       arabicExplanation: 'هنا نقدم التاكو طازجاً مع خبز التورتيلا الطازج. هل تحب إضافة القليل من الليمون والغواكامولي؟',
+      analysis: {
+        hasErrors: false,
+        score: 90,
+        verdict: '¡Buen provecho!',
+        feedback_es: 'Tu interacción en la taquería es natural y adecuada.',
+        feedback_en: 'Your interaction at the taco stand is natural and context-appropriate.',
+        corrections: [],
+        naturalAlternative: message,
+        dialectTip: 'En México, los tacos se comen tradicionalmente con la mano y un toque de salsa y limón.'
+      },
       vocabulary: [
         { word: 'recién', en: 'freshly / just now', ar: 'طازج / تواً', contextSentence: 'Tortillas recién hechas.' },
         { word: 'guacamole', en: 'avocado dip', ar: 'صلصة الأفوكادو', contextSentence: 'Un poco de guacamole sabroso.' }
@@ -465,6 +694,16 @@ export function generateClientSideLingoPalResponse(
       spanishResponse: `${personaIntro}He registrado sus datos en el sistema. La habitación incluye toallas limpias, minibar y vistas panorámicas. ¿Desea servicio de despertador por la mañana?`,
       englishExplanation: 'I have registered your details in the system. The room includes clean towels, minibar, and panoramic views. Would you like a morning wake-up call?',
       arabicExplanation: 'سجلت بياناتك في النظام. تشمل الغرفة مناشف نظيفة ومشروبات وإطلالة بانورامية. هل ترغب في خدمة الإيقاظ صباحاً؟',
+      analysis: {
+        hasErrors: false,
+        score: 90,
+        verdict: 'Formalidad adecuada',
+        feedback_es: 'Registro hotelero completado con éxito.',
+        feedback_en: 'Hotel check-in completed with proper courteous tone.',
+        corrections: [],
+        naturalAlternative: message,
+        dialectTip: 'En hoteles de habla hispana es habitual usar "usted" para mayor cortesía.'
+      },
       vocabulary: [
         { word: 'registrado', en: 'registered / checked in', ar: 'مسجّل', contextSentence: 'Sus datos están registrados.' },
         { word: 'despertador', en: 'alarm / wake-up call', ar: 'منبه / خدمة إيقاظ', contextSentence: 'Servicio de despertador a las 8.' }
@@ -482,6 +721,16 @@ export function generateClientSideLingoPalResponse(
     spanishResponse: `${personaIntro}Me gusta mucho conversar contigo sobre esto. Se nota tu progreso día a día. ¿Qué opinas si seguimos explorando este tema?`,
     englishExplanation: 'I really enjoy chatting with you about this. Your progress is noticeable day by day. How about we keep exploring this topic?',
     arabicExplanation: 'يسعدني جداً التحدث معك في هذا الموضوع. تقدمك ملحوظ يوماً بعد يوم. ما رأيك أن نواصل؟',
+    analysis: {
+      hasErrors: false,
+      score: 85,
+      verdict: 'Conversación en marcha',
+      feedback_es: 'Tu mensaje comunica tu idea claramente.',
+      feedback_en: 'Your message communicates your idea clearly.',
+      corrections: [],
+      naturalAlternative: message,
+      dialectTip: 'Mantener el flujo conversacional sin miedo al error es la clave para la fluidez.'
+    },
     vocabulary: [
       { word: 'progreso', en: 'progress', ar: 'تقدم / تطور', contextSentence: 'Tu progreso es notable.' },
       { word: 'notable', en: 'noticeable / remarkable', ar: 'ملحوظ / لافت', contextSentence: 'Un avance muy notable.' }
@@ -507,6 +756,7 @@ export async function sendTutorMessage(params: {
   englishExplanation: string;
   arabicExplanation: string;
   phase: string;
+  analysis?: TutorAnalysis | null;
   corrections: string[];
   vocabulary: { word: string; en: string; ar: string; contextSentence: string }[];
   followUpQuestions: string[];
@@ -516,7 +766,7 @@ export async function sendTutorMessage(params: {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const res = await fetch('/api/ai/tutor', {
       method: 'POST',
@@ -545,7 +795,8 @@ export async function sendTutorMessage(params: {
             spanishResponse: data.spanishResponse,
             englishExplanation: data.englishExplanation || '',
             arabicExplanation: data.arabicExplanation || '',
-            phase: data.phase || 'Conversational Turn',
+            phase: data.phase || 'Conversación Activa',
+            analysis: data.analysis || null,
             corrections: data.corrections || [],
             vocabulary: data.vocabulary || [],
             followUpQuestions: data.followUpQuestions || [],
@@ -572,6 +823,7 @@ export async function sendTutorMessage(params: {
     englishExplanation: clientData.englishExplanation,
     arabicExplanation: clientData.arabicExplanation,
     phase: 'LingoPal Interactive Session',
+    analysis: clientData.analysis || null,
     corrections: ['🟢 Instant conversational feedback active'],
     vocabulary: clientData.vocabulary,
     followUpQuestions: clientData.followUpQuestions,
@@ -596,6 +848,7 @@ export async function streamTutorMessage(params: {
   englishExplanation: string;
   arabicExplanation: string;
   phase: string;
+  analysis?: TutorAnalysis | null;
   corrections: string[];
   vocabulary: { word: string; en: string; ar: string; contextSentence: string }[];
   followUpQuestions: string[];
@@ -605,7 +858,7 @@ export async function streamTutorMessage(params: {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9500);
+    const timeoutId = setTimeout(() => controller.abort(), 28000);
 
     const res = await fetch('/api/ai/tutor-stream', {
       method: 'POST',
@@ -629,7 +882,7 @@ export async function streamTutorMessage(params: {
       const reader = res.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
-      let accumulatedText = '';
+      let fullAccumulatedRaw = '';
       let donePayload: any = null;
 
       while (true) {
@@ -649,14 +902,15 @@ export async function streamTutorMessage(params: {
           try {
             const parsed = JSON.parse(dataStr);
             if (parsed.type === 'token' && parsed.text) {
-              accumulatedText += parsed.text;
-              if (onChunk) onChunk(accumulatedText);
+              fullAccumulatedRaw += parsed.text;
+              if (onChunk) onChunk(fullAccumulatedRaw);
             } else if (parsed.type === 'chunk' && parsed.raw) {
-              // Extract partial spanishResponse if available in raw stream
-              const match = parsed.raw.match(/"spanishResponse"\s*:\s*"([^"]*)/);
+              fullAccumulatedRaw += parsed.raw;
+              // Extract partial spanishResponse from accumulated raw stream
+              const match = fullAccumulatedRaw.match(/"spanishResponse"\s*:\s*"((?:[^"\\]|\\.)*)/);
               if (match && match[1]) {
-                accumulatedText = match[1];
-                if (onChunk) onChunk(accumulatedText);
+                const unescaped = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                if (onChunk) onChunk(unescaped);
               }
             } else if (parsed.type === 'done' && parsed.payload) {
               donePayload = parsed.payload;
@@ -675,7 +929,8 @@ export async function streamTutorMessage(params: {
           spanishResponse: donePayload.spanishResponse,
           englishExplanation: donePayload.englishExplanation || '',
           arabicExplanation: donePayload.arabicExplanation || '',
-          phase: donePayload.phase || 'Conversational Turn',
+          phase: donePayload.phase || 'Conversación Activa',
+          analysis: donePayload.analysis || null,
           corrections: donePayload.corrections || ['🟢 Great active participation! +15 XP'],
           vocabulary: donePayload.vocabulary || [],
           followUpQuestions: donePayload.followUpQuestions || [],
@@ -697,13 +952,13 @@ export async function streamTutorMessage(params: {
   );
 
   if (onChunk) {
-    // Simulate high-speed natural streaming revelation
+    // Simulate natural streaming revelation
     const words = clientData.spanishResponse.split(' ');
     let currentStream = '';
     for (let i = 0; i < words.length; i++) {
       currentStream += (i === 0 ? '' : ' ') + words[i];
       onChunk(currentStream);
-      await new Promise(r => setTimeout(r, 25));
+      await new Promise(r => setTimeout(r, 20));
     }
   }
 
@@ -712,6 +967,7 @@ export async function streamTutorMessage(params: {
     englishExplanation: clientData.englishExplanation,
     arabicExplanation: clientData.arabicExplanation,
     phase: 'LingoPal Interactive Session',
+    analysis: clientData.analysis || null,
     corrections: ['🟢 Instant conversational feedback active', '🎉 XP Reward: +15 XP'],
     vocabulary: clientData.vocabulary,
     followUpQuestions: clientData.followUpQuestions,

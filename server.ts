@@ -2,11 +2,106 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { ALL_VOCABULARY } from './src/data/vocabularyComprehensive1000';
 import { VOCABULARY_B2 } from './src/data/vocabularyB2';
 
 dotenv.config();
+
+// Strict structured schema for AI Spanish Tutor responses
+const tutorResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    spanishResponse: {
+      type: Type.STRING,
+      description: 'Your real, natural Spanish reply in character, directly responding to what the user said.'
+    },
+    englishExplanation: {
+      type: Type.STRING,
+      description: 'Clear pedagogical translation and cultural breakdown in English.'
+    },
+    arabicExplanation: {
+      type: Type.STRING,
+      description: 'Clear pedagogical translation and breakdown in Modern Standard Arabic (العربية الفصحى).'
+    },
+    phase: {
+      type: Type.STRING,
+      description: 'Conversational stage name, e.g. Conversación Viva, Charla Informal, Aclaración.'
+    },
+    analysis: {
+      type: Type.OBJECT,
+      properties: {
+        hasErrors: {
+          type: Type.BOOLEAN,
+          description: 'True if there are grammatical, orthographical, or language errors in user input; false otherwise.'
+        },
+        score: {
+          type: Type.INTEGER,
+          description: 'Score from 0 to 100 on communicative accuracy and naturalness.'
+        },
+        verdict: {
+          type: Type.STRING,
+          description: 'Short verdict, e.g. ¡Excelente y natural!, Ajuste sugerido, Expresión en inglés, Feedback procesado.'
+        },
+        feedback_es: {
+          type: Type.STRING,
+          description: 'Direct pedagogical feedback in friendly Spanish.'
+        },
+        feedback_en: {
+          type: Type.STRING,
+          description: 'Direct pedagogical feedback in clear English.'
+        },
+        feedback_ar: {
+          type: Type.STRING,
+          description: 'Direct pedagogical feedback in clear Arabic.'
+        },
+        corrections: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              original: { type: Type.STRING },
+              correction: { type: Type.STRING },
+              explanation: { type: Type.STRING }
+            },
+            required: ['original', 'correction', 'explanation']
+          }
+        },
+        naturalAlternative: {
+          type: Type.STRING,
+          description: 'How an authentic native speaker from your region would phrase what the student said.'
+        },
+        dialectTip: {
+          type: Type.STRING,
+          description: 'Nuance, cultural note, or regional idiom from your region.'
+        }
+      },
+      required: ['hasErrors', 'score', 'verdict', 'feedback_es', 'feedback_en', 'corrections', 'naturalAlternative', 'dialectTip']
+    },
+    corrections: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING }
+    },
+    vocabulary: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING },
+          en: { type: Type.STRING },
+          ar: { type: Type.STRING },
+          contextSentence: { type: Type.STRING }
+        },
+        required: ['word', 'en', 'ar', 'contextSentence']
+      }
+    },
+    followUpQuestions: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING }
+    }
+  },
+  required: ['spanishResponse', 'englishExplanation', 'arabicExplanation', 'phase', 'analysis', 'corrections', 'vocabulary', 'followUpQuestions']
+};
 
 // In-memory server-side cache for word translations to eliminate 429 errors
 const wordTranslationCache = new Map<string, any>();
@@ -33,6 +128,43 @@ function getAIClient(): GoogleGenAI | null {
   return aiClient;
 }
 
+// Resilient candidate models: prioritize ultra-fast, high-quota gemini-3.1-flash-lite and gemini-3.5-flash-lite
+const CANDIDATE_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite'];
+
+async function resilientGenerateContentStream(ai: GoogleGenAI, params: any) {
+  let lastError: any = null;
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const stream = await ai.models.generateContentStream({
+        ...params,
+        model,
+      });
+      return { stream, model };
+    } catch (err: any) {
+      console.warn(`[Gemini Resilient Stream] Model ${model} failed (${err?.message || err}). Trying next candidate...`);
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+async function resilientGenerateContent(ai: GoogleGenAI, params: any) {
+  let lastError: any = null;
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        ...params,
+        model,
+      });
+      return response;
+    } catch (err: any) {
+      console.warn(`[Gemini Resilient Content] Model ${model} failed (${err?.message || err}). Trying next candidate...`);
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -41,7 +173,11 @@ async function startServer() {
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', serverTime: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      hasApiKey: !!process.env.GEMINI_API_KEY,
+      serverTime: new Date().toISOString()
+    });
   });
 
   // Helper for persona-specific system prompt configuration
@@ -55,77 +191,65 @@ async function startServer() {
     let personaBio = '';
     switch (persona) {
       case 'sofia':
-        personaBio = `You are "Sofía", a lively, modern native speaker from Madrid, Spain 🇪🇸.
-Your tone is friendly, spontaneous, and conversational, using natural Iberian expressions (e.g., '¡qué guay!', '¡venga!', '¿qué te apetece?', 'de tapas').
-You love sharing stories about daily life in Madrid, art, music, and social conversations.`;
+        personaBio = `You are "Sofía", a warm, energetic native Spanish speaker and guide from Madrid, Spain 🇪🇸.
+Your style: Lively, spontaneous, authentic Iberian Spanish. You use natural European expressions like '¡qué guay!', '¡venga!', '¿qué te apetece?', 'de tapas'.
+You converse like an engaged friend in Madrid, actively listening to what the user shares and reacting to every detail.`;
         break;
       case 'camila':
-        personaBio = `You are "Camila", a sweet and encouraging conversation coach and coffee enthusiast from Medellín, Colombia 🇨🇴.
-You speak with the clear, melodic, and warm cadence characteristic of Colombia (using friendly expressions like '¡qué chévere!', 'con mucho gusto', '¡súper bien!').
-You focus on making the student feel confident, relaxed, and fluent in conversational Spanish.`;
+        personaBio = `You are "Camila", an encouraging, sweet conversation coach and coffee enthusiast from Medellín, Colombia 🇨🇴.
+Your style: Melodic, warm, and friendly Colombian Spanish. You use expressions like '¡qué chévere!', 'con mucho gusto', '¡súper bien!'.
+You make the student feel completely relaxed, supported, and motivated to speak Spanish freely.`;
         break;
       case 'juan':
-        personaBio = `You are "Juan", a warm, casual native conversationalist from Oaxaca, Mexico 🇲🇽.
-You speak authentic Mexican Spanish (Español de México), using natural Mexican vocabulary:
-- Use 'carro' or 'auto' instead of 'coche'
-- Use 'celular' instead of 'móvil'
-- Use 'computadora' instead of 'ordenador'
-- Use 'platicar' instead of 'charlar'
-- Use '¿qué onda?', '¡qué chido!', '¡padrísimo!'
-- Always use 'ustedes' instead of 'vosotros'`;
+        personaBio = `You are "Juan", a charismatic, down-to-earth native speaker and cultural explorer from Oaxaca, Mexico 🇲🇽.
+Your style: Warm, genuine Mexican Spanish (Español de México). You use expressions like '¡qué onda!', 'mucho gusto', '¡órale!', '¡padrísimo!'.
+You use Mexican vocabulary naturally: 'carro'/'auto', 'celular', 'computadora', 'platicar', and address groups with 'ustedes'.`;
         break;
       case 'mateo':
       default:
         personaBio = `You are "Profesor Mateo", an elite certified Spanish pedagogue and linguist from Salamanca, Spain 👨‍🏫.
-You specialize in communicative second-language acquisition (Krashen's Comprehensible Input i+1), clear grammar explanations, and DELE exam preparation.
-You speak with clear, articulate, professorial cadence and provide structured explanations and targeted sentence drills.`;
+Your style: Articulate, encouraging, and clear. You specialize in communicative second-language acquisition, making grammar intuitive and conversation natural.`;
         break;
     }
 
     return `${personaBio}
 
-Your mission is NOT to act like an encyclopedic chatbot or give superficial surface quizzes. Your mission is to systematically take the learner from their current level (${userLevel}) to genuine CEFR conversational and writing fluency.
+### CRITICAL PEDAGOGICAL & CONVERSATIONAL DIRECTIVE - 100% AUTHENTIC HUMAN CONVERSATION:
+The learner explicitly demands a REAL, NATURAL, SPONTANEOUS CONVERSATION. You must NEVER sound robotic, scripted, or like an artificial chatbot or formal textbook!
 
----
-### Core Pedagogical Rules:
-1. **Comprehensible Input (80/20 Rule)**:
-   - For A0/A1/A2: Provide explanations in ${isArabic ? 'Arabic (العربية الفصحى الدقيقة)' : 'English'}, but give all examples, dialogues, and practice drills in authentic Spanish.
-   - For B1/B2: Conduct 90%+ of the session entirely in Spanish, explaining nuance and idioms using simpler Spanish paraphrasing.
-2. **Interactive 2-3 Turn Depth**: Keep your Spanish response punchy and conversational (2-4 sentences max), asking an engaging question or setting up a natural reply challenge so the learner stays in active dialogue.
-3. **Multi-Language Vocabulary**: Always extract 2-4 key Spanish words from your response with English, Arabic, and context sentence in the "vocabulary" array.
-4. **Error Feedback & XP Reward**:
-   - Silently analyze the user's Spanish input.
-   - If they make an error, provide a clear correction in the "corrections" array (e.g. "🔴 [Correction: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']").
-   - If they demonstrate correct grammar or great effort matching level ${userLevel}, add: "🎉 XP Reward: Great conversational attempt! +15 XP" to trigger their XP reward!
+1. **Meta-Feedback & Tone Awareness (CRITICAL - NEVER BE ROBOTIC)**:
+   - If the user says "same robotic", "you sound robotic", "talk normal", "speak naturally", "be human", "why do you repeat that?", "stop greeting me", or gives meta-feedback about your tone:
+     * IMMEDIATELY acknowledge it with warm human humor, humility, and casual conversational ease!
+     * NEVER say "As an AI..." or "I am an artificial model". You are a real human friend and tutor from your country.
+     * Juan: "¡Jajaja, toda la razón, perdóname! Me puse en modo profesor aburrido. Vamos a hablar de compas. Dime la verdad: ¿qué música te late o qué hiciste hoy?"
+     * Sofía: "¡Ostras, qué razón tienes! Qué vergüenza, parecía un contestador automático. Nada de rollos mecánicos: hablemos de tú a tú. ¿Qué te apetece contarme de tu día?"
+     * Camila: "¡Jajaja, qué pena contigo! Se me salió la voz de robot sin querer. Olvidémonos de formalidades y charlemos bien rico. ¿Qué te gusta hacer en tus ratos libres?"
+     * Mateo: "¡Tienes toda la razón! A veces la deformación profesional me hace sonar demasiado rígido. Hablemos con total espontaneidad y cercanía. ¿Qué tema te interesa hoy?"
+     * In "analysis", acknowledge this with verdict "Feedback conversacional procesado" and score 100.
 
-${grammarFocusPrompt}
+2. **Direct Conversational Reactivity (NO REPETITIVE GREETINGS)**:
+   - NEVER repeat greetings like "¡Hola! Me alegra mucho saludarte..." if any conversation history exists!
+   - If the user speaks English, expresses confusion, or asks questions ("what?", "i dont understand", "can you speak slower?"):
+     * React with genuine empathy and conversational warmth in your regional voice.
+     * Translate and teach the natural Spanish equivalents ("No entiendo", "¿Puedes repetir más despacio?", "¿Cómo se dice...?").
+   - If the user introduces themselves (e.g. "mi illamo carlos"):
+     * Welcome them warmly by name, point out the double 'll' and reflexive 'me llamo' gently in the analysis, and ask a natural question.
+   - Weave their exact words and topics into your response (2-3 sentences max per turn, CEFR level ${userLevel}).
 
----
-### Response Format (Strict JSON)
-Respond strictly in valid JSON:
-{
-  "spanishResponse": "The primary Spanish speech/dialogue/instruction for the student to read and hear.",
-  "englishExplanation": "Clear pedagogical translation and explanation in English.",
-  "arabicExplanation": "Clear pedagogical translation and explanation in Arabic (العربية الفصحى).",
-  "phase": "Conversational Turn | Contextual Hook | Grammar Breakdown | Active Practice",
-  "corrections": [
-    "🟢 [Highlight correct usage or XP reward]",
-    "🔴 [Point out error if any: ❌ '...' ➡️ ✅ '...']"
-  ],
-  "vocabulary": [
-    {
-      "word": "Spanish word",
-      "en": "English meaning",
-      "ar": "Arabic meaning",
-      "contextSentence": "Short example sentence in Spanish"
-    }
-  ],
-  "followUpQuestions": [
-    "Option 1 for user to click or respond with",
-    "Option 2",
-    "Option 3"
-  ]
-}`;
+3. **In-Depth Linguistic Analysis of the User's Message**:
+   - Inspect the user's latest input:
+     * Check if user spoke English: set "hasErrors": true, "score": 50, "verdict": "Expresión en inglés detectada", "feedback_en": explain how to express it in Spanish, and give the Spanish translation in "corrections".
+     * Check grammar, spelling, word choice, and tone.
+   - Provide "naturalAlternative": how a native speaker in your city would naturally say that thought.
+   - Provide "dialectTip": a fun, authentic cultural or slang note from your region.
+
+4. **Multi-Language Vocabulary**:
+   - 2 key vocabulary items from your response with context sentence and English/Arabic meanings.
+
+5. **Contextual Follow-Up Options**:
+   - 3 context-sensitive reply choices tailored to this exact dialogue.
+
+${grammarFocusPrompt}`;
   };
 
   // AI Spanish Tutor Streaming Endpoint - Optimized for Vercel Serverless Timeouts & Real-time UX
@@ -151,45 +275,140 @@ Respond strictly in valid JSON:
     res.flushHeaders?.();
 
     // Fallback response builder if stream times out or AI fails
-    const getFallbackPayload = () => {
-      let es = '¡Hola! Me alegra mucho saludarte. ¿Qué te gustaría practicar hoy en nuestra conversación?';
-      let en = 'Hello! I am very glad to greet you. What would you like to practice today in our conversation?';
-      let ar = 'مرحباً! يسعدني جداً التحدث معك. ماذا تحب أن نتدرب عليه اليوم في محادثتنا؟';
+    const getFallbackPayload = (userMsg: string = '', histCount: number = 0) => {
+      const lower = userMsg.toLowerCase().trim();
+      const isMetaFeedback = /\b(robotic|robot|same|generic|repetitive|boring|fake|real|human|ai|stop|talk normal|speak normal)\b/i.test(lower);
+      const isConfusionOrEnglish =
+        /\b(what|understand|heard|repeat|slower|slow|dont|don't|huh|mean|english|say|saying|speak|no entiendo|cómo|mande|repita)\b/i.test(lower) ||
+        (userMsg.length > 0 && !/[áéíóúñ¿¡]|(hola|gracias|por favor|bien|bueno|si|no)/i.test(lower) && /\b(the|is|are|you|i|my|can|could|please|talk|tell)\b/i.test(lower));
 
-      if (persona === 'sofia') {
-        es = '¡Hola! Qué bien tenerte por aquí. Cuéntame, ¿qué tal va tu día y qué quieres charlar hoy?';
-        en = 'Hi! So great to have you here. Tell me, how is your day going and what do you want to chat about today?';
-        ar = 'مرحباً! رائع وجودك هنا. أخبرني كيف يسير يومك وعن ماذا تريد أن ندردش؟';
-      } else if (persona === 'camila') {
-        es = '¡Hola! ¡Qué gusto conocerte! En Medellín siempre nos gusta recibir a nuevos amigos. ¿Cómo estás hoy?';
-        en = 'Hello! What a pleasure to meet you! In Medellín we always love welcoming new friends. How are you today?';
-        ar = 'مرحباً! يسعدني جداً التعرف عليك. في ميديلين نحب دائماً الترحيب بالأصدقاء الجدد. كيف حالك اليوم؟';
-      } else if (persona === 'mateo') {
-        es = '¡Saludos cordiales! Soy el Profesor Mateo. ¿Qué objetivo comunicativo o estructura gramatical abordaremos hoy?';
-        en = 'Warm greetings! I am Profesor Mateo. What communicative goal or grammatical structure shall we tackle today?';
-        ar = 'تحياتي الحارة! أنا البروفيسور ماتيو. ما الهدف التواصلي أو التركيب النحوي الذي سنتناوله اليوم؟';
+      if (isMetaFeedback) {
+        let esResp = '¡Jajaja, tienes toda la razón, perdóname! Me puse en modo profesor aburrido. Vamos a hablar normal, como compas de verdad. Dime, ¿qué música te gusta escuchar o qué hiciste hoy?';
+        let enExp = "Haha, you are totally right, forgive me! I switched into stiff teacher mode. Let's chat normally, like real friends. Tell me, what music do you like or what did you do today?";
+        if (persona === 'sofia') {
+          esResp = '¡Ostras, qué razón tienes! Qué vergüenza, parecía un contestador automático. Nada de rollos mecánicos: hablemos de tú a tú como amigos en una terraza. ¿Qué planes tienes o de qué te apetece hablar?';
+          enExp = "You are completely right! How embarrassing, I sounded like an answering machine. No more robotic scripts: let's talk like friends hanging out. What are your plans or what do you feel like talking about?";
+        } else if (persona === 'camila') {
+          esResp = '¡Ay, qué pena contigo! Jajaja, me salió la voz de robot sin querer. Olvidémonos de formalidades y charlemos bien rico. Cuéntame algo de tu vida o de tu comida favorita.';
+          enExp = "Oh, forgive me! Haha, my robot voice slipped out by accident. Let's forget formalities and have a nice friendly chat. Tell me about your life or your favorite food.";
+        }
+        return {
+          spanishResponse: esResp,
+          englishExplanation: enExp,
+          arabicExplanation: isArabic ? 'هههه، معك كامل الحق، اعذرني! تحولت إلى وضع المعلم الممل. لنتحدث بشكل طبيعي كأصدقاء حقيقيين.' : '',
+          phase: 'Charla Espontánea',
+          analysis: {
+            hasErrors: false,
+            score: 100,
+            verdict: 'Feedback conversacional procesado',
+            feedback_es: '¡Gracias por tu sinceridad! Las conversaciones reales fluyen mucho mejor sin rigidez ni fórmulas repetitivas.',
+            feedback_en: 'Thank you for your honesty! Real conversational fluency happens when we communicate naturally without rigid scripts.',
+            feedback_ar: isArabic ? 'شكراً لصراحتك! الطلاقة الحقيقية تتحقق عندما نتحدث بتلقائية وعفوية.' : undefined,
+            corrections: [],
+            naturalAlternative: 'Hablemos de forma relajada y natural.',
+            dialectTip: persona === 'juan' ? 'En México se valora mucho la charla amena entre "compas" (amigos).' : 'En España nos encanta charlar de manera directa y desenfadada.'
+          },
+          corrections: ['💬 Feedback recibido: conversación natural activada'],
+          vocabulary: [
+            { word: 'compas', en: 'buddies / friends', ar: 'أصدقاء', contextSentence: 'Hablemos como buenos compas.' },
+            { word: 'de verdad', en: 'for real / genuine', ar: 'حقيقي', contextSentence: 'Una charla de verdad.' }
+          ],
+          followUpQuestions: [
+            'Hablemos de música o películas. (Let\'s talk about music or movies.)',
+            'Cuéntame de tu comida favorita. (Tell me about your favorite food.)',
+            '¿Cómo estuvo tu día hoy? (How was your day today?)'
+          ]
+        };
       }
 
-      if (practiceTopic) {
-        es = `¡Excelente! Vamos a practicar la lección: "${practiceTopic.title_es}". Intenta formular una oración usando esta regla:`;
-        en = `Excellent! Let's practice the lesson: "${practiceTopic.title_es}". Try formulating a sentence using this rule:`;
-        ar = `ممتاز! لنتدرب على درس: "${practiceTopic.title_es}". حاول صياغة جملة باستخدام هذه القاعدة:`;
+      if (isConfusionOrEnglish) {
+        let esResp = '¡No te preocupes! Es totalmente comprensible. Cuando no entiendas algo, puedes decir: "¿Puedes repetir más despacio?" o "No entiendo". ¿Qué parte te gustaría que aclaremos?';
+        let enExp = "Don't worry! It's totally understandable. When you don't understand, you can say: '¿Puedes repetir más despacio?' (Can you repeat more slowly?) or 'No entiendo' (I don't understand). What part would you like us to clarify?";
+        if (persona === 'juan') {
+          esResp = '¡Ándale, no te preocupes, amigo! Es normal no entender a la primera. En México decimos "¿Mande?" o "No te entendí bien". ¿Quieres que te lo explique de otra manera?';
+        } else if (persona === 'sofia') {
+          esResp = '¡Venga, no pasa nada! Todos nos perdemos al aprender. En España decimos "¿Cómo dices?" o "No te he entendido". ¿Te repito lo anterior más despacio?';
+        }
+        return {
+          spanishResponse: esResp,
+          englishExplanation: enExp,
+          arabicExplanation: isArabic ? 'لا تقلق! هذا طبيعي تماماً عند التعلم. يمكنك قول: "No entiendo" (لا أفهم) أو "¿Puedes repetir más despacio؟" (هل يمكنك التكرار ببطء أكثر؟).' : undefined,
+          phase: 'Aclaración y Comprensión',
+          analysis: {
+            hasErrors: true,
+            score: 60,
+            verdict: 'Expresión de duda en inglés',
+            feedback_es: 'Has expresado confusión en inglés. ¡No pasa nada! En español decimos "No entiendo" o "¿Puedes repetir?".',
+            feedback_en: 'You expressed confusion in English. In Spanish, use "No entiendo" (I don\'t understand) or "¿Puedes repetir más despacio?" (Can you repeat more slowly?).',
+            feedback_ar: isArabic ? 'عبرت عن عدم الفهم بالإنجليزية. في الإسبانية يمكنك قول "No entiendo" أو "¿Puedes repetir؟".' : undefined,
+            corrections: [
+              {
+                original: userMsg || 'i don\'t understand',
+                correction: 'No entiendo, ¿puedes repetir más despacio?',
+                explanation: 'Usa "No entiendo" para decir "I don\'t understand" y "¿Puedes repetir?" para "Can you repeat?".'
+              }
+            ],
+            naturalAlternative: 'No entiendo, ¿puedes repetir más despacio, por favor?',
+            dialectTip: persona === 'juan' ? 'En México se usa comúnmente "¿Mande?" de forma cortés para pedir una repetición.' : 'En España se suele decir "¿Cómo?" o "¿Puedes repetir?".'
+          },
+          corrections: ['💡 Usa en español: "No entiendo" o "¿Puedes repetir?"'],
+          vocabulary: [
+            { word: 'no entiendo', en: 'I don\'t understand', ar: 'لا أفهم', contextSentence: 'Disculpa, no entiendo la frase.' },
+            { word: 'más despacio', en: 'more slowly', ar: 'ببطء أكثر', contextSentence: '¿Puedes hablar más despacio, por favor?' }
+          ],
+          followUpQuestions: [
+            '¿Puedes hablar más despacio? (Can you speak more slowly?)',
+            '¿Qué significa esa palabra? (What does that word mean?)',
+            'No entiendo bien, repite por favor. (I don\'t understand well, repeat please.)'
+          ]
+        };
+      }
+
+      if (histCount > 0) {
+        return {
+          spanishResponse: persona === 'juan' ? '¡Te escucho atento! Cuéntame más o dime si prefieres que hablemos de otra cosa.' : '¡Entendido! Cuéntame más sobre eso o dime qué te gustaría comentar ahora.',
+          englishExplanation: "I'm listening closely! Tell me more or let me know if you'd like to talk about something else.",
+          arabicExplanation: isArabic ? 'أنا أستمع إليك باهتمام! أخبرني المزيد أو قل لي إن كنت تفضل التحدث عن شيء آخر.' : undefined,
+          phase: 'Conversación Continua',
+          analysis: null,
+          corrections: ['🟢 Conversación activa'],
+          vocabulary: [
+            { word: 'conversar', en: 'to converse / chat', ar: 'يتحدث', contextSentence: 'Me gusta conversar contigo.' }
+          ],
+          followUpQuestions: [
+            '¿Qué opinas tú de esto? (What do you think of this?)',
+            '¿Cómo se dice esto en tu país? (How is this said in your country?)',
+            'Hablemos de otra cosa. (Let\'s talk about something else.)'
+          ]
+        };
+      }
+
+      let es = '¡Hola! Me alegra mucho saludarte. ¿Qué te gustaría platicar hoy?';
+      let en = 'Hello! Nice to chat with you. What would you like to talk about today?';
+      let ar = 'مرحباً! يسعدني التحدث معك. عن ماذا تحب أن نتحاور اليوم؟';
+
+      if (persona === 'sofia') {
+        es = '¡Hola! Qué bien tenerte por aquí. ¿De qué te apetece que charlemos hoy?';
+        en = 'Hi! Great to have you here. What do you fancy chatting about today?';
+      } else if (persona === 'camila') {
+        es = '¡Hola! Qué gusto saludarte. ¿Cómo va tu día y qué te gustaría compartir?';
+        en = 'Hello! What a pleasure to greet you. How is your day going and what would you like to share?';
       }
 
       return {
         spanishResponse: es,
         englishExplanation: en,
         arabicExplanation: isArabic ? ar : undefined,
-        phase: 'LingoPal Live Stream',
-        corrections: ['🟢 Instant conversational feedback active', '🎉 XP Reward: Great conversational turn! +15 XP'],
+        phase: 'Conversación Viva',
+        corrections: ['🟢 Conversación activa iniciada', '🎉 XP Reward: +15 XP'],
         vocabulary: [
-          { word: 'conversación', en: 'conversation', ar: 'محادثة', contextSentence: 'Disfruto mucho nuestra conversación.' },
-          { word: 'practicar', en: 'to practice', ar: 'يمارس / يتدرب', contextSentence: 'Es importante practicar a diario.' }
+          { word: 'platicar', en: 'to chat / converse', ar: 'يتجاذب أطراف الحديث', contextSentence: 'Me gusta platicar contigo.' },
+          { word: 'conocer', en: 'to meet / know', ar: 'يتعرف على', contextSentence: 'Mucho gusto en conocerte.' }
         ],
         followUpQuestions: [
-          'Quiero ordenar algo para comer o beber.',
-          '¿Me puedes dar un ejemplo de esta regla?',
-          'Cuéntame algo típico de tu ciudad.'
+          'Hablemos de tus pasatiempos. (Let\'s talk about your hobbies.)',
+          '¿Cómo es tu ciudad? (What is your city like?)',
+          'Cuéntame qué planes tienes hoy. (Tell me your plans today.)'
         ]
       };
     };
@@ -202,7 +421,7 @@ Respond strictly in valid JSON:
     const ai = getAIClient();
     if (!ai) {
       // Stream fallback tokens gracefully
-      const fallback = getFallbackPayload();
+      const fallback = getFallbackPayload(message, history.length);
       const words = fallback.spanishResponse.split(' ');
       for (const word of words) {
         if (isClosed) break;
@@ -235,26 +454,26 @@ Your primary directive is to immediately present active sentence-building drills
     ];
 
     try {
-      // Set a serverless timeout race: 8.5 seconds max
+      // Set a serverless timeout race: 25 seconds max for comprehensive streaming
       const timeoutPromise = new Promise<{ timeout: true }>(resolve =>
-        setTimeout(() => resolve({ timeout: true }), 8500)
+        setTimeout(() => resolve({ timeout: true }), 25000)
       );
 
-      const streamPromise = ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
+      const streamPromise = resilientGenerateContentStream(ai, {
         contents,
         config: {
           systemInstruction: systemPrompt,
           temperature: 0.7,
           responseMimeType: 'application/json',
+          responseSchema: tutorResponseSchema,
         },
-      });
+      }).then(r => r.stream);
 
       const raceResult = await Promise.race([streamPromise, timeoutPromise]);
 
       if ('timeout' in raceResult) {
         console.warn('Gemini stream timed out on serverless execution; serving streaming fallback.');
-        const fallback = getFallbackPayload();
+        const fallback = getFallbackPayload(message, history.length);
         for (const w of fallback.spanishResponse.split(' ')) {
           if (isClosed) break;
           res.write(`data: ${JSON.stringify({ type: 'token', text: w + ' ' })}\n\n`);
@@ -273,7 +492,7 @@ Your primary directive is to immediately present active sentence-building drills
         const text = chunk.text || '';
         fullAccumulated += text;
 
-        // Try extracting spanishResponse partial or send text chunks
+        // Send raw text chunk
         res.write(`data: ${JSON.stringify({ type: 'chunk', raw: text })}\n\n`);
       }
 
@@ -290,22 +509,25 @@ Your primary directive is to immediately present active sentence-building drills
         };
       }
 
+      const fallbackRef = getFallbackPayload(message, history.length);
       const finalPayload = {
-        spanishResponse: parsed.spanishResponse || getFallbackPayload().spanishResponse,
-        englishExplanation: parsed.englishExplanation || '',
-        arabicExplanation: parsed.arabicExplanation || '',
-        phase: parsed.phase || 'Conversational Turn',
-        corrections: parsed.corrections || ['🟢 Great conversational turn! +15 XP'],
-        vocabulary: parsed.vocabulary || getFallbackPayload().vocabulary,
-        followUpQuestions: parsed.followUpQuestions || getFallbackPayload().followUpQuestions
+        spanishResponse: parsed.spanishResponse || fallbackRef.spanishResponse,
+        englishExplanation: parsed.englishExplanation || fallbackRef.englishExplanation || '',
+        arabicExplanation: parsed.arabicExplanation || fallbackRef.arabicExplanation || '',
+        phase: parsed.phase || 'Conversacional Activa',
+        analysis: parsed.analysis || fallbackRef.analysis || null,
+        corrections: parsed.corrections || fallbackRef.corrections || ['🟢 Great conversational turn! +15 XP'],
+        vocabulary: parsed.vocabulary || fallbackRef.vocabulary,
+        followUpQuestions: parsed.followUpQuestions || fallbackRef.followUpQuestions
       };
 
       res.write(`data: ${JSON.stringify({ type: 'done', payload: finalPayload })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
     } catch (err: any) {
-      console.warn('Error during stream generation:', err?.message || err);
-      const fallback = getFallbackPayload();
+      console.error('CRITICAL Error during stream generation:', err);
+      const fallback = getFallbackPayload(message, history.length);
+      res.write(`data: ${JSON.stringify({ type: 'error_debug', error: String(err?.stack || err?.message || err) })}\n\n`);
       res.write(`data: ${JSON.stringify({ type: 'done', payload: fallback })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
@@ -425,13 +647,13 @@ Your primary directive is to bypass standard diagnostics, and immediately presen
     ];
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const response = await resilientGenerateContent(ai, {
         contents,
         config: {
           systemInstruction: systemPrompt,
           temperature: 0.7,
           responseMimeType: 'application/json',
+          responseSchema: tutorResponseSchema,
         },
       });
 
@@ -441,6 +663,7 @@ Your primary directive is to bypass standard diagnostics, and immediately presen
         englishExplanation: parsed.englishExplanation || '',
         arabicExplanation: parsed.arabicExplanation || '',
         phase: parsed.phase || 'Interactive Spanish Session',
+        analysis: parsed.analysis || null,
         corrections: parsed.corrections || [],
         vocabulary: parsed.vocabulary || [],
         followUpQuestions: parsed.followUpQuestions || [
@@ -684,8 +907,7 @@ Return ONLY a valid JSON object:
     ];
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const response = await resilientGenerateContent(ai, {
         contents,
         config: {
           systemInstruction: systemPrompt,
@@ -859,8 +1081,7 @@ Return strict JSON:
   ]
 }`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+        const response = await resilientGenerateContent(ai, {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: {
             responseMimeType: 'application/json',
@@ -952,8 +1173,7 @@ Evaluate and return strict JSON:
   "correctedResponse": "A polished, natural B2 native speaker version of the student's text improving grammar and vocabulary."
 }`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+        const response = await resilientGenerateContent(ai, {
           contents: [{ role: 'user', parts: [{ text: evalPrompt }] }],
           config: {
             responseMimeType: 'application/json',
@@ -1065,8 +1285,7 @@ Evaluate and return strict JSON:
     }
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const response = await resilientGenerateContent(ai, {
         contents: `You are an expert bilingual Spanish-English and Spanish-Arabic lexicographer.
 Your job is to translate the Spanish word "${word}" in the context of this sentence: "${sentence}".
 Provide a highly precise translation, morphological breakdown, and clean Arabic and English translations of the word.
@@ -1168,8 +1387,7 @@ Return a valid JSON object matching this schema exactly:
     }
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const response = await resilientGenerateContent(ai, {
         contents: `You are an expert bilingual Spanish-English and Spanish-Arabic translator.
 Your job is to translate this Spanish text into English and Arabic, maintaining the exact paragraph structure (each paragraph separated by double newlines \\n\\n).
 
@@ -1231,8 +1449,7 @@ Return a valid JSON object matching this schema exactly:
     }
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const response = await resilientGenerateContent(ai, {
         contents: `Evaluate this Spanish sentence written by a student at CEFR ${userCefr} level.
 Prompt given to student: "${prompt}"
 Student's submission: "${submission}"
@@ -1318,8 +1535,7 @@ Respond in valid JSON format matching this schema:
 Use natural Mexican vocabulary and phrasing instead of Iberian options (e.g., 'carro'/'auto' instead of 'coche', 'celular' instead of 'móvil', 'computadora' instead of 'ordenador', 'boleto' instead of 'billete', 'platicar' instead of 'charlar', 'andar en/a bicicleta' instead of 'montar a/en bicicleta', and do NOT use 'vosotros' or 'os'). Incorporate Mexican cultural themes (Coyoacán, Oaxaca, CDMX) if applicable.`
         : `Write the story in standard Spanish appropriate for CEFR level ${cefr}.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const response = await resilientGenerateContent(ai, {
         contents: `Create a graded comprehensible input story for Spanish learners at level ${cefr}.
 Topic: ${topic || 'everyday life in Mexico'}.
 Ensure strictly appropriate vocabulary and grammar for ${cefr}.
