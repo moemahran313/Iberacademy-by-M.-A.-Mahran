@@ -260,6 +260,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [userProgress.settings?.theme]);
 
+  // Sync Arabic language attribute and Cairo font class on document element
+  useEffect(() => {
+    if (userProgress.settings?.nativeLanguage === 'ar') {
+      document.documentElement.setAttribute('lang', 'ar');
+      document.documentElement.classList.add('lang-ar');
+    } else {
+      document.documentElement.setAttribute('lang', 'en');
+      document.documentElement.classList.remove('lang-ar');
+    }
+  }, [userProgress.settings?.nativeLanguage]);
+
   // Sync user progress to local storage & Firestore
   useEffect(() => {
     saveUserProgress(userProgress);

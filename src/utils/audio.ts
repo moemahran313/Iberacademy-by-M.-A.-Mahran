@@ -36,113 +36,235 @@ export function resumeSpanishSpeech() {
   }
 }
 
-let cachedJuanVoice: SpeechSynthesisVoice | null = null;
+export type PersonaVoiceId =
+  | 'juan'
+  | 'sofia'
+  | 'mateo'
+  | 'camila'
+  | 'elena'
+  | 'teacher'
+  | 'friend'
+  | 'grammar_doctor'
+  | 'dele_examiner'
+  | string;
 
-function resolveAndCacheVoice(): { voice: SpeechSynthesisVoice | null; isMexican: boolean } {
+export interface VoiceResolutionResult {
+  voice: SpeechSynthesisVoice | null;
+  lang: string;
+  effectivePitch: number;
+  effectiveRate: number;
+  targetGender: 'male' | 'female';
+  matchedGender: 'male' | 'female';
+  voiceName: string;
+}
+
+const MALE_NAMES = [
+  'jorge', 'raul', 'raúl', 'gerardo', 'miguel', 'carlos', 'juan', 'angel', 'ángel',
+  'alberto', 'diego', 'julio', 'david', 'enrique', 'pablo', 'hector', 'héctor',
+  'fernando', 'andres', 'andrés', 'pedro', 'gonzalo', 'mateo', 'tomas', 'tomás',
+  'rodrigo', 'ricardo', 'victor', 'víctor', 'ramon', 'ramón', 'felipe', 'luis',
+  'arturo', 'alvaro', 'álvaro', 'javier', 'antonio', 'sergio', 'manuel', 'francisco',
+  'jose', 'josé', 'ignacio', 'alejandro', 'guillermo', 'salvador', 'mario', 'rafael',
+  'alonso', 'alfredo', 'hugo', 'eduardo', 'ramiro', 'santiago', 'emilio', 'sebastian',
+  'sebastián', 'gabriel', 'lucas', 'paco', 'marcos', 'leonardo', 'cesar', 'césar',
+  'male', 'hombre', 'masculino', 'guy', 'boy', 'man'
+];
+
+const FEMALE_NAMES = [
+  'helena', 'elena', 'laura', 'monica', 'mónica', 'carmen', 'lucia', 'lucía',
+  'elba', 'abril', 'paloma', 'victoria', 'sofia', 'sofía', 'irene', 'conchita',
+  'maría', 'maria', 'paulina', 'salome', 'salomé', 'paola', 'soledad', 'camila',
+  'marisol', 'yolanda', 'sabina', 'dalia', 'ximena', 'lupe', 'valeria', 'catalina',
+  'isabella', 'mariana', 'daniela', 'lupita', 'amira', 'sabrina', 'zari', 'alicia',
+  'rosa', 'teresa', 'claudia', 'beatriz', 'patricia', 'silvia', 'elvira', 'esperanza',
+  'clara', 'raquel', 'natalia', 'andrea', 'camilla', 'female', 'mujer', 'femenino',
+  'woman', 'girl'
+];
+
+// Helper to identify whether a SpeechSynthesisVoice is male or female
+export function detectVoiceGender(v: SpeechSynthesisVoice): 'male' | 'female' {
+  const name = v.name.toLowerCase();
+  const uri = (v.voiceURI || '').toLowerCase();
+  const combined = `${name} ${uri}`;
+
+  const isMale = MALE_NAMES.some(kw => combined.includes(kw));
+  const isFemale = FEMALE_NAMES.some(kw => combined.includes(kw));
+
+  if (isMale && !isFemale) return 'male';
+  if (isFemale && !isMale) return 'female';
+  if (isMale && isFemale) {
+    // If both matched (e.g. name has both), prioritize the primary keyword
+    return name.includes('male') || name.includes('hombre') ? 'male' : 'female';
+  }
+
+  // Default fallback: most browser default Spanish voices (like 'Google español') are female
+  return 'female';
+}
+
+const voiceCache = new Map<string, VoiceResolutionResult>();
+
+export function clearVoiceCache() {
+  voiceCache.clear();
+}
+
+/**
+ * Resolves the optimal voice and acoustic profile for a specific tutor persona:
+ * - Juan: Male (Mexican / Latin American)
+ * - Sofía: Female (Spain / Madrid)
+ * - Mateo: Male (Spain / Castilian Academic)
+ * - Camila / Elena: Female (Colombian / Latin American)
+ */
+export function getPersonaVoiceProfile(personaId: PersonaVoiceId = 'juan'): VoiceResolutionResult {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    return { voice: null, isMexican: false };
-  }
-  
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices || voices.length === 0) {
-    return { voice: cachedJuanVoice, isMexican: cachedJuanVoice?.lang.toLowerCase().replace('_', '-').includes('mx') || false };
+    return {
+      voice: null,
+      lang: 'es-MX',
+      effectivePitch: 1.0,
+      effectiveRate: 0.92,
+      targetGender: 'male',
+      matchedGender: 'male',
+      voiceName: 'Fallback'
+    };
   }
 
+  const normId = (personaId || 'juan').toLowerCase();
+  const cacheKey = normId;
+  if (voiceCache.has(cacheKey)) {
+    return voiceCache.get(cacheKey)!;
+  }
+
+  const voices = window.speechSynthesis.getVoices();
   const spanishVoices = voices.filter(v => {
     const lang = v.lang.toLowerCase().replace('_', '-');
     return lang.startsWith('es');
   });
 
-  const maleKeywords = [
-    'jorge', 'julio', 'david', 'pablo', 'enrique', 'angel', 'daniel', 'javier', 
-    'jesus', 'jésus', 'diego', 'alejandro', 'carlos', 'miguel', 'juan', 
-    'manuel', 'pedro', 'alberto', 'francisco', 'jose', 'josé', 'male', 'guy', 'boy', 'man', 'masculino'
-  ];
+  // Persona Target Specifications
+  let targetGender: 'male' | 'female' = 'male';
+  let targetLang = 'es-MX';
+  let preferredDialects: string[] = ['es-mx', 'mex'];
+  let regionalBackup: string[] = ['es-419', 'es-us', 'es-co', 'es-ar'];
+  let basePitch = 0.90;
+  let baseRate = 0.92;
+  let fallbackPitchIfOpposite = 0.80; // Used to shift female voices into masculine register if no male voice exists
 
-  const femaleKeywords = [
-    'monica', 'paulina', 'helena', 'sabina', 'laura', 'carmen', 'lucia', 'lucía',
-    'maria', 'maría', 'marisol', 'sofia', 'sofía', 'paola', 'yolanda', 'amira', 
-    'dalia', 'sabrina', 'zari', 'lupita', 'ximena', 'female', 'woman', 'girl', 'femenino'
-  ];
+  if (normId === 'juan') {
+    targetGender = 'male';
+    targetLang = 'es-MX';
+    preferredDialects = ['es-mx', 'mex'];
+    regionalBackup = ['es-419', 'es-us', 'es-co', 'es-ar'];
+    basePitch = 0.90; // Natural warm Mexican male pitch
+    baseRate = 0.92;
+    fallbackPitchIfOpposite = 0.80; // Deep resonant male drop
+  } else if (normId === 'mateo' || normId === 'teacher' || normId === 'grammar_doctor' || normId === 'dele_examiner') {
+    targetGender = 'male';
+    targetLang = 'es-ES';
+    preferredDialects = ['es-es', 'spain'];
+    regionalBackup = ['es-419', 'es-mx'];
+    basePitch = 0.82; // Deep, professorial, authoritative male voice
+    baseRate = 0.88; // Deliberate pedagogical pace
+    fallbackPitchIfOpposite = 0.74; // Deep masculine baritone shift
+  } else if (normId === 'sofia' || normId === 'friend') {
+    targetGender = 'female';
+    targetLang = 'es-ES';
+    preferredDialects = ['es-es', 'spain'];
+    regionalBackup = ['es-419', 'es-mx'];
+    basePitch = 1.08; // Bright, natural conversational Madrid female
+    baseRate = 0.98; // Natural, lively pace
+    fallbackPitchIfOpposite = 1.15; // Feminine pitch shift
+  } else if (normId === 'camila' || normId === 'elena') {
+    targetGender = 'female';
+    targetLang = 'es-CO';
+    preferredDialects = ['es-co', 'colombia'];
+    regionalBackup = ['es-419', 'es-us', 'es-mx'];
+    basePitch = 1.16; // Sweet, warm, melodious Paisa/Colombian female tone
+    baseRate = 0.94;
+    fallbackPitchIfOpposite = 1.18; // Melodious feminine pitch shift
+  }
 
-  // 1. Search for Mexican Spanish (es-MX) that is explicitly male (e.g., Jorge, Gerardo, Raul, etc.)
-  let match = spanishVoices.find(v => {
-    const lang = v.lang.toLowerCase().replace('_', '-');
-    const name = v.name.toLowerCase();
-    const isMx = lang === 'es-mx' || lang.includes('mex') || name.includes('mexico') || name.includes('mexican');
-    const isMale = maleKeywords.some(kw => name.includes(kw)) || (!femaleKeywords.some(kw => name.includes(kw)) && name.includes('male'));
-    return isMx && isMale;
-  });
+  // 1. Search for Spanish voices of the exact TARGET GENDER
+  const genderMatchedVoices = spanishVoices.filter(v => detectVoiceGender(v) === targetGender);
 
-  // 2. Search for any Mexican Spanish (es-MX) voice including female voices (like Lupita, Sabina, Yolanda)
-  if (!match) {
-    match = spanishVoices.find(v => {
+  let chosenVoice: SpeechSynthesisVoice | null = null;
+  let matchedGender: 'male' | 'female' = targetGender;
+
+  if (genderMatchedVoices.length > 0) {
+    // 1a. Try preferred dialects first (e.g. Mexico for Juan, Spain for Mateo, Colombia for Camila)
+    chosenVoice = genderMatchedVoices.find(v => {
       const lang = v.lang.toLowerCase().replace('_', '-');
       const name = v.name.toLowerCase();
-      return lang === 'es-mx' || lang.includes('mex') || name.includes('mexico') || name.includes('mexican');
-    });
+      return preferredDialects.some(d => lang.includes(d) || name.includes(d));
+    }) || null;
+
+    // 1b. Try regional backups (e.g. Latin American voices for Juan/Camila)
+    if (!chosenVoice && regionalBackup.length > 0) {
+      chosenVoice = genderMatchedVoices.find(v => {
+        const lang = v.lang.toLowerCase().replace('_', '-');
+        const name = v.name.toLowerCase();
+        return regionalBackup.some(b => lang.includes(b) || name.includes(b));
+      }) || null;
+    }
+
+    // 1c. Pick any voice that matches the target gender
+    if (!chosenVoice) {
+      chosenVoice = genderMatchedVoices[0];
+    }
   }
 
-  // 3. Search for any Latin American Spanish (es-419, es-US, etc.) that is explicitly male
-  if (!match) {
-    match = spanishVoices.find(v => {
+  // 2. If the user's device has NO voice of the target gender (e.g. only 1 generic female voice installed):
+  // We fall back to the available Spanish voice and apply pitch shifting so it sounds like the requested gender!
+  if (!chosenVoice && spanishVoices.length > 0) {
+    // Try preferred dialect in available voices
+    chosenVoice = spanishVoices.find(v => {
       const lang = v.lang.toLowerCase().replace('_', '-');
       const name = v.name.toLowerCase();
-      const isLatam = !lang.includes('es-es') && !lang.includes('es-spain');
-      const isMale = maleKeywords.some(kw => name.includes(kw));
-      return isLatam && isMale;
-    });
+      return preferredDialects.some(d => lang.includes(d) || name.includes(d));
+    }) || spanishVoices[0];
+
+    matchedGender = detectVoiceGender(chosenVoice);
   }
 
-  // 4. Search for any other Latin American Spanish
-  if (!match) {
-    match = spanishVoices.find(v => {
-      const lang = v.lang.toLowerCase().replace('_', '-');
-      return !lang.includes('es-es') && !lang.includes('es-spain');
-    });
+  // Determine effective pitch
+  const effectivePitch = chosenVoice && matchedGender === targetGender
+    ? basePitch
+    : fallbackPitchIfOpposite;
+
+  const result: VoiceResolutionResult = {
+    voice: chosenVoice,
+    lang: chosenVoice ? chosenVoice.lang : targetLang,
+    effectivePitch,
+    effectiveRate: baseRate,
+    targetGender,
+    matchedGender,
+    voiceName: chosenVoice ? chosenVoice.name : 'Default Spanish'
+  };
+
+  if (chosenVoice) {
+    voiceCache.set(cacheKey, result);
   }
 
-  // 5. Search for any Spanish (es-ES, etc.) that is explicitly male
-  if (!match) {
-    match = spanishVoices.find(v => {
-      const name = v.name.toLowerCase();
-      return maleKeywords.some(kw => name.includes(kw));
-    });
-  }
-
-  // 6. Search for any Spanish voice
-  if (!match) {
-    match = spanishVoices.find(v => {
-      return true;
-    });
-  }
-
-  // 7. Ultimate fallback
-  if (!match && spanishVoices.length > 0) {
-    match = spanishVoices[0];
-  }
-
-  if (match) {
-    cachedJuanVoice = match;
-  }
-
-  const isMexican = match ? (match.lang.toLowerCase().replace('_', '-').includes('mx')) : false;
-  return { voice: match || null, isMexican };
+  return result;
 }
 
-// Initialize onvoiceschanged hook for persistence
+// Hook into speech synthesis voice loading
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => {
-    resolveAndCacheVoice();
+    clearVoiceCache();
   };
-  resolveAndCacheVoice();
 }
 
-function getJuanSpanishVoice(voices: SpeechSynthesisVoice[]): { voice: SpeechSynthesisVoice | null; isMexican: boolean } {
-  return resolveAndCacheVoice();
-}
-
-export function speakSpanish(text: string, rate: number = 0.9, pitch: number = 1.0) {
+/**
+ * Speaks Spanish with persona-specific voice selection and acoustic profiling:
+ * - Juan: Male Mexican Spanish
+ * - Sofía: Female Spain Spanish
+ * - Mateo: Male Castilian Spanish (Professor)
+ * - Camila: Female Colombian Spanish
+ */
+export function speakSpanishPersona(
+  text: string,
+  personaId: PersonaVoiceId = 'juan',
+  speedModifier: number = 1.0
+) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     console.warn('Speech synthesis not supported in this browser.');
     return;
@@ -152,17 +274,46 @@ export function speakSpanish(text: string, rate: number = 0.9, pitch: number = 1
 
   const cleanText = text.replace(/[*_#`~]/g, '');
   const utterance = new SpeechSynthesisUtterance(cleanText);
-  
-  const voices = window.speechSynthesis.getVoices();
-  const { voice: esVoice, isMexican } = getJuanSpanishVoice(voices);
+  const profile = getPersonaVoiceProfile(personaId);
 
-  // Default to Mexican Spanish language tag
-  utterance.lang = isMexican ? 'es-MX' : (esVoice ? esVoice.lang : 'es-MX');
+  utterance.lang = profile.lang;
+  utterance.pitch = profile.effectivePitch;
+  utterance.rate = Math.max(0.6, Math.min(1.4, profile.effectiveRate * speedModifier));
+
+  if (profile.voice) {
+    utterance.voice = profile.voice;
+  }
+
+  currentUtterance = utterance;
+  window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Backwards-compatible speakSpanish function supporting optional personaId
+ */
+export function speakSpanish(
+  text: string,
+  rate: number = 0.9,
+  pitch?: number,
+  personaId: PersonaVoiceId = 'juan'
+) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    console.warn('Speech synthesis not supported in this browser.');
+    return;
+  }
+
+  cancelSpanishSpeech();
+
+  const cleanText = text.replace(/[*_#`~]/g, '');
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  const profile = getPersonaVoiceProfile(personaId);
+
+  utterance.lang = profile.lang;
   utterance.rate = rate;
-  utterance.pitch = pitch; // Clean, natural male pitch
+  utterance.pitch = pitch !== undefined ? pitch : profile.effectivePitch;
 
-  if (esVoice) {
-    utterance.voice = esVoice;
+  if (profile.voice) {
+    utterance.voice = profile.voice;
   }
 
   currentUtterance = utterance;
@@ -174,7 +325,8 @@ export function speakSpanish(text: string, rate: number = 0.9, pitch: number = 1
  */
 export function speakSpanishWithHighlight(
   text: string,
-  options: SpeechHighlightOptions = {}
+  options: SpeechHighlightOptions = {},
+  personaId: PersonaVoiceId = 'juan'
 ) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     console.warn('Speech synthesis not supported in this browser.');
@@ -184,22 +336,19 @@ export function speakSpanishWithHighlight(
 
   cancelSpanishSpeech();
 
-  const rate = options.rate ?? 0.9;
-  const pitch = options.pitch ?? 1.0;
+  const profile = getPersonaVoiceProfile(personaId);
+  const rate = options.rate ?? profile.effectiveRate;
+  const pitch = options.pitch ?? profile.effectivePitch;
   const cleanText = text.replace(/[*_#`~]/g, '');
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
-  
-  const voices = window.speechSynthesis.getVoices();
-  const { voice: esVoice, isMexican } = getJuanSpanishVoice(voices);
 
-  // Default to Mexican Spanish language tag
-  utterance.lang = isMexican ? 'es-MX' : (esVoice ? esVoice.lang : 'es-MX');
+  utterance.lang = profile.lang;
   utterance.rate = rate;
   utterance.pitch = pitch;
 
-  if (esVoice) {
-    utterance.voice = esVoice;
+  if (profile.voice) {
+    utterance.voice = profile.voice;
   }
 
   let receivedNativeBoundary = false;

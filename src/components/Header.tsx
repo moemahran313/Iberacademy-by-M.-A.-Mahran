@@ -46,6 +46,7 @@ interface HeaderProps {
   onOpenAuthModal?: (mode?: 'signin' | 'signup') => void;
   onLogout: () => void;
   isAuthLoading?: boolean;
+  navigation?: React.ReactNode;
 }
 
 const HeaderComponent: React.FC<HeaderProps> = ({
@@ -57,7 +58,8 @@ const HeaderComponent: React.FC<HeaderProps> = ({
   authUser,
   onOpenAuthModal,
   onLogout,
-  isAuthLoading = false
+  isAuthLoading = false,
+  navigation
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -223,73 +225,55 @@ const HeaderComponent: React.FC<HeaderProps> = ({
             </button>
 
             {/* Streamlined Desktop Navigation System */}
-            <nav className="hidden md:flex items-center space-x-1" ref={navDropdownRef} aria-label="System Navigation">
-              
-              {/* 1. Today Direct Hub */}
-              <button
-                onClick={() => handleNavClick('dashboard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'dashboard'
-                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                }`}
-              >
-                <Compass className="w-3.5 h-3.5" />
-                <span>Today</span>
-              </button>
+            {navigation ? (
+              navigation
+            ) : (
+              <nav className="hidden md:flex items-center space-x-1" ref={navDropdownRef} aria-label="AppContent navigation" id="appcontent-navigation">
+                {[
+                  { id: 'dashboard', label_en: 'Today', label_ar: 'الرئيسية', icon: Compass, isActive: activeTab === 'dashboard' },
+                  { id: 'stories', label_en: 'Immersion', label_ar: 'القصص', icon: Sparkles, isActive: activeTab === 'stories' || activeTab === 'videos' },
+                  { id: 'workshop', label_en: 'Workshop', label_ar: 'الورشة', icon: GraduationCap, isActive: ['workshop', 'vocabulary', 'verbs', 'grammar', 'tutor', 'shadowing', 'linglooper', 'a0_foundation'].includes(activeTab) },
+                  { id: 'path', label_en: 'Roadmap', label_ar: 'المسار', icon: Layers, isActive: activeTab === 'path' || activeTab === 'planner' },
+                  { id: 'profile', label_en: 'Profile', label_ar: 'الملف', icon: UserIcon, isActive: activeTab === 'profile' }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = tab.isActive;
+                  return (
+                    <motion.button
+                      key={tab.id}
+                      id={`header-nav-tab-${tab.id}`}
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 450, damping: 26 }}
+                      onClick={() => handleNavClick(tab.id)}
+                      className={`group relative flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer rounded-xl select-none ${
+                        isActive
+                          ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+                          : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {/* Soft background glow on hover */}
+                      <span
+                        className="absolute inset-0 rounded-xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 dark:from-amber-400/15 dark:to-amber-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[0_0_18px_rgba(245,158,11,0.2)] border border-amber-500/20 dark:border-amber-400/20"
+                      />
 
-              {/* 2. Immersion Hub */}
-              <button
-                onClick={() => handleNavClick('stories')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'stories' || activeTab === 'videos'
-                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Immersion</span>
-              </button>
-
-              {/* 3. Skill Workshop Hub */}
-              <button
-                onClick={() => handleNavClick('workshop')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'workshop' || activeTab === 'vocabulary' || activeTab === 'verbs' || activeTab === 'grammar' || activeTab === 'tutor' || activeTab === 'shadowing' || activeTab === 'linglooper' || activeTab === 'a0_foundation'
-                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                }`}
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Workshop</span>
-              </button>
-
-              {/* 4. CEFR Roadmap Hub */}
-              <button
-                onClick={() => handleNavClick('path')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'path' || activeTab === 'planner'
-                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Roadmap</span>
-              </button>
-
-              {/* 5. Profile Direct Tab */}
-              <button
-                onClick={() => handleNavClick('profile')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'profile'
-                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-2xs'
-                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-900'
-                }`}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>Profile</span>
-              </button>
-            </nav>
+                      <Icon className="w-3.5 h-3.5 relative z-10 transition-transform duration-200 group-hover:scale-110" />
+                      <span className={`relative z-10 ${userProgress.settings.nativeLanguage === 'ar' ? 'font-arabic' : ''}`}>
+                        {userProgress.settings.nativeLanguage === 'ar' ? tab.label_ar : tab.label_en}
+                      </span>
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTabUnderline"
+                          className="absolute bottom-0 left-2 right-2 h-[2.5px] bg-amber-500 dark:bg-amber-400 rounded-full shadow-[0_1px_8px_rgba(245,158,11,0.45)] z-10"
+                          transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                        />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </nav>
+            )}
 
             {/* Streak, XP & Controls */}
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -784,13 +768,21 @@ const HeaderComponent: React.FC<HeaderProps> = ({
           return (
             <button
               key={tab.id}
+              id={`mobile-nav-tab-${tab.id}`}
               onClick={() => handleNavClick(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer min-h-[44px] ${
+              className={`relative flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer min-h-[44px] ${
                 isActive
                   ? 'text-amber-600 dark:text-amber-400 font-extrabold'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-medium'
               }`}
             >
+              {isActive && (
+                <motion.div
+                  layoutId="mobileActiveTabUnderline"
+                  className="absolute top-0 left-3 right-3 h-[2.5px] bg-amber-500 dark:bg-amber-400 rounded-full shadow-xs shadow-amber-500/40"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
               <div className={`p-1.5 rounded-xl transition ${isActive ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : ''}`}>
                 <Icon className="w-5 h-5" />
               </div>

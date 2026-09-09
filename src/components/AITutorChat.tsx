@@ -1,376 +1,450 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Send,
   Volume2,
   VolumeX,
   Sparkles,
-  User,
   RotateCcw,
   Mic,
   MicOff,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  BookOpen,
-  GraduationCap,
-  Headphones,
-  Radio,
+  Trophy,
+  Flame,
+  Languages,
+  Plus,
   Check,
-  Target,
+  ChevronDown,
+  ChevronUp,
+  Headphones,
+  Zap,
+  Info,
+  X,
+  Star,
   Award,
-  Briefcase,
-  Users,
-  Plane,
-  Play,
-  ArrowRight
+  Target,
+  Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
 import { UserProgress, TutorPersona } from '../types';
-import { speakSpanish, soundEffects } from '../utils/audio';
+import { speakSpanishPersona, cancelSpanishSpeech, soundEffects } from '../utils/audio';
 import { useApp } from '../context/AppContext';
-import { GRAMMAR_ENCYCLOPEDIA } from '../data/grammarEncyclopedia';
+import {
+  ChatMessage,
+  LINGOPAL_SCENARIOS,
+  ScenarioDefinition,
+  analyzeUserSpanishInput,
+  streamTutorMessage
+} from '../services/aiTutorService';
 
 interface AITutorChatProps {
   userProgress: UserProgress;
   setUserProgress: React.Dispatch<React.SetStateAction<UserProgress>>;
 }
 
-export interface VocabularyItem {
-  word: string;
-  en: string;
-  ar: string;
-  contextSentence?: string;
+interface PersonaInfo {
+  id: TutorPersona;
+  name: string;
+  country: string;
+  flag: string;
+  gender: 'male' | 'female';
+  voiceTag: string;
+  role: string;
+  accent: string;
+  sampleGreeting: string;
+  avatarBg: string;
+  accentColor: string;
 }
 
-export interface ChatMessage {
+const PERSONAS: PersonaInfo[] = [
+  {
+    id: 'juan',
+    name: 'Juan',
+    country: 'Oaxaca, Mexico',
+    flag: '🇲🇽',
+    gender: 'male',
+    voiceTag: '👨 Baritone Male Voice (Mex)',
+    role: 'Warm & Casual Local',
+    accent: 'Mexican Spanish (carro, platicar, ¿qué onda?)',
+    sampleGreeting: '¡Hola, qué onda! Soy Juan de Oaxaca. ¿Listo para platicar un rato?',
+    avatarBg: 'from-amber-500 to-orange-600',
+    accentColor: 'text-amber-500'
+  },
+  {
+    id: 'sofia',
+    name: 'Sofía',
+    country: 'Madrid, Spain',
+    flag: '🇪🇸',
+    gender: 'female',
+    voiceTag: '👩 Vibrant Female Voice (Mad)',
+    role: 'Lively Modern Speaker',
+    accent: 'Castilian Iberian (guay, qué tal, de tapas)',
+    sampleGreeting: '¡Hola! Soy Sofía de Madrid. ¡Qué ilusión charlar y practicar juntos hoy!',
+    avatarBg: 'from-rose-500 to-red-600',
+    accentColor: 'text-rose-500'
+  },
+  {
+    id: 'mateo',
+    name: 'Prof. Mateo',
+    country: 'Salamanca, Spain',
+    flag: '👨‍🏫',
+    gender: 'male',
+    voiceTag: '👨 Professorial Male Voice (Cast)',
+    role: 'Encouraging Mentor',
+    accent: 'Standard Academic Castilian (CEFR Method)',
+    sampleGreeting: 'Saludos cordiales. Soy el Profesor Mateo. Iniciemos nuestra sesión comunicativa.',
+    avatarBg: 'from-blue-600 to-indigo-700',
+    accentColor: 'text-blue-500'
+  },
+  {
+    id: 'camila',
+    name: 'Camila',
+    country: 'Medellín, Colombia',
+    flag: '🇨🇴',
+    gender: 'female',
+    voiceTag: '👩 Melodic Female Voice (Col)',
+    role: 'Sweet Coffee Enthusiast',
+    accent: 'Paisa Colombian (chévere, con gusto, súper bien)',
+    sampleGreeting: '¡Hola! Soy Camila de Medellín. ¡Qué chévere tenerte aquí practicando español!',
+    avatarBg: 'from-emerald-500 to-teal-600',
+    accentColor: 'text-emerald-500'
+  }
+];
+
+// Word dictionary translation popover state
+interface SelectedWordInfo {
+  word: string;
+  cleanWord: string;
+  en: string;
+  ar: string;
+  x: number;
+  y: number;
+}
+
+// Conversation Quest Interface
+interface ConversationQuest {
   id: string;
-  sender: 'user' | 'ai';
-  spanishText: string;
-  englishExplanation?: string;
-  arabicExplanation?: string;
-  phase?: string;
-  corrections?: string[];
-  vocabulary?: VocabularyItem[];
-  followUpQuestions?: string[];
-  audioAutoPlayed?: boolean;
+  title_es: string;
+  title_en: string;
+  xpReward: number;
+  completed: boolean;
+  checker: (text: string, turnCount: number, scenarioId: string) => boolean;
 }
 
 export const AITutorChat: React.FC<AITutorChatProps> = ({
   userProgress,
   setUserProgress
 }) => {
-  const { grammarPracticeTopic, setGrammarPracticeTopic } = useApp();
-  const [isMobileCheatSheetOpen, setIsMobileCheatSheetOpen] = useState(false);
+  const { grammarPracticeTopic } = useApp();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'mateo-init-1',
-      sender: 'ai',
-      spanishText: '¡Hola! Soy el Profesor Mateo, pedagogo y lingüista certificado. Mi misión es llevarte sistemáticamente desde tu nivel actual hasta una fluidez real B2+ usando el método comunicativo y práctica deliberada de 5 fases.\n\nPara iniciar nuestro diagnóstico inicial:\n1. ¿Cuál es tu nivel actual de español (Principiante A0, A1, A2, B1 o B2)?\n2. ¿Cuál es tu objetivo principal (Fluidez conversacional, viajes/trabajo, o examen DELE)?\n3. ¿Cuántos minutos deseas dedicar por sesión?',
-      englishExplanation: 'Hello! I am Profesor Mateo, an elite certified Spanish pedagogue and linguist. My mission is to systematically guide you to genuine CEFR B2+ conversational and writing fluency using comprehensible input and a 5-Phase deliberate practice framework.\n\nTo calibrate your diagnostic kickoff:\n1. What is your current Spanish level (Complete beginner A0, A1, A2, B1, or B2)?\n2. What is your primary learning goal (Conversational fluency, travel/work, or DELE exam prep)?\n3. How many minutes do you want to dedicate per session?',
-      arabicExplanation: 'مرحباً! أنا البروفيسور ماتيو، خبير تربوي ولغوي متخصص في تدريس الإسبانية. مهمتي هي نقلك بشكل منهجي وتدريجي من مستواك الحالي إلى طلاقة حقيقية (B2+) باستخدام أسلوب الإدخال المفهوم ونظام التدريب المدروس من 5 مراحل.\n\nللبدء في التقييم الأولي:\n1. ما هو مستواك الحالي (مبتدئ A0، A1، A2، B1، أو B2)؟\n2. ما هو هدفك الأساسي (الطلاقة في المحادثة، السفر/العمل، أم اختبار DELE)؟\n3. كم دقيقة تود تخصيصها لكل جلسة؟',
-      phase: 'Diagnostic Kickoff',
-      vocabulary: [
-        { word: 'pedagogo', en: 'pedagogue / master teacher', ar: 'خبير تربوي / معلم', contextSentence: 'Soy el Profesor Mateo, pedagogo y lingüista.' },
-        { word: 'fluidez', en: 'fluency', ar: 'طلاقة', contextSentence: 'Te llevaré a una fluidez real B2+.' }
-      ],
-      followUpQuestions: [
-        'Soy principiante A0, quiero fluidez conversacional y 20 min/día.',
-        'Tengo nivel A2, quiero dominar los pasados (indefinido vs imperfecto).',
-        'Nivel B1, quiero preparar el examen DELE y perfeccionar el subjuntivo.',
-        'Quiero practicar una conversación en un restaurante en Madrid.'
-      ]
-    }
-  ]);
+  // Selected persona & scenario
+  const [selectedPersona, setSelectedPersona] = useState<TutorPersona>('juan');
+  const [currentScenario, setCurrentScenario] = useState<ScenarioDefinition>(LINGOPAL_SCENARIOS[0]);
 
+  // Messages & conversation turn tracking
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<TutorPersona>('teacher');
-  const [selectedTopic, setSelectedTopic] = useState('5_phase_lesson');
+  const [isStreaming, setIsStreaming] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [currentlyPlayingId, setCurrentlyPlayingId] = useState<string | null>(null);
-  const [autoPlayTTS, setAutoPlayTTS] = useState(true);
 
-  // Mode & Skill Challenge State
-  const [activeTab, setActiveTab] = useState<'tutor' | 'skill_challenge'>('tutor');
-  const [challengeDomain, setChallengeDomain] = useState<'professional' | 'social' | 'travel'>('professional');
-  const [currentScenario, setCurrentScenario] = useState<any>(null);
-  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false);
-  const [challengeUserText, setChallengeUserText] = useState('');
-  const [isEvaluatingChallenge, setIsEvaluatingChallenge] = useState(false);
-  const [challengeResult, setChallengeResult] = useState<any>(null);
+  // Audio settings
+  const [audioSpeed, setAudioSpeed] = useState<0.8 | 1.0>(1.0);
+  const [autoPlayAudio, setAutoPlayAudio] = useState(true);
 
-  // Fetch or generate a situational B2 role-play challenge scenario
-  const handleLoadChallengeScenario = async (domain = challengeDomain) => {
-    setChallengeDomain(domain);
-    setIsGeneratingScenario(true);
-    setChallengeResult(null);
-    setChallengeUserText('');
+  // LingoPal Gamification stats for this session
+  const [sessionTurnCount, setSessionTurnCount] = useState(0);
+  const [sessionXpEarned, setSessionXpEarned] = useState(0);
+  const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
 
-    try {
-      const res = await fetch('/api/ai/skill-challenge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generate_scenario',
-          domain,
-          userLevel: userProgress.currentLevel || 'B2',
-          nativeLang: userProgress.settings.explanationLanguage || 'en'
-        })
-      });
-      const data = await res.json();
-      if (data.scenario) {
-        setCurrentScenario(data.scenario);
-        if (autoPlayTTS && data.scenario.audioText) {
-          speakSpanish(data.scenario.audioText, userProgress.settings.audioSpeed);
-        }
+  // Dynamic suggested quick-replies (LingoPal smart chips)
+  const [suggestedReplies, setSuggestedReplies] = useState<{ es: string; en: string }[]>([]);
+
+  // Interactive Tap-to-Translate popover
+  const [selectedWord, setSelectedWord] = useState<SelectedWordInfo | null>(null);
+  const [savedWordToast, setSavedWordToast] = useState<string | null>(null);
+  const [questToast, setQuestToast] = useState<string | null>(null);
+
+  // Topic mastery simulation storage
+  const [topicMastery, setTopicMastery] = useState<Record<string, number>>({
+    cafe: 80,
+    friends: 65,
+    tacos: 45,
+    hotel: 30,
+    job: 20
+  });
+
+  // Conversation Quests
+  const [quests, setQuests] = useState<ConversationQuest[]>([
+    {
+      id: 'quest_greet',
+      title_es: 'Saludar con Cortesía',
+      title_en: 'Greet naturally (hola, buenas, qué tal)',
+      xpReward: 15,
+      completed: false,
+      checker: text => /hola|buen(as|os)|saludos|qué tal|onda/i.test(text)
+    },
+    {
+      id: 'quest_question',
+      title_es: 'Hacer una Pregunta',
+      title_en: 'Ask a question using ¿ or ?, qué, cómo...',
+      xpReward: 20,
+      completed: false,
+      checker: text => /[?¿]|(qué|cómo|cuándo|dónde|por qué|cuánto)/i.test(text)
+    },
+    {
+      id: 'quest_vocab',
+      title_es: 'Vocabulario Contextual',
+      title_en: 'Use scenario-relevant vocabulary',
+      xpReward: 25,
+      completed: false,
+      checker: (text, _, scenarioId) => {
+        if (scenarioId === 'cafe') return /café|leche|tostada|pedir|tomar|desayunar|azúcar/i.test(text);
+        if (scenarioId === 'tacos') return /taco|pastor|birria|salsa|limón|ordenar|puesto/i.test(text);
+        if (scenarioId === 'friends') return /amigo|gusto|música|vivo|estudio|español|país/i.test(text);
+        return text.split(' ').length >= 3;
       }
-    } catch (e) {
-      console.error('Error generating challenge scenario:', e);
-    } finally {
-      setIsGeneratingScenario(false);
+    },
+    {
+      id: 'quest_turns',
+      title_es: 'Racha de Diálogo',
+      title_en: 'Complete 4 back-and-forth turns',
+      xpReward: 35,
+      completed: false,
+      checker: (_, turns) => turns >= 4
     }
-  };
-
-  // Submit learner response for B2 multi-skill AI evaluation
-  const handleSubmitChallengeResponse = async () => {
-    if (!challengeUserText.trim() || !currentScenario || isEvaluatingChallenge) return;
-    setIsEvaluatingChallenge(true);
-    soundEffects.playPop();
-
-    try {
-      const res = await fetch('/api/ai/skill-challenge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'evaluate_response',
-          scenario: currentScenario,
-          userResponse: challengeUserText,
-          userLevel: userProgress.currentLevel || 'B2',
-          nativeLang: userProgress.settings.explanationLanguage || 'en'
-        })
-      });
-      const data = await res.json();
-      setChallengeResult(data);
-
-      soundEffects.playLevelUp();
-      const missedVocab = data.vocabUsageCheck?.filter((v: any) => !v.used).map((v: any) => v.word) || [];
-      const newEval = {
-        id: `eval-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        domain: challengeDomain,
-        title: currentScenario.title_es || 'B2 Challenge',
-        overallScore: data.overallScore || 75,
-        listeningRelevanceScore: data.listeningRelevanceScore || 75,
-        writingFluencyScore: data.writingFluencyScore || 75,
-        vocabularyUsageScore: data.vocabularyUsageScore || 75,
-        weaknessCategory: data.vocabularyUsageScore < 75 ? 'Target B2 Vocabulary Application' : data.writingFluencyScore < 75 ? 'Grammatical Fluency & Connectors' : 'Listening Comprehension Nuance',
-        missedVocabulary: missedVocab,
-        feedback_es: data.feedback_es || '',
-        feedback_en: data.feedback_en || ''
-      };
-
-      setUserProgress(prev => ({
-        ...prev,
-        xp: (prev.xp || 0) + (data.xpEarned || 25),
-        roleplayEvaluations: [newEval, ...(prev.roleplayEvaluations || [])].slice(0, 10)
-      }));
-    } catch (e) {
-      console.error('Error evaluating challenge response:', e);
-    } finally {
-      setIsEvaluatingChallenge(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'skill_challenge' && !currentScenario) {
-      handleLoadChallengeScenario('professional');
-    }
-  }, [activeTab]);
+  ]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  const personas = [
-    { id: 'teacher' as TutorPersona, name: 'Profesor Mateo', role: 'Elite Pedagogue & Linguist (Mastery Method)', icon: '👨‍🏫' },
-    { id: 'friend' as TutorPersona, name: 'Sofía (Madrid)', role: 'Native Conversationalist (Colloquial)', icon: '👩' },
-    { id: 'grammar_doctor' as TutorPersona, name: 'Dr. Sintaxis', role: 'Deep Structural & Linguistic Doctor', icon: '🔬' },
-    { id: 'dele_examiner' as TutorPersona, name: 'Examinador DELE', role: 'Official Instituto Cervantes Rater', icon: '📋' }
-  ];
+  // Gamification Level calculations
+  const userXp = userProgress.xp || 0;
+  const currentLevel = Math.floor(userXp / 250) + 1;
+  const currentLevelProgress = userXp % 250;
+  const progressPercent = Math.min(100, Math.round((currentLevelProgress / 250) * 100));
 
-  const quickLessonTopics = [
-    { id: '5_phase_lesson', label: '🚀 Launch 5-Phase Lesson', prompt: 'Profesor Mateo, por favor inicia una lección estructurada de 5 fases para mi nivel actual.' },
-    { id: 'past_tenses', label: '⏳ Pretérito vs Imperfecto', prompt: 'Quiero dominar la diferencia entre Pretérito Indefinido y Pretérito Imperfecto con la regla de 5 fases.' },
-    { id: 'por_para', label: '🎯 Por vs Para Mastery', prompt: 'Explícame y ponme a prueba con Por vs Para usando ejercicios de producción activa.' },
-    { id: 'subjunctive', label: '✨ El Subjuntivo en Deseos', prompt: 'Enséñame el Subjuntivo presente en cláusulas de deseo y duda paso a paso.' },
-    { id: 'restaurant_roleplay', label: '🥘 Roleplay: Restaurante', prompt: 'Hagamos una inmersión comunicativa pidiendo tapas en un restaurante en Madrid. Corrige mis errores.' }
-  ];
+  const rankTitle = useMemo(() => {
+    if (currentLevel >= 6) return 'Maestro del Diálogo 👑';
+    if (currentLevel >= 4) return 'Políglota Ágil 💎';
+    if (currentLevel >= 3) return 'Conversador Fluido 🥇';
+    if (currentLevel >= 2) return 'Aventurero Activo 🥈';
+    return 'Novato Curioso 🥉';
+  }, [currentLevel]);
 
-  // Auto-scroll chat container to bottom (inner container only, no window jump)
+  // Initialize or reset scenario conversation
+  const initScenario = (scenario: ScenarioDefinition, persona: TutorPersona) => {
+    cancelSpanishSpeech();
+    const personaKey = (persona in scenario.initialPrompt ? persona : 'juan') as TutorPersona;
+    const promptData = scenario.initialPrompt[personaKey] || scenario.initialPrompt.juan;
+
+    const initialMsg: ChatMessage = {
+      id: `init-${Date.now()}`,
+      sender: 'ai',
+      spanishText: promptData.es,
+      englishExplanation: promptData.en,
+      arabicExplanation: promptData.ar,
+      phase: 'Greeting Hook',
+      followUpQuestions: scenario.suggestedReplies.map(r => `${r.es} (${r.en})`)
+    };
+
+    setMessages([initialMsg]);
+    setSuggestedReplies(scenario.suggestedReplies);
+    setSessionTurnCount(0);
+    setSessionCompleted(false);
+    setShowCelebrationModal(false);
+
+    // Reset quests completion for fresh scenario practice
+    setQuests(prev => prev.map(q => ({ ...q, completed: false })));
+
+    if (autoPlayAudio) {
+      handleSpeak(initialMsg.id, promptData.es, personaKey);
+    }
+  };
+
+  // Initialize on mount
+  useEffect(() => {
+    initScenario(currentScenario, selectedPersona);
+  }, []);
+
+  // When active grammar practice topic changes from outside (e.g. from Grammar Encyclopedia)
+  useEffect(() => {
+    if (grammarPracticeTopic) {
+      const topicMsg: ChatMessage = {
+        id: `topic-${Date.now()}`,
+        sender: 'ai',
+        spanishText: `¡Hola! Vamos a practicar la regla: "${grammarPracticeTopic.title_es}". Fórmula clave: ${grammarPracticeTopic.formula || 'Práctica activa'}. ¿Listo para tu primera oración?`,
+        englishExplanation: `Hi! Let's practice the rule: "${grammarPracticeTopic.title_es}". Memory Anchor: ${grammarPracticeTopic.formula || 'Active practice'}. Ready for your first sentence?`,
+        arabicExplanation: `مرحباً! لنتدرب على قاعدة: "${grammarPracticeTopic.title_es}". صيغة الذاكرة: ${grammarPracticeTopic.formula || 'تدريب نشط'}. هل أنت مستعد لجملتك الأولى؟`,
+        followUpQuestions: [
+          `Dame un ejemplo de ${grammarPracticeTopic.title_es}. (Give me an example.)`,
+          `Quiero traducir una oración de práctica. (I want to translate a practice sentence.)`,
+          `Explícame la regla paso a paso. (Explain the rule step by step.)`
+        ]
+      };
+      setMessages([topicMsg]);
+      setSuggestedReplies([
+        { es: `Dame un reto con ${grammarPracticeTopic.title_es}.`, en: 'Give me a challenge with this rule.' },
+        { es: `Escribiré una frase para que me corrijas.`, en: 'I will write a sentence for you to correct.' },
+        { es: `¿Cuál es el error más común?`, en: 'What is the most common mistake?' }
+      ]);
+    }
+  }, [grammarPracticeTopic]);
+
+  // Auto-scroll chat smoothly
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
-  }, [messages, isLoading, isListening]);
+  }, [messages, isLoading, isStreaming, suggestedReplies]);
 
-  // Handle custom grammar lesson practice session trigger
-  useEffect(() => {
-    if (grammarPracticeTopic) {
-      setMessages([
-        {
-          id: `practice-${Date.now()}`,
-          sender: 'ai',
-          spanishText: `¡Hola! He preparado una sesión de práctica especial para ti sobre la regla: "${grammarPracticeTopic.title_es}" (${grammarPracticeTopic.title_en}).\n\n🧠 Fórmula clave: ${grammarPracticeTopic.formula || 'Práctica comunicativa'}.\n\nIntenta escribir una frase en español usando esta regla, o pídeme un reto de traducción para comenzar.`,
-          englishExplanation: `Hi! I have customized a special practice session for you focusing on: "${grammarPracticeTopic.title_es}" (${grammarPracticeTopic.title_en}).\n\n🧠 Memory Anchor: ${grammarPracticeTopic.formula || 'Communicative practice'}.\n\nTry writing a sentence in Spanish using this rule, or ask me for a translation challenge to begin.`,
-          phase: 'Phase 1: Contextual Anchoring',
-          vocabulary: [],
-          followUpQuestions: [
-            `Dame un reto de traducción para ${grammarPracticeTopic.title_es}.`,
-            `Explícame la regla y fórmula.`,
-            `Escribiré un ejemplo para que lo verifiques.`
-          ]
-        }
-      ]);
-      setSelectedTopic(grammarPracticeTopic.id);
-    }
-  }, [grammarPracticeTopic]);
-
-  // Read response aloud using Text-To-Speech with visual playback indicator
-  const handleSpeakMessage = (msgId: string, text: string) => {
+  // Text-To-Speech with dedicated male/female persona voice resolution
+  const handleSpeak = (msgId: string, text: string, personaOverride?: TutorPersona) => {
     setCurrentlyPlayingId(msgId);
-    speakSpanish(text, userProgress.settings.audioSpeed);
-    const estimatedDuration = Math.max(2500, text.length * 65);
+    const personaToUse = personaOverride || selectedPersona;
+    speakSpanishPersona(text, personaToUse, audioSpeed);
+    const estimatedDuration = Math.max(2000, text.length * 65);
     setTimeout(() => {
       setCurrentlyPlayingId(prev => (prev === msgId ? null : prev));
     }, estimatedDuration);
   };
 
-  // Main message dispatcher
-  const handleSendMessage = async (textToSend?: string) => {
-    const text = (textToSend || inputVal).trim();
-    if (!text || isLoading) return;
+  // Switch scenario
+  const handleSelectScenario = (scenario: ScenarioDefinition) => {
+    soundEffects.playPop();
+    setCurrentScenario(scenario);
+    initScenario(scenario, selectedPersona);
+  };
+
+  // Switch persona with distinct voice greeting preview
+  const handleSelectPersona = (personaId: TutorPersona) => {
+    soundEffects.playPop();
+    setSelectedPersona(personaId);
+    initScenario(currentScenario, personaId);
+  };
+
+  // Toggle reveal translation
+  const toggleTranslation = (id: string) => {
+    soundEffects.playPop();
+    setRevealedTranslations(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Save vocabulary to LingQs and UserProgress
+  const handleSaveWordToLingQ = (word: string, en: string, ar: string) => {
+    soundEffects.playLevelUp();
+    const clean = word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'¡¿]/g, '').trim();
+
+    setUserProgress(prev => {
+      const existingLingQs = prev.lingqs || {};
+      const newLingQs = {
+        ...existingLingQs,
+        [clean]: {
+          word: clean,
+          status: 1 as const,
+          translation_en: en || clean,
+          translation_ar: ar || '',
+          sentenceContext: currentScenario.title_es,
+          createdAt: new Date().toISOString()
+        }
+      };
+      const savedWordIds = prev.savedWordIds.includes(clean)
+        ? prev.savedWordIds
+        : [...prev.savedWordIds, clean];
+
+      return {
+        ...prev,
+        lingqs: newLingQs,
+        savedWordIds,
+        xp: prev.xp + 5
+      };
+    });
+
+    setSavedWordToast(clean);
+    setTimeout(() => setSavedWordToast(null), 2500);
+    setSelectedWord(null);
+  };
+
+  // Interactive word click
+  const handleWordClick = (e: React.MouseEvent, word: string) => {
+    e.stopPropagation();
+    const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'¡¿]/g, '').trim();
+    if (!clean || clean.length < 2) return;
 
     soundEffects.playPop();
 
-    const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
-      sender: 'user',
-      spanishText: text
+    const knownVocab: Record<string, { en: string; ar: string }> = {
+      hola: { en: 'hello / hi', ar: 'مرحباً' },
+      café: { en: 'coffee / café', ar: 'قهوة / مقهى' },
+      leche: { en: 'milk', ar: 'حليب' },
+      tostada: { en: 'toast', ar: 'شريحة خبز محمص' },
+      gracias: { en: 'thank you', ar: 'شكراً' },
+      por: { en: 'for / by / through', ar: 'من أجل / عبر' },
+      para: { en: 'for / in order to', ar: 'لأجل / لكي' },
+      amigo: { en: 'friend', ar: 'صديق' },
+      hotel: { en: 'hotel', ar: 'فندق' },
+      tacos: { en: 'tacos', ar: 'تاكو' },
+      aeropuerto: { en: 'airport', ar: 'مطار' },
+      viajar: { en: 'to travel', ar: 'يسافر' },
+      trabajo: { en: 'work / job', ar: 'عمل / وظيفة' },
+      bienvenido: { en: 'welcome', ar: 'أهلاً بك' },
+      desayunar: { en: 'to have breakfast', ar: 'يتناول الإفطار' }
     };
 
-    setMessages(prev => [...prev, userMsg]);
-    setInputVal('');
-    setIsLoading(true);
+    const translation = knownVocab[clean.toLowerCase()] || {
+      en: `word: "${clean}"`,
+      ar: `الكلمة: "${clean}"`
+    };
 
-    try {
-      // Build conversation history
-      const history = messages.map(m => ({
-        role: m.sender === 'user' ? ('user' as const) : ('model' as const),
-        text: m.spanishText
-      }));
-
-      const res = await fetch('/api/ai/tutor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          userLevel: userProgress.currentLevel,
-          persona: selectedPersona,
-          nativeLang: userProgress.settings.nativeLanguage,
-          history,
-          practiceTopic: grammarPracticeTopic,
-          targetDialect: userProgress.targetDialect || 'mexico'
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error('Tutor API response failed');
-      }
-
-      const data = await res.json();
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        spanishText: data.spanishResponse,
-        englishExplanation: data.englishExplanation,
-        arabicExplanation: data.arabicExplanation,
-        phase: data.phase,
-        corrections: data.corrections,
-        vocabulary: data.vocabulary,
-        followUpQuestions: data.followUpQuestions
-      };
-
-      setMessages(prev => [...prev, aiMsg]);
-
-      // Check for silent validation reward
-      let xpAward = 10;
-      let hasReward = false;
-      if (data.corrections && Array.isArray(data.corrections)) {
-        const rewardMsg = data.corrections.find((c: string) => c.includes('XP Reward') || c.includes('+15 XP'));
-        if (rewardMsg) {
-          hasReward = true;
-          xpAward = 25; // 10 standard + 15 extra grammar bonus!
-        }
-      }
-
-      if (hasReward) {
-        soundEffects.playLevelUp();
-      } else {
-        soundEffects.playCorrect();
-      }
-
-      setUserProgress(prev => ({ ...prev, xp: prev.xp + xpAward }));
-
-      // Trigger Audible Text-to-Speech Feedback automatically for comprehensible input
-      if (autoPlayTTS) {
-        handleSpeakMessage(aiMsg.id, aiMsg.spanishText);
-      }
-    } catch (e) {
-      console.error(e);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `err-${Date.now()}`,
-          sender: 'ai',
-          spanishText: 'Lo siento, tuve un pequeño problema de conexión con el servidor pedagógico. ¿Puedes repetirlo, por favor?',
-          englishExplanation: 'Sorry, I had a brief connection issue. Could you repeat that, please?',
-          arabicExplanation: 'عذراً، حدث انقطاع بسيط في الاتصال. هل يمكنك إعادة كتابة الرسالة؟',
-          phase: 'Connection Recovery'
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setSelectedWord({
+      word,
+      cleanWord: clean,
+      en: translation.en,
+      ar: translation.ar,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 8
+    });
   };
 
-  // Real-time Voice-to-Text integration using Web Speech API
+  // Close word popover on outside click
+  useEffect(() => {
+    const handleDocClick = () => setSelectedWord(null);
+    window.addEventListener('click', handleDocClick);
+    return () => window.removeEventListener('click', handleDocClick);
+  }, []);
+
+  // Voice recording using Web Speech API
   const handleToggleMic = () => {
     if (typeof window === 'undefined') return;
-
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. You can type in Spanish directly!');
+      alert('Tu navegador no soporta entrada de voz. Puedes escribir tu respuesta en español.');
       return;
     }
 
     if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      if (recognitionRef.current) recognitionRef.current.stop();
       setIsListening(false);
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'es-ES';
-      recognition.continuous = true;
+      recognition.lang = selectedPersona === 'juan' ? 'es-MX' : selectedPersona === 'camila' ? 'es-CO' : 'es-ES';
+      recognition.continuous = false;
       recognition.interimResults = true;
 
       recognition.onstart = () => {
         setIsListening(true);
+        soundEffects.playPop();
       };
 
       recognition.onresult = (event: any) => {
@@ -380,1034 +454,908 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         setInputVal(transcript);
       };
 
-      recognition.onerror = () => {
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
 
       recognitionRef.current = recognition;
       recognition.start();
     } catch (e) {
-      console.warn('Web Speech API error:', e);
+      console.warn('Speech recognition error:', e);
       setIsListening(false);
     }
   };
 
-  // Save vocabulary item directly to user's saved LingQs
-  const handleSaveVocabToLingQ = (vocab: VocabularyItem) => {
-    const wordKey = vocab.word.toLowerCase();
-    setUserProgress(prev => {
-      const existingLingQs = prev.lingqs || {};
-      const newLingQs = {
-        ...existingLingQs,
-        [wordKey]: {
-          word: wordKey,
-          status: 1 as const,
-          translation_en: vocab.en,
-          translation_ar: vocab.ar,
-          sentenceContext: vocab.contextSentence || '',
-          createdAt: new Date().toISOString()
+  // Check and award quest rewards
+  const evaluateQuests = (text: string, turnCount: number) => {
+    let questXpGained = 0;
+    let completedQuestTitle: string | null = null;
+
+    setQuests(prevQuests =>
+      prevQuests.map(q => {
+        if (!q.completed && q.checker(text, turnCount, currentScenario.id)) {
+          questXpGained += q.xpReward;
+          completedQuestTitle = q.title_es;
+          return { ...q, completed: true };
         }
-      };
+        return q;
+      })
+    );
 
-      const savedWordIds = prev.savedWordIds.includes(wordKey)
-        ? prev.savedWordIds
-        : [...prev.savedWordIds, wordKey];
-
-      return {
-        ...prev,
-        lingqs: newLingQs,
-        savedWordIds
-      };
-    });
-
-    soundEffects.playLevelUp();
-  };
-
-  const handleResetSession = () => {
-    setMessages([
-      {
-        id: `reset-${Date.now()}`,
-        sender: 'ai',
-        spanishText: '¡Sesión reiniciada! Soy el Profesor Mateo. Indícame tu nivel (A0-B2) o el tema gramatical que deseas que abordemos mediante el método de 5 fases.',
-        englishExplanation: 'Session reset! I am Profesor Mateo. Let me know your level (A0-B2) or target grammar structure to begin our 5-Phase mastery lesson.',
-        arabicExplanation: 'تمت إعادة ضبط الجلسة! أنا البروفيسور ماتيو. أخبرني بمستواك أو القاعدة التي تود دراستها عبر المراحل الخمس.',
-        phase: 'Diagnostic Kickoff',
-        vocabulary: [
-          { word: 'reiniciada', en: 'reset / restarted', ar: 'إعادة ضبط', contextSentence: 'La sesión ha sido reiniciada.' }
-        ],
-        followUpQuestions: [
-          'Soy nivel A1 y quiero aprender a presentarme y describir mi rutina.',
-          'Nivel A2: enséñame las preposiciones Por vs Para.',
-          'Nivel B1: quiero dominar las oraciones condicionales (Si tuviera...).'
-        ]
-      }
-    ]);
-  };
-
-  // Find current grammar rule matched in the conversation
-  const getMatchedGrammarRule = () => {
-    // If a practice topic is active, prioritize it
-    if (grammarPracticeTopic) {
-      const matched = GRAMMAR_ENCYCLOPEDIA.find(t => t.id === grammarPracticeTopic.id);
-      if (matched) return matched;
-    }
-
-    // Otherwise, scan the messages (starting from the latest) for keywords
-    const reversedMsgs = [...messages].reverse();
-    for (const msg of reversedMsgs) {
-      const text = (msg.spanishText + ' ' + (msg.englishExplanation || '')).toLowerCase();
-      if (text.includes('gender') || text.includes('genero') || text.includes('plural')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-noun-gender-plural');
-      }
-      if (text.includes('article') || text.includes('artículo') || text.includes('definite') || text.includes('indefinite')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-articles');
-      }
-      if (text.includes('adjective') || text.includes('adjetivo') || text.includes('agreement')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-adjectives-agreement');
-      }
-      if (text.includes('ser') || text.includes('estar') || text.includes('aburrido')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-ser-estar');
-      }
-      if (text.includes('preterit') || text.includes('imperfect') || text.includes('pasado') || text.includes('ayer')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-preterite-imperfect');
-      }
-      if (text.includes('subjunctive') || text.includes('subjuntivo') || text.includes('cláusula')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-subjunctive-present');
-      }
-      if (text.includes('pronoun') || text.includes('pronombre') || text.includes('object') || text.includes('directo')) {
-        return GRAMMAR_ENCYCLOPEDIA.find(t => t.id === 'g-object-pronouns');
+    if (questXpGained > 0) {
+      soundEffects.playLevelUp();
+      confetti({
+        particleCount: 40,
+        spread: 50,
+        origin: { y: 0.7 }
+      });
+      if (completedQuestTitle) {
+        setQuestToast(`🎯 ¡Misión cumplida: ${completedQuestTitle}! +${questXpGained} XP`);
+        setTimeout(() => setQuestToast(null), 3000);
       }
     }
 
-    // Default to first grammar lesson if nothing matched
-    return GRAMMAR_ENCYCLOPEDIA[0];
+    return questXpGained;
   };
 
-  const matchedRule = getMatchedGrammarRule();
+  // Send message using Streaming Vercel AI SDK Integration
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || inputVal).trim();
+    if (!text || isLoading || isStreaming) return;
 
-  const renderCheatSheetContent = () => {
-    if (!matchedRule) return null;
+    soundEffects.playPop();
 
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-stone-800 text-amber-700 dark:text-amber-400">
-              <BookOpen className="w-4 h-4" />
+    // Analyze grammar & phrasing
+    const { feedback } = analyzeUserSpanishInput(text);
+
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      sender: 'user',
+      spanishText: text,
+      feedbackBadge: feedback
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInputVal('');
+    setIsLoading(true);
+
+    const newTurnCount = sessionTurnCount + 1;
+    setSessionTurnCount(newTurnCount);
+
+    // Update topic mastery score
+    setTopicMastery(prev => ({
+      ...prev,
+      [currentScenario.id]: Math.min(100, (prev[currentScenario.id] || 40) + 10)
+    }));
+
+    // Evaluate conversation quests
+    const questBonusXp = evaluateQuests(text, newTurnCount);
+
+    // Calculate XP
+    const baseEarnedXp = 10 + (feedback.xpBonus || 0) + questBonusXp;
+    setSessionXpEarned(prev => prev + baseEarnedXp);
+
+    const prevLevel = Math.floor((userProgress.xp || 0) / 250) + 1;
+    const nextTotalXp = (userProgress.xp || 0) + baseEarnedXp;
+    const nextLevel = Math.floor(nextTotalXp / 250) + 1;
+
+    setUserProgress(prev => ({ ...prev, xp: prev.xp + baseEarnedXp }));
+
+    // Level-up celebration check
+    if (nextLevel > prevLevel) {
+      setTimeout(() => {
+        soundEffects.playLevelUp();
+        confetti({
+          particleCount: 100,
+          spread: 80,
+          origin: { y: 0.5 }
+        });
+        setShowLevelUpModal(true);
+      }, 500);
+    }
+
+    // Trigger 5-turn completion celebration
+    if (newTurnCount === 5 && !sessionCompleted) {
+      setSessionCompleted(true);
+      setTimeout(() => {
+        soundEffects.playLevelUp();
+        confetti({
+          particleCount: 70,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        setShowCelebrationModal(true);
+        setUserProgress(prev => ({ ...prev, xp: prev.xp + 50 }));
+      }, 1000);
+    }
+
+    // Prepare streaming AI placeholder
+    const aiMsgId = `ai-${Date.now()}`;
+    const streamingAiMsg: ChatMessage = {
+      id: aiMsgId,
+      sender: 'ai',
+      spanishText: '',
+      phase: 'Escribiendo respuesta en vivo...'
+    };
+
+    setMessages(prev => [...prev, streamingAiMsg]);
+    setIsStreaming(true);
+
+    try {
+      const history = messages.slice(-6).map(m => ({
+        role: m.sender === 'user' ? ('user' as const) : ('model' as const),
+        text: m.spanishText
+      }));
+
+      // Stream response token-by-token with Vercel serverless safety
+      const response = await streamTutorMessage({
+        message: text,
+        history,
+        userProgress,
+        persona: selectedPersona,
+        scenarioId: currentScenario.id,
+        practiceTopic: grammarPracticeTopic,
+        onChunk: partialText => {
+          setMessages(prev =>
+            prev.map(m => (m.id === aiMsgId ? { ...m, spanishText: partialText } : m))
+          );
+        }
+      });
+
+      // Finalize completed message
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === aiMsgId
+            ? {
+                ...m,
+                spanishText: response.spanishResponse,
+                englishExplanation: response.englishExplanation,
+                arabicExplanation: response.arabicExplanation,
+                phase: response.phase,
+                corrections: response.corrections,
+                vocabulary: response.vocabulary,
+                followUpQuestions: response.followUpQuestions
+              }
+            : m
+        )
+      );
+
+      // Update suggested replies
+      if (response.followUpQuestions && response.followUpQuestions.length > 0) {
+        const parsedSuggestions = response.followUpQuestions.map(q => {
+          const match = q.match(/^(.*?)\s*\((.*?)\)$/);
+          if (match) {
+            return { es: match[1].trim(), en: match[2].trim() };
+          }
+          return { es: q, en: 'Quick reply' };
+        });
+        setSuggestedReplies(parsedSuggestions);
+      }
+
+      soundEffects.playCorrect();
+
+      if (autoPlayAudio) {
+        handleSpeak(aiMsgId, response.spanishResponse, selectedPersona);
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+    }
+  };
+
+  const activePersonaObj = PERSONAS.find(p => p.id === selectedPersona) || PERSONAS[0];
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-4 px-2 sm:px-4 pb-16">
+      {/* 🎮 LINGOPAL GAMIFIED STATUS HUD */}
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
+        {/* Top Row: Level Indicator, Streak Counter & Session Stats */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Level Progress Badge */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-stone-950 font-black flex flex-col items-center justify-center shadow-md shrink-0">
+              <span className="text-[9px] uppercase tracking-wider font-bold">LVL</span>
+              <span className="text-lg leading-none">{currentLevel}</span>
             </div>
             <div>
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-mono block uppercase">
-                CEFR {matchedRule.cefr} • Unit {matchedRule.unit}
-              </span>
-              <h3 className="font-black text-sm text-stone-900 dark:text-white leading-tight">
-                {matchedRule.title_es}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-black text-stone-900 dark:text-stone-100">
+                  {rankTitle}
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                  +{sessionXpEarned} XP Today
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-36 sm:w-48 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ type: 'spring', damping: 15 }}
+                  />
+                </div>
+                <span className="text-[11px] font-mono font-bold text-stone-500 dark:text-stone-400">
+                  {currentLevelProgress}/250 XP
+                </span>
+              </div>
             </div>
           </div>
-          {grammarPracticeTopic?.id === matchedRule.id && (
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-extrabold animate-pulse">
-              Active Drill
-            </span>
-          )}
+
+          {/* Streak & Controls */}
+          <div className="flex items-center gap-2">
+            {/* Streak Widget */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 font-black text-xs shadow-2xs">
+              <Flame className="w-4 h-4 fill-orange-500 text-orange-500 animate-pulse" />
+              <span>{userProgress.streakDays || 5} Días en Racha</span>
+            </div>
+
+            {/* Audio Speed */}
+            <button
+              onClick={() => {
+                soundEffects.playPop();
+                setAudioSpeed(s => (s === 1.0 ? 0.8 : 1.0));
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              title="Toggle Audio Speed"
+            >
+              {audioSpeed === 1.0 ? '1.0x 🐇' : '0.8x 🐢'}
+            </button>
+
+            {/* Auto Audio */}
+            <button
+              onClick={() => {
+                soundEffects.playPop();
+                setAutoPlayAudio(a => !a);
+              }}
+              className={`p-2 rounded-xl border transition cursor-pointer ${
+                autoPlayAudio
+                  ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
+                  : 'border-stone-200 dark:border-stone-700 text-stone-400'
+              }`}
+              title={autoPlayAudio ? 'Voice auto-play ON' : 'Voice auto-play OFF'}
+            >
+              {autoPlayAudio ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            {/* Reset */}
+            <button
+              onClick={() => initScenario(currentScenario, selectedPersona)}
+              className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              title="Reset conversation"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {matchedRule.formula && (
-          <div className="p-3 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/10 dark:border-amber-500/20 rounded-xl space-y-1">
-            <span className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-400 block tracking-wider">
-              🧠 Memory Formula
+        {/* 🎭 CHARACTER SELECTION UI: Juan, Sofía, Mateo, Camila */}
+        <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500 flex items-center gap-1.5">
+              <span>Select AI Native Tutor:</span>
+              <span className="font-normal text-stone-400">
+                (Distinct voice synthesis & dialect)
+              </span>
             </span>
-            <p className="text-xs font-bold text-stone-800 dark:text-stone-100 leading-snug">
-              {matchedRule.formula}
-            </p>
+            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+              Active: {activePersonaObj.name} ({activePersonaObj.country})
+            </span>
           </div>
-        )}
 
-        <div className="space-y-2">
-          <span className="text-[10px] font-extrabold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
-            Core Grammar Rules:
-          </span>
-          <div className="bg-stone-50 dark:bg-stone-950 p-3 rounded-xl border border-stone-200/60 dark:border-stone-800/80 text-xs text-stone-700 dark:text-stone-300 space-y-2 leading-relaxed">
-            <p className="font-semibold text-stone-900 dark:text-white">
-              {matchedRule.summary_en}
-            </p>
-            <ul className="list-disc pl-4 space-y-1 text-stone-600 dark:text-stone-400 font-normal">
-              {(matchedRule.fullContent_en || '').split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*')).slice(0, 4).map((line, i) => (
-                <li key={i}>{line.replace(/^[-\*\s]+/, '')}</li>
-              )) || (
-                <li>Master the active structure and practice conjugations.</li>
-              )}
-            </ul>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {PERSONAS.map(p => {
+              const isSelected = p.id === selectedPersona;
+              return (
+                <div
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleSelectPersona(p.id)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectPersona(p.id);
+                    }
+                  }}
+                  className={`relative p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 group select-none ${
+                    isSelected
+                      ? 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500 ring-2 ring-amber-400/50 shadow-sm'
+                      : 'bg-stone-50/70 dark:bg-stone-800/40 border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-9 h-9 rounded-xl bg-gradient-to-br ${p.avatarBg} text-white flex items-center justify-center font-black text-sm shadow-xs`}
+                      >
+                        {p.name[0]}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-black text-xs text-stone-900 dark:text-stone-100">
+                            {p.name}
+                          </span>
+                          <span className="text-xs">{p.flag}</span>
+                        </div>
+                        <span className="text-[10px] text-stone-500 dark:text-stone-400 block line-clamp-1">
+                          {p.role}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-1.5 border-t border-stone-200/50 dark:border-stone-800 flex items-center justify-between text-[10px]">
+                    <span className="font-semibold text-stone-600 dark:text-stone-400">
+                      {p.gender === 'male' ? '👨 Baritone' : '👩 Melodic'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleSpeak(`greet-${p.id}`, p.sampleGreeting, p.id);
+                      }}
+                      className="p-1 rounded-md bg-stone-200/70 dark:bg-stone-700/70 text-stone-700 dark:text-stone-300 hover:bg-amber-500 hover:text-stone-950 transition cursor-pointer"
+                      title="Test Voice Synthesis"
+                    >
+                      <Play className="w-2.5 h-2.5 fill-current" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <span className="text-[10px] font-extrabold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
-            Interactive Sentence Examples:
-          </span>
-          <div className="space-y-1.5">
-            {matchedRule.quickQuiz.slice(0, 2).map((q, idx) => (
-              <div 
-                key={idx}
-                className="p-2.5 bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-900 border border-stone-200/60 dark:border-stone-800/80 rounded-xl flex items-center justify-between gap-3 transition"
+        {/* 🎯 CONVERSATION QUESTS HUD */}
+        <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500 flex items-center gap-1">
+              <Target className="w-3.5 h-3.5 text-amber-500" />
+              <span>Conversation Quests:</span>
+            </span>
+            <span className="text-[11px] font-bold text-stone-500">
+              {quests.filter(q => q.completed).length} of {quests.length} Completed
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            {quests.map(q => (
+              <div
+                key={q.id}
+                className={`p-2.5 rounded-2xl border transition-all flex items-center gap-2.5 ${
+                  q.completed
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-stone-50 dark:bg-stone-800/40 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                }`}
               >
-                <div className="space-y-0.5">
-                  <p className="text-xs font-extrabold text-stone-900 dark:text-stone-100">
-                    {q.question_es}
-                  </p>
-                  <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                    👉 {q.question_en}
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                    q.completed
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-stone-200 dark:bg-stone-700 text-stone-500'
+                  }`}
+                >
+                  {q.completed ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '•'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold truncate">{q.title_es}</span>
+                    <span
+                      className={`text-[10px] font-mono font-extrabold ${
+                        q.completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      +{q.xpReward} XP
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-stone-400 dark:text-stone-500 truncate">
+                    {q.title_en}
                   </p>
                 </div>
-                <button
-                  onClick={() => speakSpanish(q.question_es, userProgress.settings.audioSpeed)}
-                  className="p-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:text-amber-500 dark:hover:text-amber-400 transition"
-                  title="Speak Example Sentence"
-                >
-                  <Volume2 className="w-3.5 h-3.5" />
-                </button>
               </div>
             ))}
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            soundEffects.playPop();
-            setGrammarPracticeTopic({
-              id: matchedRule.id,
-              title_es: matchedRule.title_es,
-              title_en: matchedRule.title_en,
-              formula: matchedRule.formula
-            });
-          }}
-          disabled={grammarPracticeTopic?.id === matchedRule.id}
-          className="w-full py-2.5 px-4 bg-stone-950 dark:bg-amber-500 hover:opacity-90 disabled:opacity-50 text-white dark:text-stone-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
-          <span>{grammarPracticeTopic?.id === matchedRule.id ? 'Already Practicing Rule' : 'Practice Rule with AI Mateo'}</span>
-        </button>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Top Pedagogical Studio Banner */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 sm:p-6 text-stone-100 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-stone-950 uppercase tracking-wider flex items-center gap-1 shadow-xs">
-                <span>👨‍🏫</span>
-                <span>Profesor Mateo Pedagogy Engine</span>
-              </span>
-
-              {/* Status Visual Indicators */}
-              {isLoading && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                  AI Thinking...
-                </span>
-              )}
-
-              {isListening && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse flex items-center gap-1.5">
-                  <Mic className="w-3.5 h-3.5 text-rose-400 animate-bounce" />
-                  Voice Input Active
-                </span>
-              )}
-
-              {currentlyPlayingId !== null && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1.5">
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
-                  Reading Aloud (TTS)
-                </span>
-              )}
-
-              <span className="text-xs text-stone-400 font-medium">Level: {userProgress.currentLevel}</span>
-            </div>
-
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <span>Maestro de Español: Profesor Mateo & AI Voice Studio</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-300 mt-1 max-w-2xl leading-relaxed">
-              Legitimate second-language mastery: 5-Phase Blueprint • Multi-Language Vocabulary • Real-Time Voice Speech-to-Text & Audible TTS Feedback.
-            </p>
+        {/* 📊 VISUAL TOPIC MASTERY BARS */}
+        <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500">
+              Topic Mastery & Scenarios:
+            </span>
+            <span className="text-[11px] font-bold text-stone-400">
+              Turn {sessionTurnCount}/5 (
+              {Math.min(100, Math.round((sessionTurnCount / 5) * 100))}% Completed)
+            </span>
           </div>
 
-          {/* Action & Persona selectors */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
-            {/* AutoPlay TTS Toggle */}
-            <button
-              onClick={() => setAutoPlayTTS(!autoPlayTTS)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
-                autoPlayTTS
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-stone-800 text-stone-400 border-stone-700'
-              }`}
-              title="Toggle automatic Text-To-Speech playback"
-            >
-              {autoPlayTTS ? <Volume2 className="w-3.5 h-3.5 text-amber-400" /> : <VolumeX className="w-3.5 h-3.5" />}
-              <span>{autoPlayTTS ? 'TTS Autoplay ON' : 'TTS Autoplay OFF'}</span>
-            </button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {LINGOPAL_SCENARIOS.map(sc => {
+              const isCurrent = sc.id === currentScenario.id;
+              const mastery = topicMastery[sc.id] || 35;
 
-            <button
-              onClick={handleResetSession}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 hover:text-white transition"
-              title="Reset diagnostic session"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>New Session</span>
-            </button>
-
-            <div className="flex flex-wrap gap-1">
-              {personas.map(p => (
+              return (
                 <button
-                  key={p.id}
-                  onClick={() => setSelectedPersona(p.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition border ${
-                    selectedPersona === p.id
-                      ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md font-extrabold'
-                      : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
+                  key={sc.id}
+                  onClick={() => handleSelectScenario(sc)}
+                  className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer space-y-1.5 ${
+                    isCurrent
+                      ? 'bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 border-transparent shadow-sm'
+                      : 'bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
                   }`}
                 >
-                  <span>{p.icon}</span>
-                  <span className="hidden sm:inline">{p.name.split(' ')[0]}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-base">{sc.icon}</span>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-black ${
+                        isCurrent
+                          ? 'bg-white/20 text-white dark:text-stone-950'
+                          : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
+                      }`}
+                    >
+                      {sc.difficulty}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold truncate leading-tight">{sc.title_es}</p>
+                  {/* Mastery Progress bar */}
+                  <div className="w-full h-1.5 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isCurrent ? 'bg-amber-400 dark:bg-stone-950' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${mastery}%` }}
+                    />
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Mode Navigation Bar: 5-Phase Tutor Chat vs B2 Skill Challenge */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-stone-100 dark:bg-stone-900/80 p-1.5 rounded-2xl border border-stone-200 dark:border-stone-800 gap-2">
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-          <button
-            onClick={() => setActiveTab('tutor')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition cursor-pointer ${
-              activeTab === 'tutor'
-                ? 'bg-amber-500 text-stone-950 shadow-sm'
-                : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4" />
-            <span>💬 5-Phase AI Tutor Chat</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('skill_challenge')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition cursor-pointer ${
-              activeTab === 'skill_challenge'
-                ? 'bg-amber-500 text-stone-950 shadow-sm'
-                : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-            }`}
-          >
-            <Target className="w-4 h-4 text-stone-950" />
-            <span>🎯 Skill Challenge: Role-Play Scenarios</span>
-          </button>
-        </div>
-
-        {activeTab === 'skill_challenge' && (
-          <div className="flex items-center gap-1 bg-stone-200/60 dark:bg-stone-800/80 p-1 rounded-xl">
-            <button
-              onClick={() => handleLoadChallengeScenario('professional')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                challengeDomain === 'professional'
-                  ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-              }`}
-            >
-              <Briefcase className="w-3 h-3" /> Professional
-            </button>
-            <button
-              onClick={() => handleLoadChallengeScenario('social')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                challengeDomain === 'social'
-                  ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-              }`}
-            >
-              <Users className="w-3 h-3" /> Social & Debate
-            </button>
-            <button
-              onClick={() => handleLoadChallengeScenario('travel')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                challengeDomain === 'travel'
-                  ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-              }`}
-            >
-              <Plane className="w-3 h-3" /> Travel & Dispute
-            </button>
-          </div>
-        )}
-      </div>
-
-      {activeTab === 'tutor' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Main Chat Interface */}
-          <div className="lg:col-span-8 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[700px] relative">
-        {/* Quick Lesson Launch Bar */}
-        <div className="bg-stone-50 dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 px-4 py-2.5 flex items-center justify-between overflow-x-auto no-scrollbar gap-2">
-          <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-            <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
-            Active Topics:
-          </span>
-          <div className="flex items-center gap-1.5">
-            {quickLessonTopics.map(topic => (
-              <button
-                key={topic.id}
-                onClick={() => {
-                  setSelectedTopic(topic.id);
-                  handleSendMessage(topic.prompt);
-                }}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                  selectedTopic === topic.id
-                    ? 'bg-stone-900 text-white dark:bg-amber-500 dark:text-stone-950'
-                    : 'bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 hover:bg-amber-50 dark:hover:bg-stone-700'
-                }`}
-              >
-                {topic.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Messages Stream */}
-        <div ref={messagesContainerRef} className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-stone-50/40 dark:bg-stone-950/40">
+      {/* 💬 MAIN CHAT WINDOW WITH STREAMING REAL-TIME OUTPUT */}
+      <div
+        ref={messagesContainerRef}
+        className="bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800/80 rounded-3xl p-4 sm:p-6 min-h-[420px] max-h-[580px] overflow-y-auto space-y-4 shadow-inner relative"
+      >
+        <AnimatePresence initial={false}>
           {messages.map(msg => {
-            const isUser = msg.sender === 'user';
-            const isPlayingThisMsg = currentlyPlayingId === msg.id;
+            const isAI = msg.sender === 'ai';
+            const isPlaying = currentlyPlayingId === msg.id;
+            const isTranslationOpen = revealedTranslations[msg.id];
+            const isCurrentlyStreaming = isStreaming && isAI && !msg.englishExplanation;
 
             return (
-              <div
+              <motion.div
                 key={msg.id}
-                className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.25 }}
+                className={`flex gap-3 ${isAI ? 'justify-start' : 'justify-end'}`}
               >
-                {!isUser && (
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-base shrink-0 shadow-xs border border-amber-400">
-                    👨‍🏫
+                {/* AI Avatar */}
+                {isAI && (
+                  <div className="relative shrink-0 self-end">
+                    <div
+                      className={`w-9 h-9 rounded-2xl bg-gradient-to-br ${activePersonaObj.avatarBg} text-white flex items-center justify-center text-sm font-bold shadow-sm`}
+                    >
+                      {activePersonaObj.name[0]}
+                    </div>
+                    <span className="absolute -bottom-1 -right-1 text-xs">
+                      {activePersonaObj.flag}
+                    </span>
                   </div>
                 )}
 
+                {/* Message Bubble Container */}
                 <div
-                  className={`max-w-[90%] sm:max-w-[82%] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 ${
-                    isUser
-                      ? 'bg-stone-900 text-white rounded-tr-xs dark:bg-amber-500 dark:text-stone-950 font-medium'
-                      : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100 rounded-tl-xs'
+                  className={`max-w-[88%] sm:max-w-[78%] space-y-2 ${
+                    isAI ? 'items-start' : 'items-end'
                   }`}
                 >
-                  {/* Phase & Audio Header */}
-                  {!isUser && (
-                    <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2 gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-xs text-stone-900 dark:text-stone-100">
-                          Profesor Mateo
-                        </span>
+                  <div
+                    className={`p-4 rounded-3xl text-sm leading-relaxed shadow-xs relative ${
+                      isAI
+                        ? 'bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 text-stone-900 dark:text-stone-100 rounded-bl-xs'
+                        : 'bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 font-medium rounded-br-xs'
+                    }`}
+                  >
+                    {/* Audio speak trigger for AI */}
+                    {isAI && (
+                      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-stone-100 dark:border-stone-800/60">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleSpeak(msg.id, msg.spanishText, selectedPersona)}
+                            className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
+                              isPlaying
+                                ? 'bg-amber-500 text-stone-950 animate-pulse'
+                                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-stone-700'
+                            }`}
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>{isPlaying ? 'Speaking...' : 'Listen'}</span>
+                          </button>
+                          <span className="text-[10px] text-stone-400 font-bold">
+                            {activePersonaObj.name} ({activePersonaObj.gender === 'male' ? '♂' : '♀'})
+                          </span>
+                        </div>
+
                         {msg.phase && (
-                          <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                          <span className="text-[10px] font-mono font-bold text-stone-400 dark:text-stone-500 px-2 py-0.5 rounded-md bg-stone-50 dark:bg-stone-800">
                             {msg.phase}
                           </span>
                         )}
                       </div>
+                    )}
 
-                      {/* Text-to-Speech Play Button & Indicator */}
-                      <button
-                        onClick={() => handleSpeakMessage(msg.id, msg.spanishText)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                          isPlayingThisMsg
-                            ? 'bg-amber-500 text-stone-950 animate-pulse font-black shadow-sm'
-                            : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-amber-700 dark:text-amber-400'
-                        }`}
-                        title="Listen to Spanish Response (TTS)"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                        <span>{isPlayingThisMsg ? 'Speaking...' : 'Listen TTS'}</span>
-                      </button>
+                    {/* Spanish Speech Text with Tap-to-Translate Tokens */}
+                    <div className="font-semibold text-base select-text">
+                      {msg.spanishText ? (
+                        msg.spanishText.split(' ').map((word, wIdx) => (
+                          <span
+                            key={wIdx}
+                            onClick={e => isAI && handleWordClick(e, word)}
+                            className={
+                              isAI
+                                ? 'hover:text-amber-500 hover:underline decoration-amber-400 cursor-pointer transition inline-block mr-1'
+                                : 'inline-block mr-1'
+                            }
+                          >
+                            {word}
+                          </span>
+                        ))
+                      ) : isCurrentlyStreaming ? (
+                        <span className="inline-flex items-center gap-2 text-stone-400 font-normal italic">
+                          <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                          <span>{activePersonaObj.name} está respondiendo...</span>
+                        </span>
+                      ) : null}
+
+                      {/* Live streaming cursor */}
+                      {isCurrentlyStreaming && (
+                        <span className="inline-block w-2 h-4 ml-1 bg-amber-500 animate-pulse align-middle" />
+                      )}
                     </div>
-                  )}
 
-                  {/* Main Spanish Text */}
-                  <div className="text-sm sm:text-base font-medium leading-relaxed whitespace-pre-line">
-                    {msg.spanishText}
-                  </div>
+                    {/* Collapsible Progressive Unveiling: English & Arabic Translations */}
+                    {isAI && (msg.englishExplanation || msg.arabicExplanation) && (
+                      <div className="mt-2.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                        <button
+                          onClick={() => toggleTranslation(msg.id)}
+                          className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          <Languages className="w-3.5 h-3.5" />
+                          <span>
+                            {isTranslationOpen
+                              ? 'Hide Translations'
+                              : 'Progressive Unveil: Translations & Breakdown'}
+                          </span>
+                          {isTranslationOpen ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                        </button>
 
-                  {/* Structured Multi-Language Vocabulary Cards (Comprehensible Input) */}
-                  {!isUser && msg.vocabulary && msg.vocabulary.length > 0 && (
-                    <div className="bg-amber-50/70 dark:bg-stone-950/90 border border-amber-200/80 dark:border-amber-900/50 rounded-xl p-3 sm:p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                          <BookOpen className="w-4 h-4 text-amber-500" />
-                          Vocabulario Estructurado (Multi-Language Definitions):
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                          Comprehensible Input
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {msg.vocabulary.map((vocab, vIdx) => {
-                          const isSaved = userProgress.savedWordIds?.includes(vocab.word.toLowerCase());
-
-                          return (
-                            <div
-                              key={vIdx}
-                              className="bg-white dark:bg-stone-900 p-3 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1.5 text-xs shadow-2xs"
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-black text-sm text-stone-900 dark:text-stone-100 capitalize">
-                                  {vocab.word}
+                        {isTranslationOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="mt-2 space-y-1 text-xs text-stone-600 dark:text-stone-300 font-normal bg-stone-50 dark:bg-stone-800/40 p-3 rounded-2xl border border-stone-200/60 dark:border-stone-800"
+                          >
+                            {msg.englishExplanation && (
+                              <p>
+                                <span className="font-bold text-stone-900 dark:text-stone-100">
+                                  🇬🇧 EN:{' '}
                                 </span>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => speakSpanish(vocab.word, userProgress.settings.audioSpeed)}
-                                    className="p-1 rounded bg-stone-100 dark:bg-stone-800 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition"
-                                    title="Listen to word"
-                                  >
-                                    <Volume2 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleSaveVocabToLingQ(vocab)}
-                                    disabled={isSaved}
-                                    className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition flex items-center gap-0.5 ${
-                                      isSaved
-                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                        : 'bg-amber-500 hover:bg-amber-400 text-stone-950'
-                                    }`}
-                                  >
-                                    {isSaved ? <Check className="w-3 h-3" /> : '+ Save'}
-                                  </button>
-                                </div>
-                              </div>
-
-                              <p className="text-stone-700 dark:text-stone-300 font-medium">
-                                🇬🇧 <span className="font-bold">EN:</span> {vocab.en}
+                                {msg.englishExplanation}
                               </p>
-                              <p className="text-amber-900 dark:text-amber-300 font-arabic font-medium" dir="rtl">
-                                🇦🇪 <span className="font-bold">AR:</span> {vocab.ar}
+                            )}
+                            {msg.arabicExplanation && (
+                              <p className="font-arabic text-stone-700 dark:text-stone-200" dir="rtl">
+                                <span className="font-bold text-stone-900 dark:text-stone-100">
+                                  🇦🇪 AR:{' '}
+                                </span>
+                                {msg.arabicExplanation}
                               </p>
-                              {vocab.contextSentence && (
-                                <p className="text-[11px] italic text-stone-500 dark:text-stone-400 pt-1 border-t border-stone-100 dark:border-stone-800">
-                                  "{vocab.contextSentence}"
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Pedagogical Corrections Callout */}
-                  {msg.corrections && msg.corrections.length > 0 && (
-                    <div className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-xs space-y-2">
-                      <span className="font-extrabold text-stone-900 dark:text-stone-100 block flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                        Pedagogical Feedback & Native Insights:
-                      </span>
-                      <div className="space-y-1.5">
-                        {msg.corrections.map((c, i) => (
-                          <div
-                            key={i}
-                            className={`p-2 rounded-lg font-medium leading-relaxed ${
-                              c.startsWith('🟢')
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50'
-                                : c.startsWith('🔴')
-                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50'
-                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50'
-                            }`}
-                          >
-                            {c}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* English & Arabic Explanations */}
-                  {!isUser && (msg.englishExplanation || msg.arabicExplanation) && (
-                    <div className="pt-2.5 border-t border-stone-100 dark:border-stone-800 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
-                      {msg.englishExplanation && (
-                        <p className="leading-relaxed">
-                          <span className="font-bold text-stone-800 dark:text-stone-200 mr-1">🇬🇧 Explanation:</span>
-                          {msg.englishExplanation}
-                        </p>
-                      )}
-                      {msg.arabicExplanation && (
-                        <p className="text-amber-900 dark:text-amber-200 font-arabic font-medium leading-relaxed" dir="rtl">
-                          <span className="font-bold text-stone-800 dark:text-stone-200 ml-1">🇦🇪 الشرح والتوضيح:</span>
-                          {msg.arabicExplanation}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Follow-up / Active production pills */}
-                  {msg.followUpQuestions && msg.followUpQuestions.length > 0 && (
-                    <div className="pt-2 space-y-1.5">
-                      <span className="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
-                        Suggested Responses / Next Step:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {msg.followUpQuestions.map((q, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleSendMessage(q)}
-                            className="text-left text-xs bg-stone-50 dark:bg-stone-800 hover:bg-amber-50 dark:hover:bg-stone-700 hover:border-amber-300 dark:hover:border-amber-500 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-700 dark:text-stone-200 transition"
-                          >
-                            💬 {q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {isUser && (
-                  <div className="w-10 h-10 rounded-2xl bg-stone-800 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                    <User className="w-5 h-5" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Visual Indicator: AI Thinking */}
-          {isLoading && (
-            <div className="flex gap-3 items-center text-amber-800 dark:text-amber-300 text-xs font-bold bg-amber-50/90 dark:bg-stone-900 border border-amber-200 dark:border-amber-800/60 p-4 rounded-2xl shadow-xs animate-pulse">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shrink-0">
-                <Loader2 className="w-5 h-5 animate-spin" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-extrabold flex items-center gap-1.5 text-stone-900 dark:text-stone-100 text-sm">
-                  <Sparkles className="w-4 h-4 text-amber-500" /> Profesor Mateo is thinking & formulating your response...
-                </div>
-                <p className="text-[11px] text-stone-600 dark:text-stone-400 font-normal">
-                  Synthesizing 5-phase lesson structures, grammar nuances & multi-language definitions
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Input Bar & Voice Status */}
-        <div className="p-3 sm:p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 space-y-2">
-          {/* Visual Indicator: User Listening Banner */}
-          {isListening && (
-            <div className="bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 text-xs font-bold p-3 rounded-xl flex items-center justify-between animate-pulse shadow-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                <Mic className="w-4 h-4 text-rose-500 animate-bounce" />
-                <span>Listening to your Spanish speech... Speak clearly in Spanish!</span>
-              </div>
-              <span className="text-[10px] uppercase font-black bg-rose-500 text-white px-2 py-0.5 rounded-md">
-                Web Speech API Live
-              </span>
-            </div>
-          )}
-
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              handleSendMessage();
-            }}
-            className="flex items-center gap-2"
-          >
-            {/* Real-Time Web Speech Mic Toggle */}
-            <button
-              type="button"
-              onClick={handleToggleMic}
-              className={`p-3 rounded-xl transition flex items-center justify-center shrink-0 ${
-                isListening
-                  ? 'bg-rose-500 text-white animate-pulse shadow-lg ring-4 ring-rose-500/30'
-                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'
-              }`}
-              title={isListening ? 'Stop Listening' : 'Click to Speak Spanish (Web Speech API)'}
-            >
-              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
-
-            <input
-              type="text"
-              placeholder={isListening ? 'Escuchando tu voz en español...' : 'Escribe en español o habla con el micrófono...'}
-              value={inputVal}
-              onChange={e => setInputVal(e.target.value)}
-              className="flex-1 px-4 py-3 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white dark:focus:bg-stone-800 transition"
-            />
-
-            <button
-              type="submit"
-              disabled={isLoading || !inputVal.trim()}
-              className="px-5 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 rounded-xl font-black text-sm shadow-md transition flex items-center gap-1.5 shrink-0"
-            >
-              <span>Send</span>
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-      </div>
-
-        {/* At-a-Glance Cheat Sheet Column (Right Column - Desktop Only) */}
-        <div className="lg:col-span-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm space-y-4 h-[700px] overflow-y-auto hidden lg:flex flex-col shrink-0">
-          <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
-            <h2 className="text-xs font-black uppercase text-stone-400 tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-              <span>At-a-Glance Cheat Sheet</span>
-            </h2>
-          </div>
-          {renderCheatSheetContent()}
-        </div>
-
-        {/* Mobile Cheat Sheet floating button */}
-        <div className="lg:hidden fixed bottom-24 right-4 z-40">
-          <button
-            onClick={() => {
-              soundEffects.playPop();
-              setIsMobileCheatSheetOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-full shadow-xl text-xs active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-stone-950"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Cheat Sheet</span>
-          </button>
-        </div>
-
-        {/* Mobile Cheat Sheet Modal Bottom Sheet */}
-        <AnimatePresence>
-          {isMobileCheatSheetOpen && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMobileCheatSheetOpen(false)}
-                className="fixed inset-0 bg-black z-40"
-              />
-              {/* Bottom Sheet */}
-              <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="fixed inset-x-0 bottom-0 max-h-[85vh] bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl z-50 p-6 overflow-y-auto space-y-5 shadow-2xl flex flex-col"
-              >
-                <div className="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto mb-1 shrink-0" />
-                <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3 shrink-0">
-                  <h2 className="text-sm font-black uppercase text-stone-400 tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                    <span>At-a-Glance Cheat Sheet</span>
-                  </h2>
-                  <button
-                    onClick={() => setIsMobileCheatSheetOpen(false)}
-                    className="text-xs font-bold text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="flex-1">
-                  {renderCheatSheetContent()}
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
-      ) : (
-        /* Skill Challenge Mode View */
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-          {isGeneratingScenario ? (
-            <div className="py-20 flex flex-col items-center justify-center space-y-4 text-center">
-              <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
-              <p className="text-base font-black text-stone-900 dark:text-white">
-                Generating B2 Role-Play Scenario ({challengeDomain.toUpperCase()})...
-              </p>
-              <p className="text-xs text-stone-500 max-w-md">
-                Synthesizing realistic situational prompt, audio listening material, and targeted B2 CEFR vocabulary checklist.
-              </p>
-            </div>
-          ) : currentScenario ? (
-            <div className="space-y-6">
-              {/* Challenge Scenario Header */}
-              <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-5 sm:p-6 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="px-3 py-1 rounded-lg bg-amber-500 text-stone-950 text-xs font-black uppercase tracking-wider">
-                    CEFR B2 Role-Play Scenario • {challengeDomain.toUpperCase()}
-                  </span>
-                  <button
-                    onClick={() => handleLoadChallengeScenario(challengeDomain)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 hover:bg-amber-100 transition cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" /> Next Scenario
-                  </button>
-                </div>
-
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
-                    {currentScenario.title_es}
-                  </h2>
-                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 font-semibold">
-                    {currentScenario.title_en} • {currentScenario.title_ar}
-                  </p>
-                </div>
-
-                <div className="bg-white dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-2">
-                  <p className="text-sm sm:text-base leading-relaxed text-stone-900 dark:text-stone-100 font-medium">
-                    {currentScenario.prompt_es}
-                  </p>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 border-t border-stone-100 dark:border-stone-800 pt-2 italic">
-                    {currentScenario.prompt_en}
-                  </p>
-                </div>
-
-                {/* Listening Comprehension Audio Monologue */}
-                {currentScenario.audioText && (
-                  <div className="bg-stone-900 text-white rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold shrink-0">
-                        <Headphones className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-extrabold text-amber-400">
-                          🎧 Step 1: Listening Comprehension Prompt
-                        </p>
-                        <p className="text-xs text-stone-300 line-clamp-1">
-                          "{currentScenario.audioText}"
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => speakSpanish(currentScenario.audioText, userProgress.settings.audioSpeed)}
-                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 transition shrink-0 cursor-pointer"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-stone-950" /> Play Spanish Audio
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Target B2 Vocabulary Checklist */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-amber-500" />
-                  <h3 className="text-sm font-black text-stone-900 dark:text-white uppercase tracking-wider">
-                    Step 2: Required B2 Vocabulary Targets to Apply
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {currentScenario.requiredVocabulary?.map((item: any) => {
-                    const isUsed = challengeUserText.toLowerCase().includes((item.word || '').toLowerCase());
-                    return (
-                      <div
-                        key={item.word}
-                        className={`p-3 rounded-xl border text-xs flex items-center justify-between transition ${
-                          isUsed
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200'
-                            : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200'
-                        }`}
-                      >
-                        <div>
-                          <span className="font-black text-sm">{item.word}</span>
-                          <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                            {item.en} • {item.ar}
-                          </p>
-                        </div>
-                        {isUsed ? (
-                          <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                        ) : (
-                          <span className="w-2.5 h-2.5 rounded-full bg-stone-300 dark:bg-stone-600 shrink-0" />
+                            )}
+                          </motion.div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    )}
 
-              {/* Suggested Response Starters */}
-              {currentScenario.suggestedStarters?.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                    Click a Starter to Begin Writing:
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {currentScenario.suggestedStarters.map((starter: string, idx: number) => (
-                      <button
-                        key={idx}
-                        onClick={() => setChallengeUserText(starter + ' ')}
-                        className="text-left text-xs bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-800 dark:text-stone-200 transition cursor-pointer"
-                      >
-                        💡 {starter}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Response Input Area */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-amber-500" />
-                    Step 3: Write Your B2 Spanish Response:
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleToggleMic}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      isListening
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-                    }`}
-                  >
-                    <Mic className="w-3.5 h-3.5" />
-                    {isListening ? 'Listening...' : 'Voice Input'}
-                  </button>
-                </div>
-
-                <textarea
-                  rows={4}
-                  value={challengeUserText}
-                  onChange={e => setChallengeUserText(e.target.value)}
-                  placeholder="Escribe tu respuesta en español aplicando el vocabulario B2 requerido..."
-                  className="w-full p-4 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl text-sm text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
-                />
-
-                <button
-                  onClick={handleSubmitChallengeResponse}
-                  disabled={!challengeUserText.trim() || isEvaluatingChallenge}
-                  className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isEvaluatingChallenge ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Profesor Mateo is Evaluating Your Response...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Award className="w-4 h-4" />
-                      <span>Submit Response for AI Evaluation & Earn XP</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Evaluation Results Card */}
-              {challengeResult && (
-                <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6 border border-stone-800 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center text-xl font-black">
-                        🏆
+                    {/* User feedback badge */}
+                    {!isAI && msg.feedbackBadge && (
+                      <div className="mt-2 pt-1 border-t border-amber-600/30 flex items-center justify-between text-[11px]">
+                        <span className="font-bold">{msg.feedbackBadge.text}</span>
+                        {msg.feedbackBadge.xpBonus ? (
+                          <span className="font-black bg-stone-950/15 px-1.5 py-0.5 rounded text-[10px]">
+                            +{msg.feedbackBadge.xpBonus} XP
+                          </span>
+                        ) : null}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-black text-white">B2 Performance Assessment</h3>
-                        <p className="text-xs text-amber-400">
-                          Overall Proficiency Score: {challengeResult.overallScore}/100 • +{challengeResult.xpEarned} XP Earned!
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black">
-                        CEFR Level B2 Evaluated
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sub-scores */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="bg-stone-800/80 border border-stone-700/60 rounded-2xl p-4 text-center">
-                      <p className="text-xs text-stone-400 font-bold">🎧 Listening Relevance</p>
-                      <p className="text-2xl font-black text-sky-400 mt-1">{challengeResult.listeningRelevanceScore}/100</p>
-                    </div>
-
-                    <div className="bg-stone-800/80 border border-stone-700/60 rounded-2xl p-4 text-center">
-                      <p className="text-xs text-stone-400 font-bold">✍️ Writing Fluency</p>
-                      <p className="text-2xl font-black text-emerald-400 mt-1">{challengeResult.writingFluencyScore}/100</p>
-                    </div>
-
-                    <div className="bg-stone-800/80 border border-stone-700/60 rounded-2xl p-4 text-center">
-                      <p className="text-xs text-stone-400 font-bold">📚 B2 Vocabulary Usage</p>
-                      <p className="text-2xl font-black text-amber-400 mt-1">{challengeResult.vocabularyUsageScore}/100</p>
-                    </div>
-                  </div>
-
-                  {/* Vocabulary Itemized Checks */}
-                  {challengeResult.vocabUsageCheck?.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-black uppercase tracking-wider text-stone-400">
-                        Target Vocabulary Audit:
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {challengeResult.vocabUsageCheck.map((v: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className={`p-2.5 rounded-xl border text-xs font-semibold ${
-                              v.used
-                                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
-                                : 'bg-rose-950/30 border-rose-800/60 text-rose-300'
-                            }`}
-                          >
-                            {v.feedback}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Profesor Mateo Feedback */}
-                  <div className="bg-stone-800/90 border border-stone-700 rounded-2xl p-5 space-y-3">
-                    <div className="flex items-center gap-2 text-amber-400 font-black text-sm">
-                      👨‍🏫 <span>Profesor Mateo's Pedagogical Feedback:</span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-stone-200">{challengeResult.feedback_es}</p>
-                    <p className="text-xs italic text-stone-400">{challengeResult.feedback_en}</p>
-                    {challengeResult.feedback_ar && (
-                      <p className="text-xs font-arabic text-right text-stone-300" dir="rtl">
-                        {challengeResult.feedback_ar}
-                      </p>
                     )}
                   </div>
 
-                  {/* Native Speaker Model Version */}
-                  {challengeResult.correctedResponse && (
-                    <div className="bg-amber-950/30 border border-amber-800/60 rounded-2xl p-5 space-y-2">
-                      <div className="flex items-center gap-2 text-amber-400 font-black text-xs uppercase tracking-wider">
-                        ✨ Polished B2 Native Speaker Version:
-                      </div>
-                      <p className="text-sm font-medium text-amber-100 leading-relaxed italic">
-                        "{challengeResult.correctedResponse}"
-                      </p>
-                      <button
-                        onClick={() => speakSpanish(challengeResult.correctedResponse, userProgress.settings.audioSpeed)}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 text-stone-950 text-xs font-black flex items-center gap-1.5 mt-2 cursor-pointer"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" /> Listen to Native Version
-                      </button>
+                  {/* Silent Corrections & Key Vocabulary */}
+                  {isAI && msg.corrections && msg.corrections.length > 0 && (
+                    <div className="space-y-1">
+                      {msg.corrections.map((corr, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5"
+                        >
+                          <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>{corr}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* Next Challenge Button */}
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      onClick={() => handleLoadChallengeScenario(challengeDomain)}
-                      className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
-                    >
-                      <span>Try Another B2 Challenge</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Key Vocabulary Chips */}
+                  {isAI && msg.vocabulary && msg.vocabulary.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-[10px] font-bold text-stone-400 self-center mr-1">
+                        Lexis:
+                      </span>
+                      {msg.vocabulary.map((vocab, vIdx) => (
+                        <div
+                          key={vIdx}
+                          onClick={() => handleSaveWordToLingQ(vocab.word, vocab.en, vocab.ar)}
+                          className="px-2.5 py-1 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 text-stone-800 dark:text-stone-200 text-xs font-semibold cursor-pointer shadow-2xs flex items-center gap-1.5 group"
+                          title={`Click to save "${vocab.word}" to LingQs`}
+                        >
+                          <span className="font-bold text-amber-600 dark:text-amber-400">
+                            {vocab.word}
+                          </span>
+                          <span className="text-stone-400 text-[10px]">({vocab.en})</span>
+                          <Plus className="w-3 h-3 text-stone-400 group-hover:text-amber-500" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+
+        {/* Loading spinner */}
+        {isLoading && !isStreaming && (
+          <div className="flex items-center gap-2 text-stone-400 text-xs font-bold animate-pulse p-2">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+            <span>{activePersonaObj.name} está pensando...</span>
+          </div>
+        )}
+      </div>
+
+      {/* 💡 LINGOPAL SMART CHIPS (Suggested Quick Replies) */}
+      {suggestedReplies.length > 0 && !isLoading && !isStreaming && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Quick Replies (Smart Chips):</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {suggestedReplies.map((reply, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(reply.es)}
+                className="text-left p-2.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-stone-800/60 transition group cursor-pointer shadow-xs space-y-0.5"
+              >
+                <p className="text-xs font-bold text-stone-800 dark:text-stone-200 group-hover:text-amber-700 dark:group-hover:text-amber-400 leading-snug">
+                  {reply.es}
+                </p>
+                {reply.en && (
+                  <p className="text-[11px] text-stone-400 dark:text-stone-500 line-clamp-1">
+                    {reply.en}
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🎙️ INTERACTIVE INPUT BAR */}
+      <div className="relative bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-2 shadow-sm flex items-center gap-2">
+        {/* Voice recording button */}
+        <button
+          onClick={handleToggleMic}
+          className={`p-3 rounded-xl transition cursor-pointer ${
+            isListening
+              ? 'bg-rose-500 text-white animate-pulse shadow-md ring-4 ring-rose-200 dark:ring-rose-950'
+              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
+          title={isListening ? 'Stop listening' : 'Speak in Spanish'}
+        >
+          {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+        </button>
+
+        {/* Text Input */}
+        <input
+          type="text"
+          value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleSendMessage();
+          }}
+          placeholder={
+            isListening
+              ? 'Escuchando tu voz en español...'
+              : `Escribe a ${activePersonaObj.name} en español...`
+          }
+          className="flex-1 bg-transparent px-2 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-hidden font-medium"
+        />
+
+        {/* Send Button */}
+        <button
+          onClick={() => handleSendMessage()}
+          disabled={!inputVal.trim() || isLoading || isStreaming}
+          className="p-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-stone-950 rounded-xl font-bold transition shadow-xs cursor-pointer flex items-center justify-center"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 📖 WORD DICTIONARY POPOVER (Tap-to-Translate) */}
+      {selectedWord && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${Math.min(window.innerWidth - 220, Math.max(16, selectedWord.x - 100))}px`,
+            top: `${selectedWord.y - 110}px`,
+            zIndex: 100
+          }}
+          onClick={e => e.stopPropagation()}
+          className="bg-stone-900 text-white p-3 rounded-2xl shadow-2xl border border-stone-700 w-52 space-y-2 animate-in fade-in zoom-in duration-150"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-amber-400">{selectedWord.cleanWord}</span>
+            <button
+              onClick={() => setSelectedWord(null)}
+              className="text-stone-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="text-[11px] text-stone-300 space-y-0.5">
+            <p>🇬🇧 {selectedWord.en}</p>
+            <p className="font-arabic text-stone-300" dir="rtl">
+              🇦🇪 {selectedWord.ar}
+            </p>
+          </div>
+          <button
+            onClick={() =>
+              handleSaveWordToLingQ(selectedWord.cleanWord, selectedWord.en, selectedWord.ar)
+            }
+            className="w-full py-1 px-2 bg-amber-500 text-stone-950 font-bold text-[11px] rounded-lg hover:bg-amber-400 transition cursor-pointer flex items-center justify-center gap-1"
+          >
+            <Plus className="w-3 h-3" />
+            <span>+ Save to LingQs</span>
+          </button>
+        </div>
+      )}
+
+      {/* Word Saved Toast */}
+      {savedWordToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 animate-bounce">
+          <Check className="w-4 h-4" />
+          <span>"{savedWordToast}" guardada en tu baraja LingQ (+5 XP)!</span>
+        </div>
+      )}
+
+      {/* Quest Completed Toast */}
+      {questToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-amber-400 border border-amber-500 px-5 py-2.5 rounded-full text-xs font-black shadow-2xl flex items-center gap-2 animate-in slide-in-from-top duration-200">
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <span>{questToast}</span>
+        </div>
+      )}
+
+      {/* 🌟 LEVEL-UP CELEBRATION MODAL */}
+      {showLevelUpModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.85, opacity: 0 }}
+            className="bg-white dark:bg-stone-900 border border-amber-400 dark:border-amber-500 rounded-3xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl relative overflow-hidden"
+          >
+            <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-orange-500 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-lg text-stone-950 font-black">
+              🏆
             </div>
-          ) : null}
+            <div className="space-y-1">
+              <span className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                ¡LEVEL UP!
+              </span>
+              <h3 className="text-2xl font-black text-stone-900 dark:text-white">
+                ¡Has alcanzado el Nivel {currentLevel}!
+              </h3>
+              <p className="text-sm font-bold text-stone-600 dark:text-stone-300">
+                Nuevo Rango: <span className="text-amber-500">{rankTitle}</span>
+              </p>
+            </div>
+
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Tu fluidez conversacional sigue creciendo a través de la práctica activa con {activePersonaObj.name}.
+            </p>
+
+            <button
+              onClick={() => setShowLevelUpModal(false)}
+              className="w-full py-3 bg-amber-500 text-stone-950 rounded-2xl font-black text-sm hover:bg-amber-400 transition cursor-pointer shadow-md"
+            >
+              ¡Continuar Conversación! 🚀
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* 🎉 5-TURN SCENARIO COMPLETION CELEBRATION MODAL */}
+      {showCelebrationModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl"
+          >
+            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950/60 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-inner">
+              ⭐
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-stone-900 dark:text-white">
+                ¡Escenario Completado!
+              </h3>
+              <p className="text-sm text-stone-600 dark:text-stone-300">
+                Has completado 5 turnos de diálogo en{' '}
+                <span className="font-bold">{currentScenario.title_es}</span> con {activePersonaObj.name}.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <div className="bg-amber-50 dark:bg-stone-800 p-3 rounded-2xl border border-amber-200/60 dark:border-stone-700">
+                <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400 block">
+                  XP de Misión
+                </span>
+                <span className="text-2xl font-black text-amber-800 dark:text-amber-300">
+                  +50 XP
+                </span>
+              </div>
+              <div className="bg-emerald-50 dark:bg-stone-800 p-3 rounded-2xl border border-emerald-200/60 dark:border-stone-700">
+                <span className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 block">
+                  Dominio del Tema
+                </span>
+                <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                  {topicMastery[currentScenario.id] || 85}%
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowCelebrationModal(false)}
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 rounded-xl font-bold text-xs hover:bg-stone-200 transition cursor-pointer"
+              >
+                Seguir Charlando
+              </button>
+              <button
+                onClick={() => {
+                  setShowCelebrationModal(false);
+                  const nextIdx =
+                    (LINGOPAL_SCENARIOS.findIndex(s => s.id === currentScenario.id) + 1) %
+                    LINGOPAL_SCENARIOS.length;
+                  handleSelectScenario(LINGOPAL_SCENARIOS[nextIdx]);
+                }}
+                className="flex-1 py-3 bg-amber-500 text-stone-950 rounded-xl font-black text-xs hover:bg-amber-400 transition cursor-pointer shadow-md"
+              >
+                Siguiente Escenario 🚀
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

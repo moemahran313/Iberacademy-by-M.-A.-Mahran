@@ -30,7 +30,7 @@ import {
   Award
 } from 'lucide-react';
 import { UserProgress } from '../types';
-import { soundEffects, speakSpanish } from '../utils/audio';
+import { soundEffects, speakSpanish, speakSpanishPersona } from '../utils/audio';
 import { tokenizeText, lookupSpanishWord, WordDefinitionMatch } from '../utils/lingqEngine';
 
 interface LingLooperGameProps {
@@ -38,7 +38,7 @@ interface LingLooperGameProps {
   setUserProgress: React.Dispatch<React.SetStateAction<UserProgress>>;
 }
 
-export type TutorPersonaId = 'juan' | 'sofia' | 'mateo' | 'elena';
+export type TutorPersonaId = 'juan' | 'sofia' | 'mateo' | 'camila' | 'elena';
 
 interface TutorPersonaInfo {
   id: TutorPersonaId;
@@ -236,7 +236,7 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
       setAssessmentMessages([firstMsg]);
       
       if (!isAudioMuted) {
-        speakSpanish(data.firstQuestion, audioSpeed);
+        speakSpanishPersona(data.firstQuestion, 'camila', audioSpeed);
       }
     } catch (e) {
       console.error('Error starting fluency assessment:', e);
@@ -260,7 +260,7 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
       };
       setAssessmentMessages([firstMsg]);
       if (!isAudioMuted) {
-        speakSpanish(firstMsg.spanishText, audioSpeed);
+        speakSpanishPersona(firstMsg.spanishText, 'camila', audioSpeed);
       }
     } finally {
       setIsLoading(false);
@@ -400,7 +400,7 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
       setAssessmentMessages(prev => [...prev, tutorMsg]);
 
       if (!isAudioMuted) {
-        speakSpanish(tutorMsg.spanishText, audioSpeed);
+        speakSpanishPersona(tutorMsg.spanishText, 'camila', audioSpeed);
       }
     } catch (e) {
       console.error('Error fetching next assessment question:', e);
@@ -413,7 +413,7 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
       };
       setAssessmentMessages(prev => [...prev, tutorMsg]);
       if (!isAudioMuted) {
-        speakSpanish(tutorMsg.spanishText, audioSpeed);
+        speakSpanishPersona(tutorMsg.spanishText, 'camila', audioSpeed);
       }
     } finally {
       setIsLoading(false);
@@ -505,14 +505,14 @@ export const LingLooperGame: React.FC<LingLooperGameProps> = ({
     setMessages(prev => [...prev, switchMsg]);
 
     if (!isAudioMuted) {
-      speakSpanish(personaObj.welcome_es, audioSpeed);
+      speakSpanishPersona(personaObj.welcome_es, newId, audioSpeed);
     }
   };
 
   // Speak AI message and trigger soundwave animation
   const handleSpeakTutorMessage = (msgId: string, text: string) => {
     setCurrentlyPlayingId(msgId);
-    speakSpanish(text, audioSpeed);
+    speakSpanishPersona(text, activePersonaId, audioSpeed);
     setTimeout(() => {
       setCurrentlyPlayingId(null);
     }, Math.max(2000, text.length * 60));

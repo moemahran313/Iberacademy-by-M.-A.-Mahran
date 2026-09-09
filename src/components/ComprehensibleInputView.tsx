@@ -22,7 +22,9 @@ import {
   TrendingUp,
   Globe,
   UploadCloud,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { ComprehensibleStory, CEFRLevel, UserProgress, ImportedContent } from '../types';
 import { COMPREHENSIBLE_STORIES } from '../data/comprehensibleStories';
@@ -78,6 +80,14 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Progressive Unveiling: track expanded card IDs
+  const [expandedStoryIds, setExpandedStoryIds] = useState<Record<string, boolean>>({});
+
+  const toggleStoryExpand = (id: string) => {
+    soundEffects.playPop();
+    setExpandedStoryIds(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Popover state for instant library card preview definitions
   const [activePopover, setActivePopover] = useState<{
@@ -462,62 +472,184 @@ export const ComprehensibleInputView: React.FC<ComprehensibleInputViewProps> = (
             </div>
           </div>
 
-          {/* Virtualized Cards Renderer */}
+          {/* Progressive Unveiling Stories & Articles */}
           {isLoading ? (
             <StoriesSkeleton />
+          ) : filteredItems.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-8 space-y-3">
+              <BookOpen className="w-10 h-10 text-stone-300 dark:text-stone-700 mx-auto" />
+              <h3 className="text-base font-bold text-stone-700 dark:text-stone-300">
+                No articles or stories found matching your filter
+              </h3>
+              <p className="text-xs text-stone-400">
+                Try selecting "All Levels" or clearing your search keywords.
+              </p>
+            </div>
           ) : (
-            <div className="w-full min-h-[600px]">
-              <VirtualizedList
-                height={680}
-                itemCount={filteredItems.length}
-                itemSize={220}
-                width="100%"
-                className="no-scrollbar"
-              >
-                {({ index, style }: { index: number; style: React.CSSProperties }) => {
-                  const item = filteredItems[index];
-                  if (!item) return null;
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {visibleStories.map(item => {
+                  const isExpanded = !!expandedStoryIds[item.id];
+                  const readTime = Math.max(1, Math.ceil((item.wordCount || 100) / 90));
+
+                  // Extract 1-sentence high-level summary hook
+                  const rawSummary = item.translation_en || item.content;
+                  const firstSentence = rawSummary.split(/\.\s+/)[0];
+                  const synopsisHook = firstSentence ? `${firstSentence.trim()}.` : item.title;
+
+                  // Extract 4 key vocabulary words
+                  const contentWords = item.content
+                    .split(/\s+/)
+                    .map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'¡¿]/g, '').trim())
+                    .filter(w => w.length >= 5 && !/^(sobre|donde|cuando|porque|tambien|despues|entonces|algunos|siempre)$/i.test(w));
+                  const uniqueKeyWords = Array.from(new Set(contentWords)).slice(0, 4);
 
                   return (
-                    <div style={{ ...style, paddingBottom: 14 }}>
-                      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between group h-full space-y-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-amber-500 text-stone-950">
+                    <div
+                      key={item.id}
+                      className={`bg-white dark:bg-stone-900 border transition-all duration-300 rounded-3xl p-5 shadow-xs flex flex-col justify-between ${
+                        isExpanded
+                          ? 'border-amber-500/80 ring-2 ring-amber-400/20 shadow-md md:col-span-2'
+                          : 'border-stone-200 dark:border-stone-800 hover:border-amber-500/40 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="space-y-3">
+                        {/* Tier 1 Header Metadata */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500 text-stone-950">
                               {item.cefr}
                             </span>
-                            <span className="text-[11px] font-bold text-stone-400 font-mono">
-                              {item.wordCount} words
+                            <span className="text-[11px] font-bold text-stone-400 capitalize">
+                              {item.category}
                             </span>
                           </div>
-
-                          <h3 className="text-base font-black text-stone-900 dark:text-stone-100 group-hover:text-amber-500 transition line-clamp-1">
-                            {item.title}
-                          </h3>
-
-                          <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed">
-                            {renderInteractiveContent(item.content)}
-                          </p>
+                          <div className="flex items-center gap-2 text-[11px] font-bold text-stone-400 font-mono">
+                            <span>{item.wordCount} words</span>
+                            <span>•</span>
+                            <span>~{readTime} min read</span>
+                          </div>
                         </div>
 
-                        <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-stone-400 capitalize">
-                            {item.category}
+                        {/* Title */}
+                        <h3 className="text-base font-black text-stone-900 dark:text-stone-100 leading-snug">
+                          {item.title}
+                        </h3>
+
+                        {/* Plain Language 1-Sentence High-Level Summary */}
+                        <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-100 dark:border-stone-800 text-xs text-stone-600 dark:text-stone-300 space-y-1">
+                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                            <Sparkles className="w-3 h-3 text-amber-500" />
+                            <span>High-Level Synopsis:</span>
+                          </div>
+                          <p className="leading-relaxed">{synopsisHook}</p>
+                        </div>
+
+                        {/* Tier 2: Progressive Unveiling Section (Expanded on user interaction) */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-4 overflow-hidden"
+                            >
+                              {/* Key Target Vocabulary Chips */}
+                              {uniqueKeyWords.length > 0 && (
+                                <div className="space-y-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">
+                                    Target Lexical Anchors:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {uniqueKeyWords.map((word, wIdx) => {
+                                      const lookup = lookupSpanishWord(word);
+                                      return (
+                                        <div
+                                          key={wIdx}
+                                          onClick={(e) => handleWordClick(e, word)}
+                                          className="px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 cursor-pointer hover:scale-102 transition"
+                                          title="Click for instant definition"
+                                        >
+                                          <span>{word}</span>
+                                          {lookup && lookup.translation_en && (
+                                            <span className="text-[10px] font-normal text-amber-700/80 dark:text-amber-400">
+                                              ({lookup.translation_en})
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Bilingual Full Synopsis */}
+                              {item.translation_en && (
+                                <div className="space-y-1 text-xs text-stone-600 dark:text-stone-300">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">
+                                    Story Context & Breakdown:
+                                  </span>
+                                  <p className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800 leading-relaxed">
+                                    🇬🇧 {item.translation_en.slice(0, 240)}
+                                    {item.translation_en.length > 240 ? '...' : ''}
+                                  </p>
+                                  {item.translation_ar && (
+                                    <p
+                                      className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800 font-arabic text-right leading-relaxed"
+                                      dir="rtl"
+                                    >
+                                      🇦🇪 {item.translation_ar.slice(0, 240)}
+                                      {item.translation_ar.length > 240 ? '...' : ''}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Interactive Passage Preview with Click-to-Translate Tokens */}
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">
+                                  Passage Preview (Tap any word for live translation):
+                                </span>
+                                <div className="p-3.5 rounded-2xl bg-amber-500/5 dark:bg-stone-800/60 border border-amber-500/20 text-xs sm:text-sm leading-relaxed text-stone-800 dark:text-stone-200 max-h-36 overflow-y-auto">
+                                  {renderInteractiveContent(item.content.slice(0, 320))}...
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Footer Actions: Progressive Disclosure Toggle & Full Reader Launcher */}
+                      <div className="pt-3 mt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2 flex-wrap">
+                        <button
+                          onClick={() => toggleStoryExpand(item.id)}
+                          className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-amber-50 dark:hover:bg-stone-800 transition"
+                        >
+                          <span>
+                            {isExpanded ? 'Collapse Overview' : 'Progressive Breakdown & Lexis'}
                           </span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          )}
+                        </button>
 
-                          <button
-                            onClick={() => handleOpenReader(item)}
-                            className="px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 group-hover:bg-amber-500 group-hover:text-stone-950 text-stone-800 dark:text-stone-200 font-black text-xs flex items-center gap-1.5 transition cursor-pointer"
-                          >
-                            <span>Read in Interactive Mode</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleOpenReader(item)}
+                          className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 hover:bg-amber-500 hover:text-stone-950 font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs ml-auto"
+                        >
+                          <span>Interactive Reader</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   );
-                }}
-              </VirtualizedList>
+                })}
+              </div>
+
+              {/* Sentinel ref for infinite scroll loading */}
+              <div ref={storySentinelRef} className="h-4 w-full" />
             </div>
           )}
         </div>

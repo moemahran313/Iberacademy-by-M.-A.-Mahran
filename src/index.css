@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Fraunces', 'Cairo', Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Cairo', monospace;
+  --font-cairo: 'Cairo', 'Noto Sans Arabic', sans-serif;
+  --font-arabic: 'Cairo', 'Noto Sans Arabic', sans-serif;
+}
+
 @variant dark (&:where(.dark, .dark *));
 
 /* Enforce font-display: swap for web fonts */
@@ -14,6 +22,21 @@
 @font-face {
   font-family: 'Cairo';
   font-display: swap;
+}
+
+/* Direct mapping: Any Arabic Unicode character seamlessly renders via Cairo font */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: local('Cairo');
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  src: local('Cairo');
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 html {
@@ -37,21 +60,54 @@ main, .scroll-container, .overflow-y-auto, .overflow-x-auto {
 }
 
 @layer base {
+  *, ::before, ::after {
+    font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     letter-spacing: -0.011em;
   }
   h1, h2, h3, h4, h5, h6, .font-header {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     letter-spacing: -0.025em;
   }
   .font-editorial, .font-serif-brand {
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Fraunces', 'Cairo', Georgia, serif;
     letter-spacing: -0.015em;
   }
-  .font-arabic {
-    font-family: 'Cairo', 'Noto Sans Arabic', Tahoma, sans-serif;
+  .font-arabic,
+  .font-cairo,
+  :lang(ar),
+  [lang="ar"],
+  [dir="rtl"],
+  [data-lang="ar"],
+  .arabic-text {
+    font-family: 'Cairo', 'Noto Sans Arabic', Tahoma, sans-serif !important;
   }
+}
+
+/* Comprehensive Arabic typography enforcement - ensures all Arabic text renders in Cairo */
+:lang(ar),
+[lang="ar"],
+[dir="rtl"],
+.font-arabic,
+.font-cairo,
+.arabic-text,
+[data-lang="ar"],
+html.lang-ar,
+.lang-ar,
+.lang-ar * {
+  font-family: 'Cairo', 'Noto Sans Arabic', Tahoma, sans-serif !important;
+}
+
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
+:lang(ar) h1, :lang(ar) h2, :lang(ar) h3, :lang(ar) h4, :lang(ar) h5, :lang(ar) h6,
+[lang="ar"] h1, [lang="ar"] h2, [lang="ar"] h3, [lang="ar"] h4, [lang="ar"] h5, [lang="ar"] h6,
+[dir="rtl"] button, :lang(ar) button, [lang="ar"] button,
+[dir="rtl"] input, :lang(ar) input, [lang="ar"] input,
+[dir="rtl"] textarea, :lang(ar) textarea, [lang="ar"] textarea {
+  font-family: 'Cairo', sans-serif !important;
 }
 
 /* World-class agency custom animations */

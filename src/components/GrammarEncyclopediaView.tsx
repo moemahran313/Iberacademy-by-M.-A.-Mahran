@@ -40,6 +40,7 @@ import { speakSpanish, soundEffects } from '../utils/audio';
 import { useApp } from '../context/AppContext';
 import { VisualMatchingQuiz } from './VisualMatchingQuiz';
 import { ReportGrammarIssueModal } from './ReportGrammarIssueModal';
+import { ProgressiveConceptCard } from './ProgressiveConceptCard';
 
 interface GrammarEncyclopediaViewProps {
   userProgress: UserProgress;
@@ -479,36 +480,60 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
                       {unitTopics.map(topic => {
                         const isSelected = topic.id === selectedTopicId;
                         return (
-                          <button
+                          <div
                             key={topic.id}
-                            onClick={() => {
-                              soundEffects.playPop();
-                              setSelectedTopicId(topic.id);
-                            }}
-                            className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                            className={`rounded-2xl border transition-all overflow-hidden ${
                               isSelected
-                                ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-sm font-bold'
-                                : 'bg-stone-50/60 dark:bg-stone-800/40 text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 border-stone-200/80 dark:border-stone-800'
+                                ? 'bg-white dark:bg-stone-900 border-amber-500 ring-2 ring-amber-400/20 shadow-sm'
+                                : 'bg-stone-50/60 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
                             }`}
                           >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                                  isSelected ? 'bg-stone-950 text-white' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
-                                }`}>
-                                  {topic.cefr}
-                                </span>
-                                <span className="font-bold text-xs sm:text-sm line-clamp-1">
-                                  {topic.title_es}
-                                </span>
+                            <button
+                              onClick={() => {
+                                soundEffects.playPop();
+                                setSelectedTopicId(topic.id);
+                              }}
+                              className="w-full text-left p-3.5 flex items-center justify-between gap-3 cursor-pointer"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                    isSelected ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
+                                  }`}>
+                                    {topic.cefr}
+                                  </span>
+                                  <span className={`font-bold text-xs sm:text-sm line-clamp-1 ${isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-stone-800 dark:text-stone-200'}`}>
+                                    {topic.title_es}
+                                  </span>
+                                </div>
+                                <p className="text-xs mt-0.5 text-stone-500 dark:text-stone-400 line-clamp-1">
+                                  {topic.title_en}
+                                </p>
                               </div>
-                              <p className={`text-xs mt-0.5 line-clamp-1 ${isSelected ? 'text-stone-800' : 'text-stone-500'}`}>
-                                {topic.title_en}
-                              </p>
-                            </div>
 
-                            <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'rotate-90 text-stone-950' : 'text-stone-400'}`} />
-                          </button>
+                              <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'rotate-90 text-amber-500' : 'text-stone-400'}`} />
+                            </button>
+
+                            {/* Progressive In-Place Unveiling when Selected */}
+                            {isSelected && (
+                              <div className="px-3.5 pb-3.5 pt-1 border-t border-stone-100 dark:border-stone-800 space-y-2">
+                                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
+                                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-amber-500" />
+                                    High-Level Rule Summary:
+                                  </span>
+                                  <p className="text-stone-700 dark:text-stone-300 leading-relaxed font-medium">
+                                    {topic.summary_en || topic.the_rule_in_plain_english || 'Master this grammatical cornerstone with high-retention practice.'}
+                                  </p>
+                                  {topic.formula && (
+                                    <p className="font-mono text-[11px] font-bold text-amber-900 dark:text-amber-300 pt-1 border-t border-amber-500/20">
+                                      📐 {topic.formula}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -520,68 +545,31 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
 
           {/* Right Column: Quest Control Board */}
           <div className="lg:col-span-5 space-y-5">
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6 sticky top-6">
-              {/* Selected Lesson Header */}
-              <div className="border-b border-stone-100 dark:border-stone-800 pb-4 space-y-2">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
-                      UNIT {selectedTopic.unit} • {selectedTopic.cefr}
-                    </span>
-                    <span className="text-xs text-stone-400 font-mono">
-                      {selectedTopic.category}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      soundEffects.playPop();
-                      setIsReportModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-stone-400 hover:text-rose-500 transition cursor-pointer"
-                    title="Report a grammar or translation issue in this lesson"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Report Issue</span>
-                  </button>
-                </div>
+            {/* Progressive Concept Card: Tier 1 Anchor by default */}
+            <ProgressiveConceptCard
+              topic={selectedTopic}
+              defaultTier={1}
+              onPracticeWithAI={(topic) => {
+                soundEffects.playPop();
+                setGrammarPracticeTopic({
+                  id: topic.id,
+                  title_es: topic.title_es,
+                  title_en: topic.title_en,
+                  formula: topic.formula
+                });
+                setActiveTab('tutor');
+              }}
+              onLaunchPatternDiscovery={(topicId) => {
+                soundEffects.playPop();
+                setActiveTabMode('pattern_discovery');
+              }}
+              onReportIssue={() => {
+                soundEffects.playPop();
+                setIsReportModalOpen(true);
+              }}
+            />
 
-                <h2 className="text-xl font-black text-stone-900 dark:text-white leading-tight">
-                  {selectedTopic.title_es}
-                </h2>
-                <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">
-                  🇬🇧 {selectedTopic.title_en}
-                </p>
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 font-arabic text-right" dir="rtl">
-                  {selectedTopic.title_ar}
-                </p>
-              </div>
-
-              {/* Lesson Brief */}
-              <div className="space-y-3">
-                <div className="p-3.5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-2">
-                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-stone-400 block">
-                    Lesson Concept:
-                  </span>
-                  <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
-                    {selectedTopic.summary_en}
-                  </p>
-                  <p className="text-xs font-bold text-amber-900 dark:text-amber-300 font-arabic text-right leading-relaxed" dir="rtl">
-                    {selectedTopic.summary_ar}
-                  </p>
-                </div>
-
-                {selectedTopic.formula && (
-                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1">
-                    <span className="text-[10px] font-mono font-black uppercase text-amber-700 dark:text-amber-400 block">
-                      🧠 Memory Anchor:
-                    </span>
-                    <p className="text-xs font-bold text-stone-900 dark:text-stone-100">
-                      {selectedTopic.formula}
-                    </p>
-                  </div>
-                )}
-              </div>
-
+            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
               {/* 5 Cognitive Quests to Launch */}
               <div className="space-y-3">
                 <span className="text-xs font-black uppercase tracking-wider text-stone-400 block">
@@ -1435,207 +1423,33 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
           </div>
 
           {/* Right Detail Content */}
-          <div className="lg:col-span-8 space-y-5">
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-6">
-              {/* Header */}
-              <div className="border-b border-stone-100 dark:border-stone-800 pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-100 dark:bg-stone-800 text-amber-800 dark:text-amber-400 uppercase">
-                      UNIT {selectedTopic.unit} • {selectedTopic.cefr} • {selectedTopic.category}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        soundEffects.playPop();
-                        setIsReportModalOpen(true);
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs transition cursor-pointer"
-                      title="Report any spelling or grammar issues in this lesson"
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Report Issue</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        soundEffects.playPop();
-                        setGrammarPracticeTopic({
-                          id: selectedTopic.id,
-                          title_es: selectedTopic.title_es,
-                          title_en: selectedTopic.title_en,
-                          formula: selectedTopic.formula
-                        });
-                        setActiveTab('tutor');
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-950 dark:bg-amber-500 text-white dark:text-stone-950 font-black text-xs hover:opacity-90 transition shadow-sm cursor-pointer w-fit"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
-                      <span>Practice Rule with AI</span>
-                    </button>
-                  </div>
-                </div>
-                <h2 className="text-2xl font-black text-stone-900 dark:text-white mt-2">
-                  {selectedTopic.title_es}
-                </h2>
-                <p className="text-sm font-semibold text-stone-600 dark:text-stone-400 mt-0.5">
-                  🇬🇧 {selectedTopic.title_en}
-                </p>
-                <p className="text-sm font-bold text-amber-800 dark:text-amber-400 font-arabic mt-0.5 text-right" dir="rtl">
-                  🇦🇪 {selectedTopic.title_ar}
-                </p>
+          <div className="lg:col-span-8 space-y-6">
+            <ProgressiveConceptCard
+              topic={selectedTopic}
+              defaultTier={2}
+              onPracticeWithAI={(topic) => {
+                soundEffects.playPop();
+                setGrammarPracticeTopic({
+                  id: topic.id,
+                  title_es: topic.title_es,
+                  title_en: topic.title_en,
+                  formula: topic.formula
+                });
+                setActiveTab('tutor');
+              }}
+              onLaunchPatternDiscovery={(topicId) => {
+                soundEffects.playPop();
+                setActiveTabMode('pattern_discovery');
+              }}
+              onReportIssue={() => {
+                soundEffects.playPop();
+                setIsReportModalOpen(true);
+              }}
+            />
 
-                {selectedTopic.formula && (
-                  <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                    <span className="text-[11px] font-extrabold text-amber-900 dark:text-amber-400 uppercase tracking-wider block mb-1">
-                      🧠 Memory Formula & Rule Blueprint:
-                    </span>
-                    <p className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100">
-                      {selectedTopic.formula}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Bilingual Content Sections */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* English Explanation */}
-                <div className="bg-stone-50/70 dark:bg-stone-800/50 p-4 rounded-xl border border-stone-200/80 dark:border-stone-800 space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                    English Deep Dive
-                  </span>
-                  <div className="text-xs sm:text-sm text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-line">
-                    {selectedTopic.fullContent_en}
-                  </div>
-                </div>
-
-                {/* Arabic Explanation */}
-                <div className="bg-amber-50/40 dark:bg-stone-800/30 p-4 rounded-xl border border-amber-200/60 dark:border-stone-800 space-y-2 text-right" dir="rtl">
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 flex items-center gap-1.5 justify-end font-arabic">
-                    <GraduationCap className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                    الشرح التفصيلي بالعربية
-                  </span>
-                  <div className="text-xs sm:text-sm text-stone-800 dark:text-stone-200 leading-relaxed whitespace-pre-line font-arabic">
-                    {selectedTopic.fullContent_ar}
-                  </div>
-                </div>
-              </div>
-
-              {/* 10-Point Demonstration Matrix */}
-              {(() => {
-                const matrix = TEN_POINT_GRAMMAR_MATRICES.find(m => m.topicId === selectedTopic.id);
-                if (!matrix) return null;
-                return (
-                  <div className="p-5 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-stone-800/80 dark:to-stone-900 border border-amber-200 dark:border-stone-700 rounded-2xl space-y-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-amber-200 dark:border-stone-700 pb-3 gap-2">
-                      <div>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-stone-950 uppercase">
-                          🔥 10-Point Demonstration Matrix
-                        </span>
-                        <h3 className="text-lg font-black text-stone-900 dark:text-white mt-1">
-                          {matrix.title}
-                        </h3>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-stone-800 px-3 py-1 rounded-xl w-fit">
-                        {matrix.formula}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-stone-700 dark:text-stone-300 font-medium">
-                      💡 {matrix.plain_english_concept}
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {matrix.ten_point_matrix.map((point) => (
-                        <div
-                          key={point.point_number}
-                          className="p-3.5 bg-white dark:bg-stone-800 rounded-xl border border-amber-200/80 dark:border-stone-700 space-y-1.5 shadow-xs"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-mono font-black text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-stone-900 px-2 py-0.5 rounded">
-                              {point.label}
-                            </span>
-                            <span className="text-[9px] font-mono text-stone-400">
-                              #{point.point_number}
-                            </span>
-                          </div>
-
-                          <button
-                            onClick={() => speakSpanish(point.es)}
-                            className="text-left font-bold text-xs sm:text-sm text-stone-900 dark:text-white flex items-center gap-1.5 hover:text-amber-500 transition cursor-pointer"
-                          >
-                            <span>🇪🇸 {point.es}</span>
-                            <Volume2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          </button>
-
-                          <p className="text-[11px] text-stone-600 dark:text-stone-300">
-                            🇬🇧 {point.en}
-                          </p>
-                          {point.ar && (
-                            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 font-arabic text-right" dir="rtl">
-                              🇦🇪 {point.ar}
-                            </p>
-                          )}
-                          <p className="text-[10px] text-stone-400 italic">
-                            🗣️ [{point.phonetic}] • 💡 {point.note}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Examples */}
-              <div className="space-y-3 pt-4 border-t border-stone-100 dark:border-stone-800">
-                <span className="text-xs font-black uppercase tracking-wider text-stone-400 block">
-                  Illustrative Sentence Patterns:
-                </span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {selectedTopic.examples.map((ex, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-xl space-y-1"
-                    >
-                      <button
-                        onClick={() => speakSpanish(ex.es)}
-                        className="text-left font-bold text-xs sm:text-sm text-stone-900 dark:text-white flex items-center gap-1 hover:text-amber-500 transition cursor-pointer"
-                      >
-                        <span>🇪🇸 {ex.es}</span>
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-                      <p className="text-[11px] text-stone-500">{ex.en}</p>
-                      <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 font-arabic text-right" dir="rtl">{ex.ar}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Common Mistakes */}
-              {selectedTopic.commonMistakes && selectedTopic.commonMistakes.length > 0 && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl space-y-3">
-                  <span className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4" />
-                    Common Learner Mistakes (احذر هذه الأخطاء):
-                  </span>
-                  <div className="space-y-3">
-                    {selectedTopic.commonMistakes.map((mistake, idx) => (
-                      <div key={idx} className="space-y-1 text-xs">
-                        <p className="text-red-500 line-through">❌ {mistake.incorrect}</p>
-                        <p className="text-emerald-600 font-bold">✅ {mistake.correct}</p>
-                        <p className="text-stone-600 dark:text-stone-300 text-[11px] mt-0.5">
-                          💡 {mistake.reason_en} • <span className="font-arabic" dir="rtl">{mistake.reason_ar}</span>
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Quick Practice Quiz */}
-              {selectedTopic.quickQuiz && selectedTopic.quickQuiz.length > 0 && (
-                <div className="pt-4 border-t border-stone-100 dark:border-stone-800 space-y-4">
+            {/* Quick Practice Quiz */}
+            {selectedTopic.quickQuiz && selectedTopic.quickQuiz.length > 0 && (
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm space-y-4">
                   <h3 className="text-base font-black text-stone-900 dark:text-white flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
                     Test Your Grammar Rule (اختبار سريع للقاعدة)
@@ -1708,8 +1522,7 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       <ReportGrammarIssueModal
         isOpen={isReportModalOpen}

@@ -12,7 +12,7 @@ export type PartOfSpeech =
   | 'expression'
   | 'interjection';
 
-export type TutorPersona = 'teacher' | 'friend' | 'grammar_doctor' | 'dele_examiner';
+export type TutorPersona = 'teacher' | 'friend' | 'grammar_doctor' | 'dele_examiner' | 'juan' | 'sofia' | 'mateo' | 'camila';
 
 export interface Collocation {
   phrase_es: string;

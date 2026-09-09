@@ -44,13 +44,282 @@ async function startServer() {
     res.json({ status: 'ok', serverTime: new Date().toISOString() });
   });
 
+  // Helper for persona-specific system prompt configuration
+  const getTutorPersonaPrompt = (
+    persona: string,
+    userLevel: string,
+    isArabic: boolean,
+    targetDialect: string,
+    grammarFocusPrompt: string
+  ) => {
+    let personaBio = '';
+    switch (persona) {
+      case 'sofia':
+        personaBio = `You are "Sofía", a lively, modern native speaker from Madrid, Spain 🇪🇸.
+Your tone is friendly, spontaneous, and conversational, using natural Iberian expressions (e.g., '¡qué guay!', '¡venga!', '¿qué te apetece?', 'de tapas').
+You love sharing stories about daily life in Madrid, art, music, and social conversations.`;
+        break;
+      case 'camila':
+        personaBio = `You are "Camila", a sweet and encouraging conversation coach and coffee enthusiast from Medellín, Colombia 🇨🇴.
+You speak with the clear, melodic, and warm cadence characteristic of Colombia (using friendly expressions like '¡qué chévere!', 'con mucho gusto', '¡súper bien!').
+You focus on making the student feel confident, relaxed, and fluent in conversational Spanish.`;
+        break;
+      case 'juan':
+        personaBio = `You are "Juan", a warm, casual native conversationalist from Oaxaca, Mexico 🇲🇽.
+You speak authentic Mexican Spanish (Español de México), using natural Mexican vocabulary:
+- Use 'carro' or 'auto' instead of 'coche'
+- Use 'celular' instead of 'móvil'
+- Use 'computadora' instead of 'ordenador'
+- Use 'platicar' instead of 'charlar'
+- Use '¿qué onda?', '¡qué chido!', '¡padrísimo!'
+- Always use 'ustedes' instead of 'vosotros'`;
+        break;
+      case 'mateo':
+      default:
+        personaBio = `You are "Profesor Mateo", an elite certified Spanish pedagogue and linguist from Salamanca, Spain 👨‍🏫.
+You specialize in communicative second-language acquisition (Krashen's Comprehensible Input i+1), clear grammar explanations, and DELE exam preparation.
+You speak with clear, articulate, professorial cadence and provide structured explanations and targeted sentence drills.`;
+        break;
+    }
+
+    return `${personaBio}
+
+Your mission is NOT to act like an encyclopedic chatbot or give superficial surface quizzes. Your mission is to systematically take the learner from their current level (${userLevel}) to genuine CEFR conversational and writing fluency.
+
+---
+### Core Pedagogical Rules:
+1. **Comprehensible Input (80/20 Rule)**:
+   - For A0/A1/A2: Provide explanations in ${isArabic ? 'Arabic (العربية الفصحى الدقيقة)' : 'English'}, but give all examples, dialogues, and practice drills in authentic Spanish.
+   - For B1/B2: Conduct 90%+ of the session entirely in Spanish, explaining nuance and idioms using simpler Spanish paraphrasing.
+2. **Interactive 2-3 Turn Depth**: Keep your Spanish response punchy and conversational (2-4 sentences max), asking an engaging question or setting up a natural reply challenge so the learner stays in active dialogue.
+3. **Multi-Language Vocabulary**: Always extract 2-4 key Spanish words from your response with English, Arabic, and context sentence in the "vocabulary" array.
+4. **Error Feedback & XP Reward**:
+   - Silently analyze the user's Spanish input.
+   - If they make an error, provide a clear correction in the "corrections" array (e.g. "🔴 [Correction: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']").
+   - If they demonstrate correct grammar or great effort matching level ${userLevel}, add: "🎉 XP Reward: Great conversational attempt! +15 XP" to trigger their XP reward!
+
+${grammarFocusPrompt}
+
+---
+### Response Format (Strict JSON)
+Respond strictly in valid JSON:
+{
+  "spanishResponse": "The primary Spanish speech/dialogue/instruction for the student to read and hear.",
+  "englishExplanation": "Clear pedagogical translation and explanation in English.",
+  "arabicExplanation": "Clear pedagogical translation and explanation in Arabic (العربية الفصحى).",
+  "phase": "Conversational Turn | Contextual Hook | Grammar Breakdown | Active Practice",
+  "corrections": [
+    "🟢 [Highlight correct usage or XP reward]",
+    "🔴 [Point out error if any: ❌ '...' ➡️ ✅ '...']"
+  ],
+  "vocabulary": [
+    {
+      "word": "Spanish word",
+      "en": "English meaning",
+      "ar": "Arabic meaning",
+      "contextSentence": "Short example sentence in Spanish"
+    }
+  ],
+  "followUpQuestions": [
+    "Option 1 for user to click or respond with",
+    "Option 2",
+    "Option 3"
+  ]
+}`;
+  };
+
+  // AI Spanish Tutor Streaming Endpoint - Optimized for Vercel Serverless Timeouts & Real-time UX
+  app.post('/api/ai/tutor-stream', async (req, res) => {
+    const {
+      message = '',
+      history = [],
+      userLevel = 'A1',
+      persona = 'juan',
+      scenario = 'cafe',
+      nativeLang = 'en',
+      practiceTopic = null,
+      targetDialect = 'mexico'
+    } = req.body;
+
+    const isArabic = nativeLang === 'ar';
+
+    // Set Server-Sent Events headers to keep serverless socket streaming
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    // Fallback response builder if stream times out or AI fails
+    const getFallbackPayload = () => {
+      let es = '¡Hola! Me alegra mucho saludarte. ¿Qué te gustaría practicar hoy en nuestra conversación?';
+      let en = 'Hello! I am very glad to greet you. What would you like to practice today in our conversation?';
+      let ar = 'مرحباً! يسعدني جداً التحدث معك. ماذا تحب أن نتدرب عليه اليوم في محادثتنا؟';
+
+      if (persona === 'sofia') {
+        es = '¡Hola! Qué bien tenerte por aquí. Cuéntame, ¿qué tal va tu día y qué quieres charlar hoy?';
+        en = 'Hi! So great to have you here. Tell me, how is your day going and what do you want to chat about today?';
+        ar = 'مرحباً! رائع وجودك هنا. أخبرني كيف يسير يومك وعن ماذا تريد أن ندردش؟';
+      } else if (persona === 'camila') {
+        es = '¡Hola! ¡Qué gusto conocerte! En Medellín siempre nos gusta recibir a nuevos amigos. ¿Cómo estás hoy?';
+        en = 'Hello! What a pleasure to meet you! In Medellín we always love welcoming new friends. How are you today?';
+        ar = 'مرحباً! يسعدني جداً التعرف عليك. في ميديلين نحب دائماً الترحيب بالأصدقاء الجدد. كيف حالك اليوم؟';
+      } else if (persona === 'mateo') {
+        es = '¡Saludos cordiales! Soy el Profesor Mateo. ¿Qué objetivo comunicativo o estructura gramatical abordaremos hoy?';
+        en = 'Warm greetings! I am Profesor Mateo. What communicative goal or grammatical structure shall we tackle today?';
+        ar = 'تحياتي الحارة! أنا البروفيسور ماتيو. ما الهدف التواصلي أو التركيب النحوي الذي سنتناوله اليوم؟';
+      }
+
+      if (practiceTopic) {
+        es = `¡Excelente! Vamos a practicar la lección: "${practiceTopic.title_es}". Intenta formular una oración usando esta regla:`;
+        en = `Excellent! Let's practice the lesson: "${practiceTopic.title_es}". Try formulating a sentence using this rule:`;
+        ar = `ممتاز! لنتدرب على درس: "${practiceTopic.title_es}". حاول صياغة جملة باستخدام هذه القاعدة:`;
+      }
+
+      return {
+        spanishResponse: es,
+        englishExplanation: en,
+        arabicExplanation: isArabic ? ar : undefined,
+        phase: 'LingoPal Live Stream',
+        corrections: ['🟢 Instant conversational feedback active', '🎉 XP Reward: Great conversational turn! +15 XP'],
+        vocabulary: [
+          { word: 'conversación', en: 'conversation', ar: 'محادثة', contextSentence: 'Disfruto mucho nuestra conversación.' },
+          { word: 'practicar', en: 'to practice', ar: 'يمارس / يتدرب', contextSentence: 'Es importante practicar a diario.' }
+        ],
+        followUpQuestions: [
+          'Quiero ordenar algo para comer o beber.',
+          '¿Me puedes dar un ejemplo de esta regla?',
+          'Cuéntame algo típico de tu ciudad.'
+        ]
+      };
+    };
+
+    let isClosed = false;
+    req.on('close', () => {
+      isClosed = true;
+    });
+
+    const ai = getAIClient();
+    if (!ai) {
+      // Stream fallback tokens gracefully
+      const fallback = getFallbackPayload();
+      const words = fallback.spanishResponse.split(' ');
+      for (const word of words) {
+        if (isClosed) break;
+        res.write(`data: ${JSON.stringify({ type: 'token', text: word + ' ' })}\n\n`);
+        await new Promise(r => setTimeout(r, 40));
+      }
+      res.write(`data: ${JSON.stringify({ type: 'done', payload: fallback })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    const grammarFocusPrompt = practiceTopic
+      ? `\n\n--- 🧪 HIGH PRIORITY ACTIVE RULE CHALLENGE ---
+The student has chosen to practice the grammar lesson: "${practiceTopic.title_es}" (${practiceTopic.title_en}).
+Memory Anchor: ${practiceTopic.formula || ''}.
+Your primary directive is to immediately present active sentence-building drills and challenges focused on this rule.`
+      : '';
+
+    const systemPrompt = getTutorPersonaPrompt(persona, userLevel, isArabic, targetDialect, grammarFocusPrompt);
+
+    const contents = [
+      ...history.slice(-6).map((h: { role: string; text?: string; content?: string }) => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text || h.content || '' }],
+      })),
+      {
+        role: 'user',
+        parts: [{ text: message }],
+      },
+    ];
+
+    try {
+      // Set a serverless timeout race: 8.5 seconds max
+      const timeoutPromise = new Promise<{ timeout: true }>(resolve =>
+        setTimeout(() => resolve({ timeout: true }), 8500)
+      );
+
+      const streamPromise = ai.models.generateContentStream({
+        model: 'gemini-2.5-flash',
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const raceResult = await Promise.race([streamPromise, timeoutPromise]);
+
+      if ('timeout' in raceResult) {
+        console.warn('Gemini stream timed out on serverless execution; serving streaming fallback.');
+        const fallback = getFallbackPayload();
+        for (const w of fallback.spanishResponse.split(' ')) {
+          if (isClosed) break;
+          res.write(`data: ${JSON.stringify({ type: 'token', text: w + ' ' })}\n\n`);
+          await new Promise(r => setTimeout(r, 30));
+        }
+        res.write(`data: ${JSON.stringify({ type: 'done', payload: fallback })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        return res.end();
+      }
+
+      const stream = raceResult;
+      let fullAccumulated = '';
+
+      for await (const chunk of stream) {
+        if (isClosed) break;
+        const text = chunk.text || '';
+        fullAccumulated += text;
+
+        // Try extracting spanishResponse partial or send text chunks
+        res.write(`data: ${JSON.stringify({ type: 'chunk', raw: text })}\n\n`);
+      }
+
+      let parsed: any = {};
+      try {
+        parsed = JSON.parse(fullAccumulated);
+      } catch (parseErr) {
+        // In case of incomplete JSON stream, extract with regex
+        const spanishMatch = fullAccumulated.match(/"spanishResponse"\s*:\s*"([^"]+)"/);
+        const englishMatch = fullAccumulated.match(/"englishExplanation"\s*:\s*"([^"]+)"/);
+        parsed = {
+          spanishResponse: spanishMatch ? spanishMatch[1] : fullAccumulated.replace(/[{}\[\]"]/g, '').trim(),
+          englishExplanation: englishMatch ? englishMatch[1] : '',
+        };
+      }
+
+      const finalPayload = {
+        spanishResponse: parsed.spanishResponse || getFallbackPayload().spanishResponse,
+        englishExplanation: parsed.englishExplanation || '',
+        arabicExplanation: parsed.arabicExplanation || '',
+        phase: parsed.phase || 'Conversational Turn',
+        corrections: parsed.corrections || ['🟢 Great conversational turn! +15 XP'],
+        vocabulary: parsed.vocabulary || getFallbackPayload().vocabulary,
+        followUpQuestions: parsed.followUpQuestions || getFallbackPayload().followUpQuestions
+      };
+
+      res.write(`data: ${JSON.stringify({ type: 'done', payload: finalPayload })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (err: any) {
+      console.warn('Error during stream generation:', err?.message || err);
+      const fallback = getFallbackPayload();
+      res.write(`data: ${JSON.stringify({ type: 'done', payload: fallback })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  });
+
   // AI Spanish Tutor Chat Endpoint - Powered by Profesor Mateo Master Pedagogy
   app.post('/api/ai/tutor', async (req, res) => {
     const {
       message = '',
       history = [],
       userLevel = 'A1',
-      persona = 'teacher',
+      persona = 'juan',
+      scenario = 'cafe',
       nativeLang = 'en',
       currentPhase,
       practiceTopic = null,
@@ -66,7 +335,7 @@ async function startServer() {
       let es = '¡Excelente esfuerzo! Continuemos profundizando en las estructuras de la lengua española.';
       let en = 'Great effort! Let us continue deepening your Spanish language structures.';
       let arab = 'عمل ممتاز! دعنا نواصل تعميق فهمك لتراكيب اللغة الإسبانية.';
-      let corrections: string[] = ['🟢 Buen intento comunicativo (Good communicative attempt)'];
+      let corrections: string[] = ['🟢 Buen intento comunicativo (Good communicative attempt)', '🎉 XP Reward: +15 XP'];
       let questions = [
         '¿Cómo se conjuga este verbo en presente y pasado?',
         'Dame un ejemplo en una conversación cotidiana.',
@@ -74,8 +343,8 @@ async function startServer() {
       ];
 
       if (practiceTopic) {
-        es = `¡Excelente! Vamos a practicar la lección: "${practiceTopic.title_es}" (${practiceTopic.title_en}).\n\nFórmula clave: ${practiceTopic.formula || 'Práctica comunicativa'}.\n\nIntenta escribir una oración usando esta regla o traduce una frase de ejemplo para recibir XP:`;
-        en = `Excellent! Let's practice the lesson: "${practiceTopic.title_es}" (${practiceTopic.title_en}).\n\nMemory Anchor: ${practiceTopic.formula || 'Communicative practice'}.\n\nTry writing a sentence using this rule or translate an example sentence to earn XP:`;
+        es = `¡Excelente! Vamos a practicar la lección: "${practiceTopic.title_es}" (${practiceTopic.title_en}).\n\nFórmula clave: ${practiceTopic.formula || 'Práctica comunicativa'}.\n\nIntenta escribir una oración usando esta regla:`;
+        en = `Excellent! Let's practice the lesson: "${practiceTopic.title_es}" (${practiceTopic.title_en}).\n\nMemory Anchor: ${practiceTopic.formula || 'Communicative practice'}.\n\nTry writing a sentence using this rule to earn XP:`;
         arab = `ممتاز! لنبدأ التدريب على الدرس: "${practiceTopic.title_es}".\n\nصيغة القاعدة: ${practiceTopic.formula || 'تدريب تواصل حواري'}.\n\nحاول كتابة جملة باستخدام هذه القاعدة لتكسب نقاط خبرة:`;
         corrections = [`🟢 Practice Mode Active: ${practiceTopic.title_en}`, `🎉 XP Reward: Excellent grammar focus! +15 XP`];
         questions = [
@@ -93,9 +362,9 @@ async function startServer() {
           'Quiero practicar los tiempos pasados (Indefinido vs Imperfecto).'
         ];
       } else if (lower.includes('restaurante') || lower.includes('comida') || lower.includes('pedir') || lower.includes('tapas')) {
-        es = '¡Perfecto! Imaginemos que estamos en una taberna en Madrid. El camarero te pregunta: "Buenas tardes, ¿qué van a tomar de primero y para beber?"';
-        en = 'Perfect! Let us imagine we are in a traditional tavern in Madrid. The waiter asks: "Good afternoon, what will you have for the starter and to drink?"';
-        arab = 'ممتاز! لنتخيل أننا في مطعم تقليدي في مدريد. يسألك النادل: "مساء الخير، ماذا تفضلون للطبق الأول وللمشروب؟"';
+        es = '¡Perfecto! Imaginemos que estamos en un restaurante. El camarero te pregunta: "¿Buenas tardes, qué van a tomar de primero y para beber?"';
+        en = 'Perfect! Let us imagine we are in a restaurant. The waiter asks: "Good afternoon, what will you have for the starter and to drink?"';
+        arab = 'ممتاز! لنتخيل أننا في مطعم. يسألك النادل: "مساء الخير، ماذا تفضلون للطبق الأول وللمشروب؟"';
         corrections = ['💡 Tip: Usa "Para mí..." o "Yo quisiera..." para pedir educadamente.'];
         questions = [
           'Para mí, una paella de mariscos y agua con gas, por favor.',
@@ -135,96 +404,14 @@ async function startServer() {
       return res.json(generateFallbackTutorResponse(message, userLevel, isArabic));
     }
 
-    // Set custom grammar focus prompt if specified
     const grammarFocusPrompt = practiceTopic 
       ? `\n\n--- 🧪 HIGH PRIORITY ACTIVE RULE CHALLENGE ---
 The student has chosen to practice the grammar lesson: "${practiceTopic.title_es}" (${practiceTopic.title_en}).
 Memory Anchor: ${practiceTopic.formula || ''}.
-Your primary directive is to bypass standard diagnostics or greeting loops, and immediately generate active sentence-building drills and challenges focused exclusively on this lesson's contents. Present challenges requiring the user to produce Spanish output using this specific rule.`
+Your primary directive is to bypass standard diagnostics, and immediately present active sentence-building drills and challenges focused exclusively on this lesson.`
       : '';
 
-    const dialectPrompt = targetDialect === 'mexico'
-      ? `\n\n--- 🇲🇽 DIALECT FOCUS: MEXICAN SPANISH ---
-You MUST speak, write, and teach strictly in authentic, natural Mexican Spanish (Español de México).
-Whenever presenting vocabulary, dialogues, scenario hooks, or sample sentences, you MUST use Mexican vocabulary and terms instead of Iberian counterparts:
-- Use 'carro' or 'auto' instead of 'coche'
-- Use 'celular' instead of 'móvil'
-- Use 'computadora' instead of 'ordenador'
-- Use 'boleto' instead of 'billete'
-- Use 'platicar' instead of 'charlar'
-- Use 'andar en bicicleta' or 'andar a bicicleta' instead of 'montar a bicicleta' or 'montar en bicicleta'
-- Never use 'vosotros' or its corresponding verb conjugations and pronouns (e.g., use 'ustedes' and 'los'/'les' instead).
-Ensure that all context settings, names (such as Mateo, Carlos, Sofía, Elena, Juan), and conversational expressions (like '¡chido!', '¡padrísimo!', '¿qué onda?') are natural and appropriate for Mexican Spanish culture and align gracefully with the student's current proficiency level.`
-      : '';
-
-    const systemPrompt = `You are "Profesor Mateo", an elite, certified Spanish language pedagogue and linguist specializing in the communicative method, comprehensible input (Krashen's hypotheses), and deliberate practice for adult second-language learners.
-
-${dialectPrompt}
-
-Your mission is NOT to act like an encyclopedic chatbot or give superficial surface quizzes. Your mission is to systematically take the learner from their current level to genuine CEFR B2+ conversational and writing fluency.
-
----
-
-### Core Pedagogical Rules
-
-1. **Target Language Immersion (The 80/20 Rule)**:
-   - For A0/A1/A2: Provide explanations in ${isArabic ? 'Arabic (العربية الفصحى الدقيقة)' : 'English'}, but give all examples, dialogues, and practice drills in authentic, natural Spanish.
-   - For B1/B2: Conduct 90%+ of the session entirely in Spanish, explaining nuance and idioms using simpler Spanish paraphrasing.
-
-2. **The 5-Phase Lesson Blueprint**:
-   Every structured lesson you teach MUST follow this exact sequence:
-   - **Phase 1: Contextual Anchoring (The Hook)**: Introduce a short 3–4 turn authentic dialogue in a realistic everyday scenario.
-   - **Phase 2: Targeted Grammar/Lexis Breakdown**: Unpack 1 specific grammatical mechanism (e.g., Pretérito Indefinido vs Imperfecto, Por vs Para, Subjuntivo). Explain *why* native speakers choose this form.
-   - **Phase 3: Scaffolded Controlled Practice**: Present targeted active-recall drills.
-   - **Phase 4: Open Communicative Production (Output)**: Ask the student an open-ended question requiring them to formulate Spanish sentences.
-   - **Phase 5: Diagnostic Feedback & Correction**: Provide precise feedback (🟢 What was right, 🔴 Corrections, 💡 Native alternative).
-
-3. **Multi-Language Vocabulary Definitions (Comprehensible Input)**:
-   STRICT RULE: For ALL key new vocabulary introduced during conversations, lessons, or story-based interactions, YOU MUST include structured multi-language (English + Arabic) definitions in the "vocabulary" array of your JSON output. Include the Spanish word, clear English definition, precise Arabic translation, and an example sentence.
-
-4. **Silent Grammar Validator & XP Rewards Mode**:
-   Analyze the user's Spanish input silently against standard rules.
-   - If they make any spelling, structural, or grammar mistakes, output clear friendly corrections in the "corrections" array (e.g. "🔴 [Correction: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']").
-   - If they successfully implement the rule they are actively studying (or show correct, high-quality grammar usage matching their level), reward them directly in the "corrections" array by adding a specialized string:
-     "🎉 XP Reward: Excellent implementation of [Grammar Rule Name]! +15 XP"
-     Make sure to include this exact phrase to trigger their client-side XP celebration!
-
-${grammarFocusPrompt}
-
----
-
-### Response Format (Strict JSON)
-You must ALWAYS respond with a valid JSON object strictly formatted as:
-{
-  "spanishResponse": "The primary Spanish speech/dialogue/instruction for the student to read and hear.",
-  "englishExplanation": "Clear pedagogical and grammatical explanation in English.",
-  "arabicExplanation": "Clear pedagogical and grammatical explanation in Arabic (العربية الفصحى) if requested.",
-  "phase": "Diagnostic Kickoff | Phase 1: Contextual Anchoring | Phase 2: Grammar Breakdown | Phase 3: Controlled Practice | Phase 4: Communicative Output | Phase 5: Diagnostic Feedback",
-  "corrections": [
-    "🟢 [Highlight correct usage]",
-    "🔴 [Point out error: ❌ 'Yo tiene' ➡️ ✅ 'Yo tengo']",
-    "🎉 XP Reward: Excellent implementation of [Grammar Rule Name]! +15 XP",
-    "💡 [Native tip / natural idiom alternative]"
-  ],
-  "vocabulary": [
-    {
-      "word": "tapas",
-      "en": "small Spanish savory appetizers or snacks",
-      "ar": "مقبلات إسبانية صغيرة",
-      "contextSentence": "Vamos a tomar unas tapas en la plaza."
-    }
-  ],
-  "followUpQuestions": [
-    "Option 1 for user to click or respond with",
-    "Option 2",
-    "Option 3"
-  ]
-}
-
-Current learner context:
-- Level: ${userLevel}
-- Target Persona: ${persona}
-- User Explanation Language: ${isArabic ? 'Arabic (العربية)' : isSpanishImmersion ? 'Spanish Immersion' : 'English'}`;
+    const systemPrompt = getTutorPersonaPrompt(persona, userLevel, isArabic, targetDialect, grammarFocusPrompt);
 
     const contents = [
       ...history.slice(-8).map((h: { role: string; text?: string; content?: string }) => ({
