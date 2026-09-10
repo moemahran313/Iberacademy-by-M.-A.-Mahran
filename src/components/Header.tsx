@@ -73,7 +73,8 @@ const HeaderComponent: React.FC<HeaderProps> = ({
   const [notifications, setNotifications] = useState([
     {
       id: 'streak',
-      title: '🔥 Daily Streak Active',
+      title: 'Daily Streak Active',
+      emoji: '🔥',
       message: `You are on a ${userProgress.streakDays}-day streak! Practice a story or review cards to keep it going.`,
       time: 'Just now',
       read: false,
@@ -81,19 +82,21 @@ const HeaderComponent: React.FC<HeaderProps> = ({
     },
     {
       id: 'srs',
-      title: '📚 SRS Vocabulary Due',
+      title: 'SRS Vocabulary Due',
+      emoji: '📚',
       message: 'Pending spaced-repetition cards ready for your daily memory review.',
       time: 'Today',
       read: false,
-      tab: 'srs'
+      tab: 'vocabulary'
     },
     {
       id: 'report_system',
-      title: '🚩 Content Feedback Active',
+      title: 'Content Feedback Active',
+      emoji: '🚩',
       message: 'Found a typo or grammar discrepancy? Use the "Report Issue" button in any reader or grammar lesson to send feedback.',
       time: 'New',
       read: false,
-      tab: 'encyclopedia'
+      tab: 'grammar'
     }
   ]);
 
@@ -104,21 +107,26 @@ const HeaderComponent: React.FC<HeaderProps> = ({
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  // Close dropdowns on click outside
+  // Close dropdowns on click outside (support both desktop mousedown and mobile touchstart)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(target)) {
         setIsProfileDropdownOpen(false);
       }
-      if (navDropdownRef.current && !navDropdownRef.current.contains(event.target as Node)) {
+      if (navDropdownRef.current && !navDropdownRef.current.contains(target)) {
         setOpenDropdown(null);
       }
-      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target as Node)) {
+      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(target)) {
         setIsNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const roadmapItems = [
@@ -317,6 +325,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
               </button>
 
               {/* Notification Center Bell */}
+              {/* Notification Center Bell */}
               <div className="relative shrink-0" ref={notificationDropdownRef}>
                 <button
                   id="header-notification-bell"
@@ -324,8 +333,14 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                     soundEffects.playPop();
                     setIsNotificationsOpen(!isNotificationsOpen);
                   }}
-                  className="relative w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer flex items-center justify-center shrink-0"
+                  className={`relative w-8 h-8 rounded-full border transition cursor-pointer flex items-center justify-center shrink-0 ${
+                    isNotificationsOpen
+                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-400'
+                      : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800'
+                  }`}
                   title="Notifications & Updates"
+                  aria-label="Notifications"
+                  aria-expanded={isNotificationsOpen}
                 >
                   <Bell className="w-4 h-4 text-amber-500" />
                   {unreadCount > 0 && (
@@ -337,62 +352,133 @@ const HeaderComponent: React.FC<HeaderProps> = ({
 
                 <AnimatePresence>
                   {isNotificationsOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                      className="absolute -right-2 sm:right-0 mt-2 w-[88vw] max-w-xs sm:w-80 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3"
-                    >
-                      <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
-                        <div className="flex items-center gap-1.5">
-                          <Bell className="w-4 h-4 text-amber-500" />
-                          <span className="font-black text-xs text-stone-900 dark:text-white">Notifications</span>
-                        </div>
-                        {unreadCount > 0 && (
-                          <button
-                            onClick={markAllAsRead}
-                            className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
-                          >
-                            <Check className="w-3 h-3" /> Mark all read
-                          </button>
-                        )}
-                      </div>
+                    <>
+                      {/* Mobile Backdrop Overlay */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-40 sm:hidden"
+                        aria-hidden="true"
+                      />
 
-                      <div className="space-y-2 max-h-72 overflow-y-auto">
-                        {notifications.map(item => (
-                          <div
-                            key={item.id}
-                            onClick={() => {
-                              soundEffects.playPop();
-                              setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
-                              if (item.tab) {
-                                handleNavClick(item.tab);
-                                setIsNotificationsOpen(false);
-                              }
-                            }}
-                            className={`p-3 rounded-xl border text-left cursor-pointer transition ${
-                              item.read
-                                ? 'bg-stone-50 dark:bg-stone-800/40 border-stone-200/50 dark:border-stone-800/50 opacity-75'
-                                : 'bg-amber-500/10 border-amber-500/20 text-stone-900 dark:text-stone-100'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                              <span className="font-extrabold text-xs text-stone-900 dark:text-white">{item.title}</span>
-                              <span className="text-[9px] text-stone-400 font-mono">{item.time}</span>
+                      {/* Notification Dropdown / Modal */}
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                        transition={{ type: 'spring', damping: 26, stiffness: 420 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="fixed inset-x-3.5 top-16 z-50 max-w-sm mx-auto sm:inset-auto sm:absolute sm:right-0 sm:top-full sm:mt-2 sm:w-88 sm:max-w-none bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800/90 rounded-2xl shadow-2xl p-4 space-y-3"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800/80 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                              <Bell className="w-3.5 h-3.5" />
                             </div>
-                            <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-snug font-medium">
-                              {item.message}
-                            </p>
+                            <span className="font-extrabold text-sm text-stone-900 dark:text-white">
+                              Notifications
+                            </span>
+                            {unreadCount > 0 && (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                {unreadCount} new
+                              </span>
+                            )}
                           </div>
-                        ))}
-                      </div>
 
-                      <div className="pt-1 text-center border-t border-stone-100 dark:border-stone-800">
-                        <p className="text-[10px] text-stone-400 font-medium">
-                          Stay consistent • Daily updates &amp; SLA reminders
-                        </p>
-                      </div>
-                    </motion.div>
+                          <div className="flex items-center gap-1.5">
+                            {unreadCount > 0 && (
+                              <button
+                                onClick={markAllAsRead}
+                                className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 cursor-pointer flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-amber-500/10 transition"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Mark read</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                soundEffects.playPop();
+                                setIsNotificationsOpen(false);
+                              }}
+                              className="w-7 h-7 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition flex items-center justify-center cursor-pointer"
+                              title="Close notifications"
+                              aria-label="Close notifications"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* List */}
+                        <div className="space-y-2 max-h-[60vh] sm:max-h-80 overflow-y-auto pr-0.5">
+                          {notifications.length === 0 ? (
+                            <div className="py-8 text-center space-y-1">
+                              <span className="text-2xl">✨</span>
+                              <p className="text-xs font-bold text-stone-600 dark:text-stone-300">All caught up!</p>
+                              <p className="text-[10px] text-stone-400">No new alerts right now.</p>
+                            </div>
+                          ) : (
+                            notifications.map(item => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.playPop();
+                                  setNotifications(prev =>
+                                    prev.map(n => (n.id === item.id ? { ...n, read: true } : n))
+                                  );
+                                  if (item.tab) {
+                                    handleNavClick(item.tab);
+                                    setIsNotificationsOpen(false);
+                                  }
+                                }}
+                                className={`w-full p-3 rounded-xl border text-left cursor-pointer transition flex items-start gap-3 group relative ${
+                                  item.read
+                                    ? 'bg-stone-50/70 dark:bg-stone-800/30 border-stone-200/50 dark:border-stone-800/50 opacity-75'
+                                    : 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/25 text-stone-900 dark:text-stone-100'
+                                } hover:border-amber-500/50 hover:bg-amber-500/10`}
+                              >
+                                <span className="text-base leading-none mt-0.5 shrink-0 select-none">
+                                  {item.emoji}
+                                </span>
+
+                                <div className="flex-1 min-w-0 space-y-0.5">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-bold text-xs text-stone-900 dark:text-white truncate">
+                                      {item.title}
+                                    </span>
+                                    <span className="text-[9px] text-stone-400 dark:text-stone-500 font-mono shrink-0">
+                                      {item.time}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-snug font-medium line-clamp-2">
+                                    {item.message}
+                                  </p>
+                                </div>
+
+                                <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-500 transition shrink-0 mt-1" />
+
+                                {!item.read && (
+                                  <span className="absolute top-2.5 right-2 w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="pt-2 text-center border-t border-stone-100 dark:border-stone-800/80">
+                          <p className="text-[10px] text-stone-400 dark:text-stone-500 font-medium">
+                            Stay consistent • Daily updates &amp; SLA reminders
+                          </p>
+                        </div>
+                      </motion.div>
+                    </>
                   )}
                 </AnimatePresence>
               </div>
