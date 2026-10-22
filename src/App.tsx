@@ -39,6 +39,8 @@ const SitemapAndContentHub = React.lazy(() => import('./components/SitemapAndCon
 const PushedOutputDrill = React.lazy(() => import('./components/practice/PushedOutputDrill').then(m => ({ default: m.PushedOutputDrill })));
 const TaskBasedSimulation = React.lazy(() => import('./components/tasks/TaskBasedSimulation').then(m => ({ default: m.TaskBasedSimulation })));
 const AdaptivePlacementExam = React.lazy(() => import('./components/assessment/AdaptivePlacementExam').then(m => ({ default: m.AdaptivePlacementExam })));
+const DELEExamSimulator = React.lazy(() => import('./components/exams/DELEExamSimulator').then(m => ({ default: m.DELEExamSimulator })));
+const WritingAssessmentView = React.lazy(() => import('./components/assessment/WritingAssessmentView').then(m => ({ default: m.WritingAssessmentView })));
 
 export interface AppContentNavigationProps {
   activeTab: string;
@@ -85,6 +87,8 @@ export const AppContentNavigation: React.FC<AppContentNavigationProps> = ({
         'tblt_tasks',
         'tblt',
         'cat_placement',
+        'dele_exam',
+        'writing_eval',
         'linglooper',
         'a0_foundation',
         'sitemap'
@@ -334,6 +338,14 @@ export function AppContent() {
                         setActiveTab('path');
                       }}
                     />
+                  )}
+
+                  {activeTab === 'dele_exam' && (
+                    <DELEExamSimulator onBackToDashboard={handleOpenDashboard} />
+                  )}
+
+                  {activeTab === 'writing_eval' && (
+                    <WritingAssessmentView />
                   )}
 
                   {activeTab === 'videos' && (

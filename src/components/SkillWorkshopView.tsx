@@ -77,12 +77,13 @@ export const SkillWorkshopView: React.FC<SkillWorkshopViewProps> = ({
 
   // Subdued Secondary Reference Strip (Non-intrusive)
   const referenceTools = [
+    { id: 'writing_eval', title: 'Evaluador de Escritura (CEFR 4D)', icon: Sparkles },
+    { id: 'dele_exam', title: 'Simulador DELE/SIELE (Cervantes)', icon: Sparkles },
     { id: 'cat_placement', title: 'Examen Adaptativo CAT (Rasch IRT)', icon: Sparkles },
     { id: 'tblt_tasks', title: 'Simulación TBLT (CEFR)', icon: Sparkles },
     { id: 'pushed_output', title: 'Producción Empujada (Swain)', icon: Sparkles },
     { id: 'grammar', title: 'Enciclopedia Gramatical', icon: GraduationCap },
     { id: 'a0_foundation', title: 'Fundamentos A0', icon: Zap },
-    { id: 'videos', title: 'Inmersión en Vídeo', icon: Video },
     { id: 'sitemap', title: 'Mapa del Sitio y Guías', icon: Compass }
   ];
 

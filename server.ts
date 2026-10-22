@@ -1883,6 +1883,145 @@ Return JSON format:
     }
   });
 
+  // ==========================================
+  // CEFR WRITING EVALUATION ENGINE ENDPOINT
+  // ==========================================
+  app.post('/api/writing/evaluate', async (req, res) => {
+    const {
+      taskId = 'dele_b1_tarea1',
+      taskTitle = 'Writing Task',
+      genre = 'dele_b1_tarea1',
+      cefrTarget = 'B1',
+      promptText = '',
+      essayText = '',
+      minWords = 150,
+      maxWords = 200
+    } = req.body;
+
+    if (!essayText || !essayText.trim()) {
+      return res.status(400).json({ error: 'Essay text is required for evaluation' });
+    }
+
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: 'AI service unavailable' });
+    }
+
+    try {
+      const evaluationPrompt = `You are an official DELE / SIELE Instituto Cervantes Writing Examiner evaluating a Spanish text written by a student.
+
+TASK DETAILS:
+- Task ID: ${taskId} (${taskTitle})
+- Target CEFR Level: ${cefrTarget}
+- Genre: ${genre}
+- Expected Word Count: ${minWords} - ${maxWords} words
+- Prompt Context: "${promptText}"
+
+STUDENT ESSAY SUBMISSION:
+"""
+${essayText}
+"""
+
+EVALUATION RULES (OFFICIAL CEFR DELE/SIELE RUBRIC):
+Grade the submission strictly across the 4 CEFR Analytical Dimensions using a 0 to 3 scale for each dimension:
+0 = Insuficiente (Unsatisfactory)
+1 = En desarrollo (In development / Basic)
+2 = Competente (Competent / Satisfactory)
+3 = Excelente (Excellent / Advanced mastery)
+
+DIMENSIONS TO GRADE:
+1. Adecuación al texto (Task Achievement & Register)
+2. Coherencia y cohesión (Organization, Paragraphs, Discursive Connectors)
+3. Corrección gramatical (Grammatical Accuracy, Prepositions, Agreement, Tenses)
+4. Riqueza léxica (Lexical Range, Avoiding repetitive verbs like hacer/tener/decir, specific vocabulary)
+
+INLINE ANNOTATIONS:
+Extract exact substring matches from the student's text for inline highlights:
+- 'green': Advanced/rich vocabulary, sophisticated connectors (e.g., 'sin embargo', 'por consiguiente'), or subjunctive structures.
+- 'amber': Overused repetitive verbs (e.g., 'hacer', 'tener', 'decir') or weak phrasing that could be elevated.
+- 'red': Explicit grammar errors, incorrect prepositions, agreement errors, or spelling mistakes with corrections.
+
+Return a valid JSON object matching this schema exactly:
+{
+  "overallScore": number (0-100),
+  "totalPoints": number (0-12 sum of 4 dimensions),
+  "estimatedCefrLevel": "A1" | "A2" | "B1" | "B2" | "C1" | "C2",
+  "dimensions": {
+    "adecuacion": {
+      "dimensionKey": "adecuacion",
+      "title": "Task Achievement & Register",
+      "titleEs": "Adecuación al Texto y Registro",
+      "score": number (0-3),
+      "scoreLabel": "Insuficiente" | "En desarrollo" | "Competente" | "Excelente",
+      "description": "Evaluation of task completion and register.",
+      "positivePoints": ["positive 1", "positive 2"],
+      "improvements": ["improvement 1"]
+    },
+    "coherencia": {
+      "dimensionKey": "coherencia",
+      "title": "Organization & Connectors",
+      "titleEs": "Coherencia y Cohesión Discursiva",
+      "score": number (0-3),
+      "scoreLabel": "Insuficiente" | "En desarrollo" | "Competente" | "Excelente",
+      "description": "Evaluation of structure and discursive connectors.",
+      "positivePoints": ["positive 1"],
+      "improvements": ["improvement 1"]
+    },
+    "gramatica": {
+      "dimensionKey": "gramatica",
+      "title": "Grammatical Accuracy",
+      "titleEs": "Corrección Gramatical",
+      "score": number (0-3),
+      "scoreLabel": "Insuficiente" | "En desarrollo" | "Competente" | "Excelente",
+      "description": "Evaluation of agreement and syntax.",
+      "positivePoints": ["positive 1"],
+      "improvements": ["improvement 1"]
+    },
+    "lexico": {
+      "dimensionKey": "lexico",
+      "title": "Lexical Range & Precision",
+      "titleEs": "Riqueza Léxica",
+      "score": number (0-3),
+      "scoreLabel": "Insuficiente" | "En desarrollo" | "Competente" | "Excelente",
+      "description": "Evaluation of vocabulary variety.",
+      "positivePoints": ["positive 1"],
+      "improvements": ["improvement 1"]
+    }
+  },
+  "annotations": [
+    {
+      "id": "ann_1",
+      "text": "exact substring in student text",
+      "startIndex": number (character index),
+      "endIndex": number (character index),
+      "type": "green" | "amber" | "red",
+      "category": "Riqueza Léxica / Error Gramatical / Conector",
+      "explanation": "Clear rationale in Spanish",
+      "correction": "Corrected phrasing if red/amber",
+      "ruleTip": "CEFR rule explanation"
+    }
+  ],
+  "summaryFeedback": "Overall examiner summary in Spanish",
+  "strengths": ["Key strength 1", "Key strength 2"],
+  "keyRecommendations": ["Actionable recommendation 1", "Actionable recommendation 2"]
+}`;
+
+      const response = await resilientGenerateContent(ai, {
+        contents: evaluationPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.3
+        }
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      return res.json(parsed);
+    } catch (err: any) {
+      console.warn('Error in /api/writing/evaluate:', err?.message || err);
+      return res.status(500).json({ error: 'Failed to evaluate essay with AI' });
+    }
+  });
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
