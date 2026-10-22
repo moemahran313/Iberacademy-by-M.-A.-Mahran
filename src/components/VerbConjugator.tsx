@@ -26,6 +26,8 @@ import {
 import { Verb, VerbConjugationTable } from '../types';
 import { SPANISH_VERBS } from '../data';
 import { speakSpanish, soundEffects } from '../utils/audio';
+import { useApp } from '../context/AppContext';
+import { TenseRoadmapModal } from './curriculum/TenseRoadmapModal';
 import {
   getContextualVerbSentence,
   SITUATIONAL_FILL_IN_DRILLS,
@@ -37,6 +39,9 @@ import {
 type PracticeMode = 'situational_fill' | 'tense_contrast';
 
 export const VerbConjugator: React.FC = () => {
+  const { userProgress, setUserProgress, setIsPlacementTestOpen } = useApp();
+  const [isRoadmapModalOpen, setIsRoadmapModalOpen] = useState(false);
+
   // Navigation & Search
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVerbId, setSelectedVerbId] = useState<string>(SPANISH_VERBS[0]?.id || 'v-ser');
@@ -297,21 +302,36 @@ export const VerbConjugator: React.FC = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playFlip();
-              setIsPracticing(!isPracticing);
-            }}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs ${
-              isPracticing
-                ? 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900'
-                : 'bg-[#C85A32] hover:bg-[#B44C27] text-white'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>{isPracticing ? 'Ver Frases Ilustrativas' : 'Entrenar con Ejercicios'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.playPop();
+                setIsRoadmapModalOpen(true);
+              }}
+              className="px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-850 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 shadow-2xs"
+              title="Explorar el Mapa del Orden Natural ELE (Krashen SLA)"
+            >
+              <Compass className="w-4 h-4 text-[#C85A32]" />
+              <span>Orden Natural ELE</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.playFlip();
+                setIsPracticing(!isPracticing);
+              }}
+              className={`px-5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs ${
+                isPracticing
+                  ? 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900'
+                  : 'bg-[#C85A32] hover:bg-[#B44C27] text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{isPracticing ? 'Ver Frases Ilustrativas' : 'Entrenar con Ejercicios'}</span>
+            </button>
+          </div>
         </div>
       </motion.div>
 
@@ -998,6 +1018,18 @@ export const VerbConjugator: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* 🧭 Natural Order SLA Verb Tense Roadmap Modal */}
+      <TenseRoadmapModal
+        isOpen={isRoadmapModalOpen}
+        onClose={() => setIsRoadmapModalOpen(false)}
+        userProgress={userProgress}
+        setUserProgress={setUserProgress}
+        onOpenPlacementTest={() => {
+          setIsRoadmapModalOpen(false);
+          setIsPlacementTestOpen(true);
+        }}
+      />
     </div>
   );
 };

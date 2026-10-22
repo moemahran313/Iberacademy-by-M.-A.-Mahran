@@ -6,6 +6,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
       allow delete: if true;
+
+      match /learningJournal/{journalId} {
+        allow read, write, delete: if true;
+      }
+    }
+    match /learningJournal/{journalId} {
+      allow read, write, delete: if true;
     }
     match /mail/{mailId} {
       allow read, write, delete: if true;

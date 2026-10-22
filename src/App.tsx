@@ -36,6 +36,9 @@ const A0BeginnerFoundationView = React.lazy(() => import('./components/A0Beginne
 const OralShadowingDrill = React.lazy(() => import('./components/OralShadowingDrill').then(m => ({ default: m.OralShadowingDrill })));
 const SkillWorkshopView = React.lazy(() => import('./components/SkillWorkshopView').then(m => ({ default: m.SkillWorkshopView })));
 const SitemapAndContentHub = React.lazy(() => import('./components/SitemapAndContentHub').then(m => ({ default: m.SitemapAndContentHub })));
+const PushedOutputDrill = React.lazy(() => import('./components/practice/PushedOutputDrill').then(m => ({ default: m.PushedOutputDrill })));
+const TaskBasedSimulation = React.lazy(() => import('./components/tasks/TaskBasedSimulation').then(m => ({ default: m.TaskBasedSimulation })));
+const AdaptivePlacementExam = React.lazy(() => import('./components/assessment/AdaptivePlacementExam').then(m => ({ default: m.AdaptivePlacementExam })));
 
 export interface AppContentNavigationProps {
   activeTab: string;
@@ -78,6 +81,10 @@ export const AppContentNavigation: React.FC<AppContentNavigationProps> = ({
         'grammar',
         'tutor',
         'shadowing',
+        'pushed_output',
+        'tblt_tasks',
+        'tblt',
+        'cat_placement',
         'linglooper',
         'a0_foundation',
         'sitemap'
@@ -308,6 +315,24 @@ export function AppContent() {
                       setUserProgress={setUserProgress}
                       onAddXp={handleAddXp}
                       onBackToDashboard={handleOpenDashboard}
+                    />
+                  )}
+
+                  {activeTab === 'pushed_output' && (
+                    <PushedOutputDrill />
+                  )}
+
+                  {(activeTab === 'tblt_tasks' || activeTab === 'tblt') && (
+                    <TaskBasedSimulation onBackToDashboard={handleOpenDashboard} />
+                  )}
+
+                  {activeTab === 'cat_placement' && (
+                    <AdaptivePlacementExam
+                      onClose={() => setActiveTab('workshop')}
+                      onApplyLevel={(level, xp) => {
+                        setUserProgress(prev => ({ ...prev, currentLevel: level, xp: prev.xp + xp }));
+                        setActiveTab('path');
+                      }}
                     />
                   )}
 

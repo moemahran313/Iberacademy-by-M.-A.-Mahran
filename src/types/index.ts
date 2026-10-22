@@ -1,4 +1,4 @@
-export type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2';
+export type CEFRLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 export type { ComprehensibilityScore, ReadabilityMetrics, ScaffoldingPackage, TextAdvancementPackage } from './curriculum';
 export type { ExplorationEnergy, ContrastiveExplanation, ExerciseFeedbackState, FeedbackTone } from './gamification';
 export type ExplanationLanguage = 'en' | 'ar' | 'bilingual' | 'es_immersion';
@@ -483,6 +483,7 @@ export interface UserProgress {
   passedLevelExamIds?: string[];
   levelExamScores?: Record<string, number>;
   levelCertificates?: Record<string, { date: string; score: number; level: CEFRLevel }>;
+  tenseMilestoneMastery?: Record<string, { score: number; completedAt: string; passed: boolean }>;
   savedWordIds: string[];
   masteredWordIds: string[];
   srsData: Record<string, SRSItem>;

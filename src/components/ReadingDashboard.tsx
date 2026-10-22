@@ -85,10 +85,13 @@ export const ReadingDashboard: React.FC<ReadingDashboardProps> = ({
 
   // Lexicon level goals (Krashen vocabulary target by CEFR)
   const levelTargets: Record<CEFRLevel, number> = {
+    A0: 250,
     A1: 500,
     A2: 1200,
     B1: 2500,
-    B2: 4000
+    B2: 4000,
+    C1: 6500,
+    C2: 10000
   };
 
   const targetVocab = levelTargets[currentLevel] || 1000;

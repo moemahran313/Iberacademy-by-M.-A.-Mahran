@@ -70,10 +70,13 @@ export const EndOfLevelAssessmentModal: React.FC<EndOfLevelAssessmentModalProps>
 
   // Level Meta
   const levelMetadata: Record<CEFRLevel, { name: string; name_ar: string; desc: string; color: string; next: CEFRLevel | null }> = {
+    A0: { name: 'A0 True Beginner Foundation', name_ar: 'المبتدئ المطلق A0', desc: 'Alphabet, Pronunciation, Basic Greetings, Numbers', color: 'from-amber-400 to-amber-600', next: 'A1' },
     A1: { name: 'A1 Survival & Foundations', name_ar: 'أساسيات وبقاء A1', desc: '1000 Core Words, Greetings, Present Tense & Basic Syntax', color: 'from-amber-500 to-orange-600', next: 'A2' },
     A2: { name: 'A2 Elementary Explorer', name_ar: 'المستكشف الأولي A2', desc: 'Past Tenses (Pretérito vs Imperfecto), Routines, Prepositions', color: 'from-emerald-500 to-teal-600', next: 'B1' },
     B1: { name: 'B1 Intermediate Conversationalist', name_ar: 'المتحدث المتوسط B1', desc: 'Subjunctive Mood, Hypotheticals, Complex Clauses & Fluency', color: 'from-sky-500 to-blue-600', next: 'B2' },
-    B2: { name: 'B2 Advanced Fluency & Nuance', name_ar: 'الطلاقة المتقدمة B2', desc: 'Advanced Subjunctive, Idioms, Cultural Discourse & Professional Mastery', color: 'from-purple-500 to-indigo-600', next: null }
+    B2: { name: 'B2 Advanced Fluency & Nuance', name_ar: 'الطلاقة المتقدمة B2', desc: 'Advanced Subjunctive, Idioms, Cultural Discourse & Professional Mastery', color: 'from-purple-500 to-indigo-600', next: 'C1' },
+    C1: { name: 'C1 Operational Proficiency', name_ar: 'الكفاءة التشغيلية C1', desc: 'Complex Discourse, Advanced Periphrasis, Stylistic Inversion', color: 'from-rose-500 to-pink-600', next: 'C2' },
+    C2: { name: 'C2 Native Mastery', name_ar: 'الإتقان التام C2', desc: 'Specialized Jargon, Classic Literature, Irony & Poetic Ambiguity', color: 'from-fuchsia-500 to-violet-600', next: null }
   };
 
   const currentMeta = levelMetadata[level];

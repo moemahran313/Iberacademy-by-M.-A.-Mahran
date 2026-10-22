@@ -77,6 +77,9 @@ export const SkillWorkshopView: React.FC<SkillWorkshopViewProps> = ({
 
   // Subdued Secondary Reference Strip (Non-intrusive)
   const referenceTools = [
+    { id: 'cat_placement', title: 'Examen Adaptativo CAT (Rasch IRT)', icon: Sparkles },
+    { id: 'tblt_tasks', title: 'Simulación TBLT (CEFR)', icon: Sparkles },
+    { id: 'pushed_output', title: 'Producción Empujada (Swain)', icon: Sparkles },
     { id: 'grammar', title: 'Enciclopedia Gramatical', icon: GraduationCap },
     { id: 'a0_foundation', title: 'Fundamentos A0', icon: Zap },
     { id: 'videos', title: 'Inmersión en Vídeo', icon: Video },

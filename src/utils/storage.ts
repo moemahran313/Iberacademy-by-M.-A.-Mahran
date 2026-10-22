@@ -1,4 +1,4 @@
-import { UserProgress } from '../types';
+import { UserProgress, CEFRLevel } from '../types';
 
 const STORAGE_KEY = 'hispano_academy_user_progress';
 
@@ -156,8 +156,8 @@ export function mergeUserProgress(
     return local;
   }
 
-  // Combine unlocked levels (preserve order A1, A2, B1, B2)
-  const allLevelsOrder: ('A1' | 'A2' | 'B1' | 'B2')[] = ['A1', 'A2', 'B1', 'B2'];
+  // Combine unlocked levels (preserve order A0, A1, A2, B1, B2, C1, C2)
+  const allLevelsOrder: CEFRLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
   const unlockedSet = new Set([...(cloud.unlockedLevels || ['A1']), ...(local.unlockedLevels || ['A1'])]);
   const mergedUnlocked = allLevelsOrder.filter(lvl => unlockedSet.has(lvl));
 

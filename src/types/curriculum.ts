@@ -68,8 +68,43 @@ export interface ComprehensibilityScore {
   cefrDifficulty: CEFRLevel;
   readability: ReadabilityMetrics;
   zone: 'optimal_i_plus_1' | 'too_difficult' | 'too_easy';
-  badge: string; // e.g., "Optimal i+1 (93% Known)" or "High Friction (78% Known - Scaffolding Enabled)"
-  badgeColor: string; // Tailwind color classes
+  badge: string;
+  badgeColor: string;
   scaffolding: ScaffoldingPackage;
   advancements?: TextAdvancementPackage;
 }
+
+export interface Competencies {
+  canDoStatement: string;
+  canDoStatement_en: string;
+  canDoStatement_ar: string;
+  grammarPoints: string[];
+  vocabularySize: number;
+  communicativeOutcome?: string;
+  culturalNote?: string;
+  pragmaticFocus?: string;
+}
+
+export interface CurriculumNode {
+  id: string;
+  cefrLevel: CEFRLevel;
+  title: string;
+  title_es: string;
+  title_en: string;
+  title_ar: string;
+  prerequisiteNodeIds: string[];
+  estimatedMinutes: number;
+  competencies: Competencies;
+  category: 'phonetics' | 'grammar' | 'communicative' | 'pragmatics' | 'culture' | 'literature' | 'stylistics';
+}
+
+export type NodeStatus = 'completed' | 'unlocked' | 'locked';
+
+export interface LevelGraphProgress {
+  level: CEFRLevel;
+  totalNodes: number;
+  completedNodes: number;
+  unlockedNodes: number;
+  percentage: number;
+}
+
