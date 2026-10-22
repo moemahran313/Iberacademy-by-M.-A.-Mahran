@@ -608,10 +608,7 @@ export function generateLessons(level: CEFRLevel, startUnit: number, totalLesson
       }
     }
 
-    // Pick 2 cross-world recycled vocabulary items for the Review System
-    const rev1 = WORLD_RECYCLE_BANK[(startUnit + i) % WORLD_RECYCLE_BANK.length];
-    const rev2 = WORLD_RECYCLE_BANK[(startUnit + i + 1) % WORLD_RECYCLE_BANK.length];
-
+    // Semantic vocabulary recurrence is assigned systematically across all sequential lessons
     lessons.push({
       id: lessonId,
       unitId: unitId,
@@ -623,7 +620,7 @@ export function generateLessons(level: CEFRLevel, startUnit: number, totalLesson
       objectives_en: objectives_en,
       objectives_ar: objectives_ar,
       vocabWordIds: ['comida', 'gracias', 'amigo', 'ayuda'],
-      revisitedVocab: [rev1, rev2],
+      revisitedVocab: [],
       dialogue: dialogue,
       exercises: exercises,
       productionPrompt: {

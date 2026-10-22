@@ -475,21 +475,33 @@ class SoundEngine {
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    // Warm, non-punitive two-tone marimba chime (A4 -> C5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(440, now);
+    osc1.frequency.exponentialRampToValueAtTime(466.16, now + 0.15);
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(250, now);
-    osc.frequency.exponentialRampToValueAtTime(180, now + 0.2);
+    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
 
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.32);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(523.25, now + 0.06);
 
-    osc.start(now);
-    osc.stop(now + 0.3);
+    gain2.gain.setValueAtTime(0.06, now + 0.06);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.06);
+    osc2.stop(now + 0.4);
   }
 
   playFlip() {
@@ -563,3 +575,111 @@ class SoundEngine {
 }
 
 export const soundEffects = new SoundEngine();
+
+export interface RecordedAudioResult {
+  blob: Blob;
+  url: string;
+  durationMs: number;
+}
+
+export class SimpleMediaRecorder {
+  private mediaRecorder: MediaRecorder | null = null;
+  private stream: MediaStream | null = null;
+  private audioChunks: Blob[] = [];
+  private startTime: number = 0;
+
+  async start(): Promise<void> {
+    this.audioChunks = [];
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error('MediaDevices API is not supported in this browser environment');
+    }
+
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+
+    let mimeType = '';
+    if (typeof MediaRecorder !== 'undefined') {
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+        'audio/ogg'
+      ];
+      for (const c of candidates) {
+        if (MediaRecorder.isTypeSupported(c)) {
+          mimeType = c;
+          break;
+        }
+      }
+    }
+
+    this.mediaRecorder = mimeType
+      ? new MediaRecorder(this.stream, { mimeType })
+      : new MediaRecorder(this.stream);
+
+    this.mediaRecorder.ondataavailable = (event: BlobEvent) => {
+      if (event.data && event.data.size > 0) {
+        this.audioChunks.push(event.data);
+      }
+    };
+
+    this.startTime = Date.now();
+    this.mediaRecorder.start(100);
+  }
+
+  stop(): Promise<RecordedAudioResult> {
+    return new Promise((resolve, reject) => {
+      if (!this.mediaRecorder) {
+        reject(new Error('MediaRecorder was not initialized'));
+        return;
+      }
+
+      this.mediaRecorder.onstop = () => {
+        const durationMs = Date.now() - this.startTime;
+        const blobType = this.mediaRecorder?.mimeType || 'audio/webm';
+        const audioBlob = new Blob(this.audioChunks, { type: blobType });
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Turn off microphone tracks to free hardware resources
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+        }
+
+        resolve({
+          blob: audioBlob,
+          url: audioUrl,
+          durationMs
+        });
+      };
+
+      try {
+        if (this.mediaRecorder.state !== 'inactive') {
+          this.mediaRecorder.stop();
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  cancel(): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      try {
+        this.mediaRecorder.stop();
+      } catch (e) {}
+    }
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null;
+    }
+    this.audioChunks = [];
+  }
+}
+

@@ -125,6 +125,62 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      target: 'esnext',
+      chunkSizeWarningLimit: 1200,
+      cssCodeSplit: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase')) {
+                return 'vendor-firebase';
+              }
+              if (
+                id.includes('three') ||
+                id.includes('recharts') ||
+                id.includes('d3-geo') ||
+                id.includes('topojson-client') ||
+                id.includes('canvas-confetti')
+              ) {
+                return 'vendor-visuals';
+              }
+              if (
+                id.includes('react') ||
+                id.includes('scheduler') ||
+                id.includes('motion') ||
+                id.includes('lucide-react')
+              ) {
+                return 'vendor-ui';
+              }
+              return undefined;
+            }
+            if (
+              id.includes('/src/data/vocabularyComprehensive1000') ||
+              id.includes('/src/data/vocabularyB2') ||
+              id.includes('/src/data/verbs') ||
+              id.includes('/src/data/verbContextualSentences')
+            ) {
+              return 'data-lexicon';
+            }
+            if (
+              id.includes('/src/data/curriculum') ||
+              id.includes('/src/data/speakingDrills') ||
+              id.includes('/src/data/slaGrammarEngine')
+            ) {
+              return 'data-curriculum';
+            }
+            if (
+              id.includes('/src/data/comprehensibleStories') ||
+              id.includes('/src/data/comprehensibleInputLibrary') ||
+              id.includes('/src/data/storyVisualScenes')
+            ) {
+              return 'data-stories';
+            }
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

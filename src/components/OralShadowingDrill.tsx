@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Mic,
@@ -10,21 +10,30 @@ import {
   CheckCircle2,
   Award,
   Zap,
-  Clock,
   ArrowRight,
   Flame,
-  VolumeX,
   Radio,
   Filter,
   Check,
-  BarChart3,
-  Lightbulb,
   Headphones,
-  RefreshCw
+  RefreshCw,
+  Sliders,
+  ChevronRight,
+  VolumeX,
+  Square,
+  HelpCircle
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { SPEAKING_DRILLS, SpeakingDrill } from '../data/speakingDrills';
-import { speakSpanish, speakSpanishWithHighlight, cancelSpanishSpeech, soundEffects } from '../utils/audio';
-import { TactileFeedback } from './TactileFeedback';
+import {
+  speakSpanish,
+  speakSpanishWithHighlight,
+  cancelSpanishSpeech,
+  soundEffects,
+  SimpleMediaRecorder,
+  RecordedAudioResult
+} from '../utils/audio';
+import { analyzeSentencePhonetics, PhoneticSentenceAnalysis } from '../utils/spanishPhonetics';
 import { UserProgress } from '../types';
 
 interface OralShadowingDrillProps {
@@ -45,307 +54,284 @@ export const OralShadowingDrill: React.FC<OralShadowingDrillProps> = ({
   const [selectedLevel, setSelectedLevel] = useState<string>('All');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
-  // Drill Stage State (1: Listen & Shadow, 2: Prompt & Produce, 3: Speed & Rhythm Challenge)
-  const [currentStage, setCurrentStage] = useState<1 | 2 | 3>(1);
+  // Drill Step Progress (1: Listen -> 2: Slow/Phonetics -> 3: Record & Compare -> 4: Self Evaluate)
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
 
-  // Repetition & Mastery State (Every scenario requires 3 aloud reps)
-  const [completedReps, setCompletedReps] = useState<{ [drillId: string]: number }>({});
-  const [masteredDrills, setMasteredDrills] = useState<string[]>([]);
-
-  // Speech & Audio States
-  const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  // Audio Playback State
+  const [isPlayingNative, setIsPlayingNative] = useState<boolean>(false);
+  const [currentRate, setCurrentRate] = useState<number>(1.0);
   const [activeWordIndex, setActiveWordIndex] = useState<number | null>(null);
 
-  // Speech Recognition States
-  const [isListening, setIsListening] = useState<boolean>(false);
-  const [spokenTranscript, setSpokenTranscript] = useState<string>('');
-  const [transcriptAccuracy, setTranscriptAccuracy] = useState<number | null>(null);
-  const [speechError, setSpeechError] = useState<string | null>(null);
+  // User MediaRecorder Recording State
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordedAudio, setRecordedAudio] = useState<RecordedAudioResult | null>(null);
+  const [isPlayingUserAudio, setIsPlayingUserAudio] = useState<boolean>(false);
+  const [recorderError, setRecorderError] = useState<string | null>(null);
 
-  // Stage 2 Countdown State
-  const [countdown, setCountdown] = useState<number>(5);
-  const [isCountdownActive, setIsCountdownActive] = useState<boolean>(false);
-  const [stage2Revealed, setStage2Revealed] = useState<boolean>(false);
+  // Web Speech API optional fallback state (if supported)
+  const [speechApiSupported, setSpeechApiSupported] = useState<boolean>(false);
+  const [optionalTranscript, setOptionalTranscript] = useState<string>('');
 
-  // Stage 3 Speed Challenge State
-  const [challengeTimeLeft, setChallengeTimeLeft] = useState<number>(4.0);
-  const [isChallengeActive, setIsChallengeActive] = useState<boolean>(false);
-  const [challengeResult, setChallengeResult] = useState<'success' | 'too_slow' | null>(null);
+  // Gamification & Session Stats
+  const [sessionXp, setSessionXp] = useState<number>(0);
+  const [completedDrillsCount, setCompletedDrillsCount] = useState<number>(0);
+  const [practiceStreak, setPracticeStreak] = useState<number>(0);
+  const [evaluationToast, setEvaluationToast] = useState<string | null>(null);
 
-  // Filtered drills list
-  const filteredDrills = SPEAKING_DRILLS.filter(d => {
-    const categoryMatch = selectedCategory === 'All' || d.category === selectedCategory;
-    const levelMatch = selectedLevel === 'All' || d.level === selectedLevel;
-    return categoryMatch && levelMatch;
-  });
-
-  const activeDrill: SpeakingDrill | undefined = filteredDrills[currentIndex] || filteredDrills[0];
-
-  // Speech Recognition Ref
+  // Refs
+  const recorderRef = useRef<SimpleMediaRecorder | null>(null);
+  const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Initialize Web Speech API Recognition
+  // Filtered drills
+  const filteredDrills = useMemo(() => {
+    return SPEAKING_DRILLS.filter(d => {
+      const categoryMatch = selectedCategory === 'All' || d.category === selectedCategory;
+      const levelMatch = selectedLevel === 'All' || d.level === selectedLevel;
+      return categoryMatch && levelMatch;
+    });
+  }, [selectedCategory, selectedLevel]);
+
+  const activeDrill: SpeakingDrill = filteredDrills[currentIndex] || SPEAKING_DRILLS[0];
+
+  // Phonetic analysis of the active sentence (Syllable stress + Sinalefa links)
+  const phoneticAnalysis: PhoneticSentenceAnalysis = useMemo(() => {
+    if (!activeDrill) {
+      return { words: [], sinalefaCount: 0, rhythmNotes: [] };
+    }
+    return analyzeSentencePhonetics(activeDrill.spanish_target);
+  }, [activeDrill]);
+
+  // Check Web Speech API availability on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = 'es-MX'; // Mexican Spanish target
-
-        recognition.onstart = () => {
-          setIsListening(true);
-          setSpeechError(null);
-        };
-
-        recognition.onresult = (event: any) => {
-          let currentTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
-          }
-          setSpokenTranscript(currentTranscript);
-        };
-
-        recognition.onerror = (event: any) => {
-          console.warn('Speech recognition error:', event.error);
-          setIsListening(false);
-          if (event.error === 'not-allowed') {
-            setSpeechError('Microphone permission blocked. Please allow mic access in browser.');
-          } else if (event.error === 'no-speech') {
-            setSpeechError('No speech detected. Try speaking closer to your microphone.');
-          }
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
+        setSpeechApiSupported(true);
+        try {
+          const rec = new SpeechRecognition();
+          rec.continuous = false;
+          rec.interimResults = true;
+          rec.lang = 'es-MX';
+          rec.onresult = (e: any) => {
+            let t = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              t += e.results[i][0].transcript;
+            }
+            setOptionalTranscript(t);
+          };
+          recognitionRef.current = rec;
+        } catch (e) {
+          setSpeechApiSupported(false);
+        }
       }
     }
 
     return () => {
       cancelSpanishSpeech();
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
+      if (recorderRef.current) {
+        recorderRef.current.cancel();
+      }
+      if (userAudioPlayerRef.current) {
+        userAudioPlayerRef.current.pause();
       }
     };
   }, []);
 
-  // Stage 2 Countdown Timer Logic
-  useEffect(() => {
-    let timer: any = null;
-    if (isCountdownActive && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown(prev => prev - 1);
-      }, 1000);
-    } else if (isCountdownActive && countdown === 0) {
-      setIsCountdownActive(false);
-      setStage2Revealed(true);
-      soundEffects.playPop();
-      if (activeDrill) {
-        speakSpanish(activeDrill.spanish_target, 0.9);
-      }
-    }
-    return () => clearInterval(timer);
-  }, [isCountdownActive, countdown, activeDrill]);
-
-  // Stage 3 Challenge Timer Logic
-  useEffect(() => {
-    let timer: any = null;
-    if (isChallengeActive && challengeTimeLeft > 0) {
-      timer = setInterval(() => {
-        setChallengeTimeLeft(prev => {
-          if (prev <= 0.1) {
-            clearInterval(timer);
-            setIsChallengeActive(false);
-            setChallengeResult('too_slow');
-            soundEffects.playIncorrect();
-            return 0;
-          }
-          return Math.max(0, +(prev - 0.1).toFixed(1));
-        });
-      }, 100);
-    }
-    return () => clearInterval(timer);
-  }, [isChallengeActive, challengeTimeLeft]);
-
-  // Reset drill state when changing drill or stage
+  // Reset state when changing drill
   const resetDrillState = () => {
     cancelSpanishSpeech();
-    setIsPlayingAudio(false);
-    setActiveWordIndex(null);
-    setSpokenTranscript('');
-    setTranscriptAccuracy(null);
-    setSpeechError(null);
-    setCountdown(5);
-    setIsCountdownActive(false);
-    setStage2Revealed(false);
-    setIsChallengeActive(false);
-    setChallengeResult(null);
-    if (activeDrill) {
-      setChallengeTimeLeft(activeDrill.target_seconds);
+    if (userAudioPlayerRef.current) {
+      userAudioPlayerRef.current.pause();
+      userAudioPlayerRef.current = null;
     }
+    if (recorderRef.current && isRecording) {
+      recorderRef.current.cancel();
+    }
+    setIsPlayingNative(false);
+    setIsPlayingUserAudio(false);
+    setIsRecording(false);
+    setRecordedAudio(null);
+    setRecorderError(null);
+    setActiveWordIndex(null);
+    setOptionalTranscript('');
+    setActiveStep(1);
   };
 
   useEffect(() => {
     resetDrillState();
-  }, [currentIndex, currentStage, selectedCategory, selectedLevel]);
+  }, [currentIndex, selectedCategory, selectedLevel]);
 
-  // Handle playing native audio
-  const handlePlayAudio = (rate: number = 0.9) => {
+  // Play native Spanish speech
+  const handlePlayNative = (rate: number = 1.0) => {
     if (!activeDrill) return;
     cancelSpanishSpeech();
-    setIsPlayingAudio(true);
-    setPlaybackSpeed(rate);
+    if (userAudioPlayerRef.current) {
+      userAudioPlayerRef.current.pause();
+      setIsPlayingUserAudio(false);
+    }
+
+    setIsPlayingNative(true);
+    setCurrentRate(rate);
 
     speakSpanishWithHighlight(activeDrill.spanish_target, {
       rate,
       onWordBoundary: (charIndex) => {
         const wordsBefore = activeDrill.spanish_target.substring(0, charIndex).split(/\s+/).length - 1;
-        setActiveWordIndex(wordsBefore);
+        setActiveWordIndex(Math.max(0, wordsBefore));
       },
       onEnd: () => {
-        setIsPlayingAudio(false);
+        setIsPlayingNative(false);
         setActiveWordIndex(null);
+        if (rate === 1.0 && activeStep === 1) {
+          setActiveStep(2);
+        } else if (rate < 1.0 && activeStep === 2) {
+          setActiveStep(3);
+        }
       },
       onError: () => {
-        setIsPlayingAudio(false);
+        setIsPlayingNative(false);
         setActiveWordIndex(null);
       }
     });
   };
 
-  // Start Voice Recognition
-  const handleStartListening = () => {
-    setSpokenTranscript('');
-    setTranscriptAccuracy(null);
-    setSpeechError(null);
+  // Start recording user audio via standard MediaRecorder
+  const handleStartRecording = async () => {
+    cancelSpanishSpeech();
+    if (userAudioPlayerRef.current) {
+      userAudioPlayerRef.current.pause();
+      setIsPlayingUserAudio(false);
+    }
+    setRecorderError(null);
+    setRecordedAudio(null);
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-        soundEffects.playPop();
-      } catch (e) {
-        setIsListening(true);
+    try {
+      const recorder = new SimpleMediaRecorder();
+      recorderRef.current = recorder;
+      await recorder.start();
+      setIsRecording(true);
+      soundEffects.playPop();
+
+      // Optionally start speech recognition if available
+      if (recognitionRef.current && speechApiSupported) {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {}
       }
-    } else {
-      // Fallback for browsers without Web Speech API
-      setIsListening(true);
-      setTimeout(() => {
-        setIsListening(false);
-        if (activeDrill) {
-          const simText = activeDrill.spanish_target;
-          setSpokenTranscript(simText);
-          evaluateAccuracy(simText);
-        }
-      }, 3000);
+    } catch (err: any) {
+      console.warn('Microphone recording error:', err);
+      setRecorderError('No se pudo acceder al micrófono. Verifica los permisos de tu navegador.');
+      setIsRecording(false);
     }
   };
 
-  const handleStopListening = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
+  // Stop recording user audio
+  const handleStopRecording = async () => {
+    if (!recorderRef.current || !isRecording) return;
+    try {
+      const result = await recorderRef.current.stop();
+      setRecordedAudio(result);
+      setIsRecording(false);
+      setActiveStep(4);
+      soundEffects.playPop();
+
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+    } catch (err: any) {
+      console.warn('Error stopping recording:', err);
+      setIsRecording(false);
+      setRecorderError('Ocurrió un problema al guardar la grabación.');
     }
-    setIsListening(false);
-    evaluateAccuracy(spokenTranscript);
   };
 
-  // Evaluate Accuracy comparing spoken vs target
-  const evaluateAccuracy = (spoken: string) => {
-    if (!activeDrill || !spoken.trim()) return;
+  // Play user's recorded audio
+  const handlePlayUserAudio = () => {
+    if (!recordedAudio) return;
+    cancelSpanishSpeech();
+    setIsPlayingNative(false);
 
-    const normalize = (str: string) =>
-      str.toLowerCase().replace(/[¿?¡!.,;:]/g, '').trim();
+    if (userAudioPlayerRef.current) {
+      userAudioPlayerRef.current.pause();
+    }
 
-    const targetWords = normalize(activeDrill.spanish_target).split(/\s+/);
-    const spokenWords = normalize(spoken).split(/\s+/);
+    const audio = new Audio(recordedAudio.url);
+    userAudioPlayerRef.current = audio;
+    setIsPlayingUserAudio(true);
 
-    let matchCount = 0;
-    targetWords.forEach(tw => {
-      if (spokenWords.some(sw => sw.includes(tw) || tw.includes(sw))) {
-        matchCount++;
-      }
+    audio.onended = () => {
+      setIsPlayingUserAudio(false);
+    };
+    audio.onerror = () => {
+      setIsPlayingUserAudio(false);
+    };
+
+    audio.play().catch(e => {
+      console.warn('Audio play error:', e);
+      setIsPlayingUserAudio(false);
     });
+  };
 
-    const accuracy = Math.round((matchCount / targetWords.length) * 100);
-    setTranscriptAccuracy(accuracy);
-
-    if (accuracy >= 60) {
-      soundEffects.playCorrect();
-      recordRepetitionSuccess();
-    } else {
-      soundEffects.playIncorrect();
+  // Stop user's audio
+  const handleStopUserAudio = () => {
+    if (userAudioPlayerRef.current) {
+      userAudioPlayerRef.current.pause();
+      setIsPlayingUserAudio(false);
     }
   };
 
-  // Record Repetition Success
-  const recordRepetitionSuccess = () => {
-    if (!activeDrill) return;
+  // Self-Evaluation Handler (Low-stress, generous XP, no arbitrary failure countdowns!)
+  const handleSelfEvaluate = (rating: 'practice' | 'good' | 'native') => {
+    const xpAwards = {
+      practice: 15,
+      good: 30,
+      native: 45
+    };
+    const earnedXp = xpAwards[rating];
 
-    const currentReps = completedReps[activeDrill.id] || 0;
-    const newReps = Math.min(3, currentReps + 1);
+    const feedbackMessages = {
+      practice: '¡Buen intento! Repetir en voz alta entrena tus músculos vocales.',
+      good: '¡Excelente cadencia! La entonación y las pausas están en su punto.',
+      native: '¡Impresionante! Prosodia, sinalefa y acento dignos de un nativo.'
+    };
 
-    setCompletedReps(prev => ({
-      ...prev,
-      [activeDrill.id]: newReps
-    }));
+    soundEffects.playLevelUp();
+    if (rating === 'native') {
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+    }
 
-    // Award XP
+    setSessionXp(prev => prev + earnedXp);
+    setCompletedDrillsCount(prev => prev + 1);
+    setPracticeStreak(prev => prev + 1);
+
     if (onAddXp) {
-      onAddXp(15);
+      onAddXp(earnedXp);
+    } else {
+      setUserProgress(prev => ({
+        ...prev,
+        xp: prev.xp + earnedXp
+      }));
     }
 
-    // Check if mastered (3 reps completed)
-    if (newReps >= 3 && !masteredDrills.includes(activeDrill.id)) {
-      setMasteredDrills(prev => [...prev, activeDrill.id]);
-      soundEffects.playLevelUp();
-      if (onAddXp) {
-        onAddXp(50); // Bonus 50 XP for mastery
-      }
-    }
+    setEvaluationToast(feedbackMessages[rating]);
+    setTimeout(() => {
+      setEvaluationToast(null);
+      // Move to next drill
+      handleNextDrill();
+    }, 1800);
   };
 
-  // Start Stage 2 Production Challenge
-  const handleStartStage2Countdown = () => {
-    setCountdown(5);
-    setIsCountdownActive(true);
-    setStage2Revealed(false);
+  const handleNextDrill = () => {
     soundEffects.playPop();
+    setCurrentIndex(prev => (prev + 1) % filteredDrills.length);
   };
 
-  // Start Stage 3 Speed Challenge
-  const handleStartStage3Challenge = () => {
-    if (!activeDrill) return;
-    setChallengeTimeLeft(activeDrill.target_seconds);
-    setIsChallengeActive(true);
-    setChallengeResult(null);
-    handleStartListening();
-  };
-
-  // Calculate matching words for visual highlighting
-  const getWordMatchStatuses = () => {
-    if (!activeDrill) return [];
-    const targetWords = activeDrill.spanish_target.split(' ');
-    const spokenNormalized = spokenTranscript.toLowerCase().replace(/[¿?¡!.,;:]/g, '');
-
-    return targetWords.map((word, idx) => {
-      const normWord = word.toLowerCase().replace(/[¿?¡!.,;:]/g, '');
-      const isMatched = spokenNormalized.includes(normWord);
-      const isCurrentlyHighlighted = activeWordIndex === idx;
-
-      return {
-        word,
-        isMatched,
-        isCurrentlyHighlighted
-      };
-    });
+  const handlePrevDrill = () => {
+    soundEffects.playPop();
+    setCurrentIndex(prev => (prev - 1 + filteredDrills.length) % filteredDrills.length);
   };
 
   const categories = [
@@ -357,101 +343,79 @@ export const OralShadowingDrill: React.FC<OralShadowingDrillProps> = ({
     'Telling Stories & Anecdotes'
   ];
 
-  const levels = ['All', 'A1', 'A2', 'B1', 'B2'];
-
-  const activeRepCount = activeDrill ? (completedReps[activeDrill.id] || 0) : 0;
-  const isMastered = activeDrill ? masteredDrills.includes(activeDrill.id) : false;
-
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-stone-900 via-stone-950 to-amber-950 text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-amber-500/20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
+    <div className="space-y-6 pb-24 md:pb-12 max-w-4xl mx-auto">
+      {/* 🎙️ Header & Navigation Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-2xs space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-3">
+          <div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 font-mono text-xs font-black uppercase tracking-wider border border-amber-500/30 flex items-center gap-1.5">
-                <Mic className="w-3.5 h-3.5 animate-pulse" />
-                Active Oral Production Engine
+              <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-[#C85A32]/10 text-[#C85A32] dark:text-[#E07A5F] border border-[#C85A32]/20">
+                Estudio de Prosodia y Fonética
               </span>
-              <span className="text-xs text-stone-400 font-medium">50 Scenarios</span>
+              <span className="text-xs text-stone-400 font-mono font-bold">
+                Frase {currentIndex + 1} de {filteredDrills.length}
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black font-header tracking-tight text-white">
-              Speak-Style Oral Shadowing Studio
+            <h1 className="text-xl sm:text-2xl font-black font-serif text-stone-900 dark:text-stone-100 mt-1">
+              Oral Shadowing & Acento Nativo
             </h1>
-            <p className="text-sm text-stone-300 max-w-xl font-sans leading-relaxed">
-              Bridge the gap between silent reading and real-world Mexican speech. Practice mouth muscle memory across 3 stages of active vocal repetition.
-            </p>
           </div>
 
-          {/* Session Performance Stats */}
-          <div className="flex items-center gap-3 self-stretch md:self-auto justify-between bg-stone-900/80 backdrop-blur-md px-4 py-3 rounded-2xl border border-stone-800 shrink-0">
-            <div className="text-center px-2">
-              <div className="text-xs text-stone-400 font-medium">Mastered</div>
-              <div className="text-xl font-black text-amber-400 flex items-center justify-center gap-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                {masteredDrills.length} / 50
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold">
+              <Flame className="w-4 h-4 text-amber-500" />
+              <span>{practiceStreak} en racha</span>
             </div>
-            <div className="w-px h-8 bg-stone-800" />
-            <div className="text-center px-2">
-              <div className="text-xs text-stone-400 font-medium">Total Reps</div>
-              <div className="text-xl font-black text-amber-400 flex items-center justify-center gap-1">
-                <Flame className="w-4 h-4 text-amber-500" />
-                {(Object.values(completedReps) as number[]).reduce((a: number, b: number) => a + b, 0)}
-              </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+              <Award className="w-4 h-4 text-emerald-500" />
+              <span>+{sessionXp} XP ganados</span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Category & Level Filter Navigation */}
-      <div className="bg-white dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200 dark:border-stone-800 space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
-            <Filter className="w-4 h-4 text-amber-500" />
-            <span>Filter Category:</span>
-          </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-            {categories.map((cat) => (
+        {/* Filter Bar */}
+        <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {categories.map(cat => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => {
                   soundEffects.playPop();
                   setSelectedCategory(cat);
                   setCurrentIndex(0);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-amber-500 text-stone-950 shadow-sm'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+                    ? 'bg-[#C85A32] text-white shadow-2xs'
+                    : 'bg-stone-100 dark:bg-stone-850 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800'
                 }`}
               >
-                {cat}
+                {cat === 'All' ? 'Todas las categorías' : cat}
               </button>
             ))}
           </div>
-        </div>
 
-        <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-          <div className="flex items-center gap-2 text-xs font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
-            <BarChart3 className="w-4 h-4 text-amber-500" />
-            <span>CEFR Level:</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {levels.map((lvl) => (
+          {/* CEFR Level Selector */}
+          <div className="flex items-center gap-1">
+            {['All', 'A1', 'A2', 'B1', 'B2'].map(lvl => (
               <button
                 key={lvl}
+                type="button"
                 onClick={() => {
                   soundEffects.playPop();
                   setSelectedLevel(lvl);
                   setCurrentIndex(0);
                 }}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
                   selectedLevel === lvl
-                    ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                    ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'
+                    : 'bg-stone-100 dark:bg-stone-850 text-stone-500 hover:text-stone-800'
                 }`}
               >
                 {lvl}
@@ -459,421 +423,423 @@ export const OralShadowingDrill: React.FC<OralShadowingDrillProps> = ({
             ))}
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Main Scenario Vocal Card */}
-      {activeDrill ? (
-        <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 sm:p-8 shadow-xl border border-stone-200 dark:border-stone-800 space-y-6 relative overflow-hidden">
-          {/* Card Top Meta */}
-          <div className="flex items-center justify-between gap-4 flex-wrap border-b border-stone-100 dark:border-stone-800 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono text-xs font-bold border border-amber-500/20">
-                {activeDrill.level}
+      {/* 🎭 Main Shadowing Canvas */}
+      {activeDrill && (
+        <div className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-2xs space-y-6">
+          {/* Prompt & Context Header */}
+          <div className="space-y-1 border-b border-stone-100 dark:border-stone-800 pb-4">
+            <div className="flex items-center justify-between text-xs text-stone-400">
+              <span className="font-bold text-[#C85A32] uppercase tracking-wider">
+                {activeDrill.category} • Nivel {activeDrill.level}
               </span>
-              <span className="text-xs font-bold text-stone-500 dark:text-stone-400">
-                {activeDrill.category}
-              </span>
-              <span className="text-xs text-stone-400 dark:text-stone-500">•</span>
-              <span className="text-xs text-stone-500 font-medium">
-                Scenario {currentIndex + 1} of {filteredDrills.length}
-              </span>
-            </div>
-
-            {/* 3 Required Aloud Repetitions Status */}
-            <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700">
-              <span className="text-xs font-bold text-stone-600 dark:text-stone-300">
-                Aloud Reps:
-              </span>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3].map((repNum) => (
-                  <div
-                    key={repNum}
-                    className={`w-3 h-3 rounded-full transition-all ${
-                      activeRepCount >= repNum
-                        ? 'bg-emerald-500 scale-110 shadow-xs'
-                        : 'bg-stone-300 dark:bg-stone-600'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-xs font-mono font-bold text-stone-700 dark:text-stone-300 ml-1">
-                {activeRepCount}/3
-              </span>
-              {isMastered && (
-                <span className="ml-1 text-xs font-bold text-emerald-500 flex items-center gap-0.5">
-                  <Check className="w-3.5 h-3.5" /> Mastered!
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Scenario Context & Title */}
-          <div className="space-y-2 border-b border-stone-100 dark:border-stone-800/80 pb-5">
-            <h2 className="text-2xl font-black font-header text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <span>{activeDrill.title}</span>
-            </h2>
-            <div className="text-sm text-stone-700 dark:text-stone-300 flex items-start gap-2.5 pt-1">
-              <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <span className="font-extrabold text-amber-600 dark:text-amber-400 mr-1.5 uppercase font-mono text-xs tracking-wider">English Prompt:</span>
-                <span className="font-medium text-stone-800 dark:text-stone-200">"{activeDrill.english_prompt}"</span>
+            </div>
+            <p className="text-sm sm:text-base font-semibold text-stone-700 dark:text-stone-300">
+              "{activeDrill.english_prompt}"
+            </p>
+          </div>
+
+          {/* 🗣️ Spanish Target Sentence with Syllable & Stress Mark Visualizer */}
+          <div className="space-y-4">
+            <div className="p-5 sm:p-6 rounded-2xl bg-[#FBF9F5] dark:bg-[#121110] border border-stone-200/80 dark:border-stone-800 space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                Pronunciación y Prosodia (Marcas Fonológicas):
+              </span>
+
+              {/* Render Words with Syllables and Stressed Highlighting */}
+              <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-3 text-2xl sm:text-3xl font-serif leading-relaxed">
+                {phoneticAnalysis.words.map((pw, wIdx) => {
+                  const isCurrentWord = activeWordIndex === wIdx;
+
+                  return (
+                    <div key={wIdx} className="inline-flex items-center group relative">
+                      {/* Leading punctuation */}
+                      {pw.punctuationBefore && (
+                        <span className="text-stone-400 select-none">{pw.punctuationBefore}</span>
+                      )}
+
+                      {/* Syllable Word Breakdown */}
+                      <span
+                        className={`inline-flex items-center transition-colors rounded-lg px-1 py-0.5 ${
+                          isCurrentWord
+                            ? 'bg-amber-400/25 ring-2 ring-amber-400/50'
+                            : ''
+                        }`}
+                      >
+                        {pw.syllables.map((syl, sIdx) => {
+                          const isStressed = sIdx === pw.stressedIndex && pw.syllables.length > 0;
+                          return (
+                            <span key={sIdx} className="inline-flex items-baseline">
+                              <span
+                                className={`transition-all ${
+                                  isStressed
+                                    ? 'text-[#C85A32] dark:text-[#E07A5F] font-black underline decoration-2 decoration-[#C85A32]/40 tracking-tight'
+                                    : 'text-stone-800 dark:text-stone-200 font-normal'
+                                }`}
+                                title={isStressed ? 'Sílaba tónica con mayor intensidad de voz' : undefined}
+                              >
+                                {syl}
+                              </span>
+                              {sIdx < pw.syllables.length - 1 && (
+                                <span className="text-stone-300 dark:text-stone-700 text-lg mx-px select-none">
+                                  -
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </span>
+
+                      {/* Trailing punctuation */}
+                      {pw.punctuationAfter && (
+                        <span className="text-stone-400 select-none">{pw.punctuationAfter}</span>
+                      )}
+
+                      {/* Sinalefa Linking Bridge Icon */}
+                      {pw.hasSinalefaWithNext && (
+                        <span
+                          className="inline-flex items-center ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-sans font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 select-none shadow-2xs"
+                          title={pw.sinalefaExplanation}
+                        >
+                          <span className="text-xs leading-none">‿</span>
+                          <span className="text-[9px] uppercase tracking-tighter ml-0.5 hidden sm:inline">sinalefa</span>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Phonetic guide and vocal focus */}
+              <div className="pt-2 border-t border-stone-200/60 dark:border-stone-800/80 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-stone-500 dark:text-stone-400 gap-2">
+                <div className="flex items-center gap-1.5 font-mono text-stone-600 dark:text-stone-300">
+                  <span className="font-bold text-stone-400">Guía fonética:</span>
+                  <span>{activeDrill.phonetic}</span>
+                </div>
+
+                <div className="text-[#C85A32] dark:text-[#E07A5F] font-semibold text-xs">
+                  🎯 {activeDrill.key_vocal_focus}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 3-Stage Tab Navigation */}
-          <div className="grid grid-cols-3 gap-2 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700">
-            <button
-              onClick={() => {
-                soundEffects.playPop();
-                setCurrentStage(1);
-              }}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                currentStage === 1
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-amber-400 shadow-sm'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
-              }`}
-            >
-              <Headphones className="w-3.5 h-3.5" />
-              <span>1. Shadow & Listen</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundEffects.playPop();
-                setCurrentStage(2);
-              }}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                currentStage === 2
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-amber-400 shadow-sm'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>2. Prompt & Produce</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundEffects.playPop();
-                setCurrentStage(3);
-              }}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                currentStage === 3
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-amber-400 shadow-sm'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>3. Speed Challenge</span>
-            </button>
-          </div>
-
-          {/* STAGE 1: LISTEN & SHADOW */}
-          {currentStage === 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6 pt-2"
-            >
-              {/* Target Spanish Sentence Box */}
-              <div className="bg-stone-900 text-white rounded-2xl p-6 space-y-4 relative overflow-hidden shadow-inner">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400 flex items-center gap-1">
-                    <Radio className="w-3 h-3 text-amber-400 animate-pulse" /> Native Mexican Target
+            {/* Cultural & Dialect Prosody Tip */}
+            {activeDrill.mexican_nuance_tip && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/20 text-xs flex items-start gap-2.5">
+                <span className="text-base leading-none">💡</span>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-stone-800 dark:text-stone-200">
+                    Consejo de Entonación y Enlace Nativo:
                   </span>
-                  <span className="text-xs text-stone-400 font-mono">
-                    Cadence Focus: {activeDrill.key_vocal_focus}
-                  </span>
-                </div>
-
-                {/* Animated Word Display */}
-                <div className="text-xl sm:text-2xl font-black font-header leading-snug tracking-wide flex flex-wrap gap-2">
-                  {getWordMatchStatuses().map((item, idx) => (
-                    <span
-                      key={idx}
-                      className={`transition-all duration-200 px-1 rounded ${
-                        item.isCurrentlyHighlighted
-                          ? 'bg-amber-500 text-stone-950 scale-105 shadow-md font-bold'
-                          : item.isMatched
-                          ? 'text-emerald-400 font-bold'
-                          : 'text-stone-100'
-                      }`}
-                    >
-                      {item.word}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Phonetic & Nuance Tip */}
-                <div className="pt-2 border-t border-stone-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                  <div className="text-amber-300 font-mono">
-                    🗣️ {activeDrill.phonetic}
-                  </div>
-                  <div className="text-stone-400 bg-stone-800/80 px-2.5 py-1 rounded-lg border border-stone-700">
-                    💡 <span className="text-stone-200">{activeDrill.mexican_nuance_tip}</span>
-                  </div>
-                </div>
-
-                {/* Animated Visual Waveform Bars */}
-                <div className="flex items-center justify-center gap-1 pt-2 h-8">
-                  {[...Array(16)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-1 rounded-full transition-all duration-150 ${
-                        isPlayingAudio || isListening
-                          ? 'bg-gradient-to-t from-amber-500 to-amber-300 animate-pulse'
-                          : 'bg-stone-700'
-                      }`}
-                      style={{
-                        height: isPlayingAudio || isListening ? `${Math.sin(i + Date.now()/100) * 12 + 16}px` : '6px'
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Audio Controls & Mic Shadow Button */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                {/* Play Normal Speed */}
-                <TactileFeedback variant="subtle">
-                  <button
-                    onClick={() => handlePlayAudio(1.0)}
-                    disabled={isPlayingAudio}
-                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <Volume2 className="w-5 h-5" />
-                    <span>Listen Normal (1.0x)</span>
-                  </button>
-                </TactileFeedback>
-
-                {/* Play Slow Speed */}
-                <TactileFeedback variant="subtle">
-                  <button
-                    onClick={() => handlePlayAudio(activeDrill.slow_speed_rate)}
-                    disabled={isPlayingAudio}
-                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-sm transition border border-stone-300 dark:border-stone-700 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <Clock className="w-4 h-4 text-amber-500" />
-                    <span>Slow Shadow ({activeDrill.slow_speed_rate}x)</span>
-                  </button>
-                </TactileFeedback>
-
-                {/* Repeat Aloud Mic Button */}
-                <TactileFeedback variant="pop">
-                  <button
-                    onClick={isListening ? handleStopListening : handleStartListening}
-                    className={`w-full sm:w-auto px-6 py-3 rounded-2xl font-black text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
-                      isListening
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800'
-                    }`}
-                  >
-                    {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    <span>{isListening ? 'Listening... Stop' : 'Repeat Aloud Now'}</span>
-                  </button>
-                </TactileFeedback>
-              </div>
-
-              {/* Feedback Display */}
-              {spokenTranscript && (
-                <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                      Your Spoken Vocal Input:
-                    </span>
-                    {transcriptAccuracy !== null && (
-                      <span className={`text-xs font-mono font-black px-2 py-0.5 rounded-full ${
-                        transcriptAccuracy >= 70 ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                      }`}>
-                        Accuracy: {transcriptAccuracy}%
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-base font-bold text-stone-900 dark:text-stone-100 font-mono">
-                    "{spokenTranscript}"
+                  <p className="text-stone-600 dark:text-stone-400 leading-relaxed">
+                    {activeDrill.mexican_nuance_tip}
                   </p>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
 
-              {speechError && (
-                <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20 text-center">
-                  {speechError}
+          {/* 🎧 Tactile Cadence Steps: Listen, Slow, Record, Compare */}
+          <div className="space-y-4 pt-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-400 block">
+              Paso a Paso de Sombra Oral (Shadowing):
+            </span>
+
+            {/* Step 1 & Step 2 Listen Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Step 1: Normal Speed 1.0x */}
+              <button
+                type="button"
+                onClick={() => handlePlayNative(1.0)}
+                className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between group ${
+                  isPlayingNative && currentRate === 1.0
+                    ? 'bg-[#C85A32] text-white border-[#C85A32] shadow-xs ring-2 ring-[#C85A32]/30'
+                    : 'bg-stone-50 dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 text-stone-800 dark:text-stone-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-xl ${
+                    isPlayingNative && currentRate === 1.0
+                      ? 'bg-white/20 text-white'
+                      : 'bg-[#C85A32]/10 text-[#C85A32]'
+                  }`}>
+                    <Volume2 className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] uppercase font-bold opacity-75 block">Paso 1</span>
+                    <span className="font-bold text-sm">Escuchar (1.0x Normal)</span>
+                  </div>
                 </div>
-              )}
-            </motion.div>
-          )}
+                <span className="text-xs opacity-75 font-mono">Cadencia nativa</span>
+              </button>
 
-          {/* STAGE 2: PROMPT & PRODUCE */}
-          {currentStage === 2 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6 pt-2"
-            >
-              <div className="bg-amber-500/10 dark:bg-amber-500/20 p-4 rounded-2xl border border-amber-500/30 text-center space-y-2">
-                <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                  Stage 2: Forced Recall & Sentence Generation
+              {/* Step 2: Slowed 0.8x with Syllable Precision */}
+              <button
+                type="button"
+                onClick={() => handlePlayNative(0.8)}
+                className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between group ${
+                  isPlayingNative && currentRate === 0.8
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-600/30'
+                    : 'bg-stone-50 dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 text-stone-800 dark:text-stone-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-xl ${
+                    isPlayingNative && currentRate === 0.8
+                      ? 'bg-white/20 text-white'
+                      : 'bg-amber-500/10 text-amber-600'
+                  }`}>
+                    <Headphones className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] uppercase font-bold opacity-75 block">Paso 2</span>
+                    <span className="font-bold text-sm">Escuchar Lento (0.8x)</span>
+                  </div>
+                </div>
+                <span className="text-xs opacity-75 font-mono">Detalle silábico</span>
+              </button>
+            </div>
+
+            {/* Step 3: Record Your Voice via MediaRecorder */}
+            <div className="p-5 rounded-2xl bg-stone-50/80 dark:bg-stone-900/60 border border-stone-200/80 dark:border-stone-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">Paso 3</span>
+                  <h4 className="text-sm font-bold text-stone-900 dark:text-white">
+                    Graba tu voz y compara lado a lado
+                  </h4>
+                </div>
+
+                <span className="text-xs text-stone-500">
+                  Sin límite estricto de tiempo • Habla a tu propio ritmo
                 </span>
-                <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Read the English prompt above. Speak the Spanish sentence aloud before the 5-second reveal timer expires!
-                </p>
               </div>
 
-              {/* Timer Countdown Gauge */}
-              <div className="flex flex-col items-center justify-center space-y-3 py-4">
-                <div className="relative w-24 h-24 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-stone-200 dark:border-stone-800" />
-                  <div
-                    className="absolute inset-0 rounded-full border-4 border-amber-500 transition-all duration-1000"
-                    style={{
-                      clipPath: `inset(0 ${100 - (countdown / 5) * 100}% 0 0)`
-                    }}
-                  />
-                  <span className="text-3xl font-black font-mono text-stone-900 dark:text-stone-100">
-                    {countdown}s
-                  </span>
+              {recorderError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-medium border border-rose-200 dark:border-rose-900">
+                  {recorderError}
                 </div>
+              )}
 
-                {!isCountdownActive && !stage2Revealed && (
+              {/* Recording Action Button with Waveform */}
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                {!isRecording ? (
                   <button
-                    onClick={handleStartStage2Countdown}
-                    className="px-6 py-3 rounded-2xl bg-amber-500 text-stone-950 font-black text-sm shadow-md hover:bg-amber-400 transition cursor-pointer flex items-center gap-2"
+                    type="button"
+                    onClick={handleStartRecording}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm flex items-center justify-center gap-2.5 transition shadow-xs cursor-pointer group"
                   >
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>Start 5-Sec Production Recall</span>
+                    <Mic className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span>{recordedAudio ? 'Grabar de Nuevo' : 'Comenzar Grabación'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStopRecording}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold text-sm flex items-center justify-center gap-2.5 transition shadow-xs cursor-pointer animate-pulse ring-2 ring-rose-400"
+                  >
+                    <Square className="w-4 h-4 fill-current" />
+                    <span>Detener Grabación</span>
                   </button>
                 )}
-              </div>
 
-              {/* Masked / Revealed Spanish Answer */}
-              <div className="bg-stone-900 text-white rounded-2xl p-6 text-center space-y-3 relative overflow-hidden">
-                <div className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider">
-                  Target Spanish Answer
-                </div>
-
-                <div className={`text-xl sm:text-2xl font-black transition-all duration-300 ${
-                  stage2Revealed ? 'blur-none text-emerald-400' : 'blur-md select-none text-stone-500'
-                }`}>
-                  {activeDrill.spanish_target}
-                </div>
-
-                {!stage2Revealed && (
-                  <button
-                    onClick={() => {
-                      setStage2Revealed(true);
-                      handlePlayAudio(1.0);
-                      recordRepetitionSuccess();
-                    }}
-                    className="text-xs text-amber-400 underline hover:text-amber-300 font-bold cursor-pointer"
-                  >
-                    Click to reveal answer immediately
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* STAGE 3: SPEED & RHYTHM CHALLENGE */}
-          {currentStage === 3 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6 pt-2"
-            >
-              <div className="bg-gradient-to-r from-stone-900 to-amber-950 text-white p-5 rounded-2xl space-y-2 border border-amber-500/30">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                    <Zap className="w-4 h-4 text-amber-400" /> Stage 3: Speed & Cadence Master
-                  </span>
-                  <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                    Target: {activeDrill.target_seconds}s
-                  </span>
-                </div>
-                <p className="text-xs text-stone-300 leading-relaxed">
-                  Say the full sentence aloud with natural fluidity before time runs out!
-                </p>
-              </div>
-
-              {/* Challenge Gauge */}
-              <div className="bg-stone-50 dark:bg-stone-800/80 p-6 rounded-2xl border border-stone-200 dark:border-stone-700 text-center space-y-4">
-                <div className="text-4xl font-black font-mono text-amber-500">
-                  {challengeTimeLeft.toFixed(1)}s
-                </div>
-
-                <div className="w-full bg-stone-200 dark:bg-stone-700 h-3 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-full transition-all duration-100"
-                    style={{
-                      width: `${(challengeTimeLeft / activeDrill.target_seconds) * 100}%`
-                    }}
-                  />
-                </div>
-
-                <div className="flex justify-center gap-3">
-                  <button
-                    onClick={handleStartStage3Challenge}
-                    disabled={isChallengeActive}
-                    className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm shadow-md transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <Mic className="w-4 h-4" />
-                    <span>{isChallengeActive ? 'Speaking...' : 'Start Speed Run'}</span>
-                  </button>
-                </div>
-
-                {challengeResult === 'too_slow' && (
-                  <div className="text-xs font-bold text-rose-500 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
-                    ⏱️ Time expired! Try repeating faster to hit native speed.
+                {/* Animated waveform when recording */}
+                {isRecording && (
+                  <div className="flex items-center gap-1.5 h-6 px-3 py-1 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-900">
+                    <span className="text-xs font-bold text-rose-600 dark:text-rose-400 mr-2">
+                      Grabando en vivo:
+                    </span>
+                    {[35, 80, 50, 95, 70, 40, 85].map((h, i) => (
+                      <motion.span
+                        key={i}
+                        animate={{ height: [`${h * 0.3}%`, `${h}%`, `${h * 0.2}%`] }}
+                        transition={{ repeat: Infinity, duration: 0.5 + i * 0.08, ease: 'easeInOut' }}
+                        className="w-1 bg-rose-500 rounded-full inline-block"
+                      />
+                    ))}
                   </div>
                 )}
               </div>
-            </motion.div>
-          )}
 
-          {/* Scenario Navigation Footer */}
-          <div className="flex items-center justify-between border-t border-stone-100 dark:border-stone-800 pt-6 gap-4">
-            <button
-              onClick={() => {
-                soundEffects.playPop();
-                setCurrentIndex(prev => Math.max(0, prev - 1));
-              }}
-              disabled={currentIndex === 0}
-              className="px-4 py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer disabled:opacity-40"
-            >
-              Previous Scenario
-            </button>
+              {/* Side-by-Side Comparison Player when User Audio is Available */}
+              {recordedAudio && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-xl bg-white dark:bg-stone-850 border border-stone-200 dark:border-stone-750 space-y-3"
+                >
+                  <div className="flex items-center justify-between text-xs text-stone-500">
+                    <span className="font-bold text-stone-800 dark:text-stone-200">
+                      Comparativa Auditiva Lado a Lado:
+                    </span>
+                    <span className="font-mono">
+                      Duración: {(recordedAudio.durationMs / 1000).toFixed(1)}s
+                    </span>
+                  </div>
 
-            <div className="text-xs font-mono text-stone-400">
-              {currentIndex + 1} / {filteredDrills.length}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Play Native Audio */}
+                    <button
+                      type="button"
+                      onClick={() => handlePlayNative(1.0)}
+                      className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between text-xs font-bold ${
+                        isPlayingNative
+                          ? 'bg-[#C85A32] text-white border-[#C85A32]'
+                          : 'bg-stone-50 dark:bg-stone-900 border-stone-200 text-stone-800 dark:text-stone-200 hover:border-[#C85A32]'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Volume2 className="w-4 h-4" />
+                        <span>Escuchar Modelo Nativo</span>
+                      </span>
+                      <span className="text-[10px] opacity-75">1.0x</span>
+                    </button>
+
+                    {/* Play User Audio */}
+                    <button
+                      type="button"
+                      onClick={isPlayingUserAudio ? handleStopUserAudio : handlePlayUserAudio}
+                      className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between text-xs font-bold ${
+                        isPlayingUserAudio
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-stone-50 dark:bg-stone-900 border-stone-200 text-stone-800 dark:text-stone-200 hover:border-emerald-500'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {isPlayingUserAudio ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                        <span>{isPlayingUserAudio ? 'Pausar Mi Grabación' : 'Escuchar Mi Grabación'}</span>
+                      </span>
+                      <span className="text-[10px] opacity-75">Tu voz</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
-            <button
-              onClick={() => {
-                soundEffects.playPop();
-                setCurrentIndex(prev => Math.min(filteredDrills.length - 1, prev + 1));
-              }}
-              disabled={currentIndex === filteredDrills.length - 1}
-              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
-            >
-              <span>Next Scenario</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Step 4: Self-Evaluation & Honest Feedback Buttons */}
+            {recordedAudio && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/25 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#B47832] dark:text-amber-400 block">
+                      Paso 4: Auto-evaluación
+                    </span>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-white">
+                      ¿Cómo sentiste tu pronunciación y fluidez?
+                    </h4>
+                  </div>
+                  <span className="text-xs text-stone-500">
+                    Gana XP según tu evaluación honesta
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  {/* Option 1: Need Practice */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelfEvaluate('practice')}
+                    className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 transition cursor-pointer text-left space-y-1 shadow-2xs group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-stone-800 dark:text-stone-200 group-hover:text-amber-600">
+                        Necesito practicar
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
+                        +15 XP
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 leading-tight">
+                      Aún me cuesta la velocidad o el enlace de sinalefa.
+                    </p>
+                  </button>
+
+                  {/* Option 2: Pretty Good */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelfEvaluate('good')}
+                    className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-emerald-400 transition cursor-pointer text-left space-y-1 shadow-2xs group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-stone-800 dark:text-stone-200 group-hover:text-emerald-600">
+                        Bastante bien
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                        +30 XP
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 leading-tight">
+                      Pronunciación clara y ritmo comprensible.
+                    </p>
+                  </button>
+
+                  {/* Option 3: Like a Native */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelfEvaluate('native')}
+                    className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-[#C85A32] transition cursor-pointer text-left space-y-1 shadow-2xs group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-stone-800 dark:text-stone-200 group-hover:text-[#C85A32]">
+                        ¡Igual que un nativo!
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#C85A32]/10 text-[#C85A32] dark:text-[#E07A5F]">
+                        +45 XP
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 leading-tight">
+                      Acento fluido, sílabas tónicas y enlaces exactos.
+                    </p>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Bottom Controls: Previous & Next Drill */}
+            <div className="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-800">
+              <button
+                type="button"
+                onClick={handlePrevDrill}
+                disabled={currentIndex === 0}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-850 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                ← Frase Anterior
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNextDrill}
+                className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-xs font-bold flex items-center gap-1.5 hover:bg-stone-800 transition cursor-pointer shadow-xs"
+              >
+                <span>Siguiente Frase</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-white dark:bg-stone-900 rounded-3xl p-12 text-center space-y-4">
-          <p className="text-stone-500 font-bold">No speaking drills found matching selected filter criteria.</p>
-          <button
-            onClick={() => {
-              setSelectedCategory('All');
-              setSelectedLevel('All');
-            }}
-            className="px-4 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs"
-          >
-            Reset Filters
-          </button>
-        </div>
       )}
+
+      {/* Floating Evaluation Feedback Toast */}
+      <AnimatePresence>
+        {evaluationToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 15 }}
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-stone-900 text-white text-xs font-bold shadow-xl flex items-center gap-2.5 border border-stone-700"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{evaluationToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+export default OralShadowingDrill;

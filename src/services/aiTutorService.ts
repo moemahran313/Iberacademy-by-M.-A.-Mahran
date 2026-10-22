@@ -42,6 +42,113 @@ export interface ChatMessage {
   audioAutoPlayed?: boolean;
 }
 
+export interface TutorPersonaConfig {
+  id: TutorPersona;
+  name: string;
+  country: string;
+  city: string;
+  flag: string;
+  gender: 'male' | 'female';
+  voiceTag: string;
+  avatar: string;
+  role_en: string;
+  role_ar: string;
+  accent: string;
+  colloquialisms: string[];
+  sampleGreeting: string;
+  avatarBg: string;
+  accentColor: string;
+  accentBorder: string;
+  accentBgLight: string;
+}
+
+export const TUTOR_PERSONAS: TutorPersonaConfig[] = [
+  {
+    id: 'juan',
+    name: 'Juan',
+    city: 'Oaxaca',
+    country: 'México',
+    flag: '🇲🇽',
+    gender: 'male',
+    voiceTag: '👨 Barítono Cálido (México)',
+    avatar: '👨‍🎨',
+    role_en: 'Warm Native Conversationalist & Cultural Guide',
+    role_ar: 'محاور إسباني دافئ ومرشد ثقافي من أواخاكا بالمكسيك',
+    accent: 'Mexican Spanish (carro, platicar, ¿qué onda?, con ganas)',
+    colloquialisms: ['¡Órale!', '¿Qué onda?', 'con ganas', 'chido', 'platicar'],
+    sampleGreeting: '¡Hola, qué onda! Soy Juan de Oaxaca. ¿Listo para platicar con ganas hoy?',
+    avatarBg: 'from-amber-600 to-orange-700',
+    accentColor: 'text-[#B47832] dark:text-amber-400',
+    accentBorder: 'border-[#B47832]/30',
+    accentBgLight: 'bg-[#B47832]/10 dark:bg-[#B47832]/20'
+  },
+  {
+    id: 'sofia',
+    name: 'Sofía',
+    city: 'Madrid',
+    country: 'España',
+    flag: '🇪🇸',
+    gender: 'female',
+    voiceTag: '👩 Vital y Directa (Madrid)',
+    avatar: '👩',
+    role_en: 'Spontaneous Native & Everyday Colloquial Spanish',
+    role_ar: 'متحدثة إسبانية عفوية وحيوية من مدريد للتعبيرات اليومية',
+    accent: 'Castilian Iberian (¿qué tal, tío?, vale, mola, de tapas)',
+    colloquialisms: ['¿Qué tal, tío?', 'vale', 'mola', 'guay', 'de tapas'],
+    sampleGreeting: '¡Hola! Soy Sofía de Madrid. ¿Qué tal, tío? ¡Venga, vamos a charlar que esto mola!',
+    avatarBg: 'from-rose-600 to-red-700',
+    accentColor: 'text-[#C85A32] dark:text-[#E07A5F]',
+    accentBorder: 'border-[#C85A32]/30',
+    accentBgLight: 'bg-[#C85A32]/10 dark:bg-[#C85A32]/20'
+  },
+  {
+    id: 'mateo',
+    name: 'Prof. Mateo',
+    city: 'Salamanca',
+    country: 'España',
+    flag: '🇪🇸',
+    gender: 'male',
+    voiceTag: '👨 Académico Riguroso (Salamanca)',
+    avatar: '👨‍🏫',
+    role_en: 'DELE Preparation Specialist & Academic Grammar Master',
+    role_ar: 'خبير تربوي ولغوي معتمد في إعداد اختبارات DELE والقواعد',
+    accent: 'Standard Academic Castilian (precisión léxica y método comunicativo)',
+    colloquialisms: ['en efecto', 'desde luego', 'precisión léxica', 'con rigor'],
+    sampleGreeting: 'Saludos cordiales. Soy el Profesor Mateo desde Salamanca. Iniciemos nuestra sesión comunicativa con rigor y claridad.',
+    avatarBg: 'from-blue-700 to-indigo-800',
+    accentColor: 'text-blue-600 dark:text-blue-400',
+    accentBorder: 'border-blue-500/30',
+    accentBgLight: 'bg-blue-500/10 dark:bg-blue-500/20'
+  },
+  {
+    id: 'elena',
+    name: 'Elena',
+    city: 'Medellín',
+    country: 'Colombia',
+    flag: '🇨🇴',
+    gender: 'female',
+    voiceTag: '👩 Melódica y Paciente (Colombia)',
+    avatar: '👩‍💼',
+    role_en: 'Clear Pronunciation Pacing & Melodic Conversation Coach',
+    role_ar: 'مدربة محادثة ونطق صبور ومتأنٍ من ميديلين بكولومبيا',
+    accent: 'Paisa Colombian (¡qué más!, con mucho gusto, chévere, súper bien)',
+    colloquialisms: ['¡Qué más!', 'con mucho gusto', 'chévere', 'súper bien', 'parce'],
+    sampleGreeting: '¡Hola! Soy Elena de Medellín. ¡Qué más! Con mucho gusto te acompaño paso a paso en tu pronunciación.',
+    avatarBg: 'from-emerald-700 to-teal-800',
+    accentColor: 'text-[#2D5A43] dark:text-emerald-400',
+    accentBorder: 'border-[#2D5A43]/30',
+    accentBgLight: 'bg-[#2D5A43]/10 dark:bg-[#2D5A43]/20'
+  }
+];
+
+export interface MissionObjective {
+  id: string;
+  label_es: string;
+  label_en: string;
+  label_ar: string;
+  completedPattern?: RegExp;
+}
+
 export interface ScenarioDefinition {
   id: string;
   icon: string;
@@ -49,7 +156,12 @@ export interface ScenarioDefinition {
   title_en: string;
   title_ar: string;
   difficulty: 'A1' | 'A2' | 'B1' | 'B2';
-  category: 'daily' | 'travel' | 'food' | 'work' | 'grammar';
+  category: 'mission' | 'daily' | 'travel' | 'food' | 'work' | 'grammar';
+  isTaskMission?: boolean;
+  missionGoal_es?: string;
+  missionGoal_en?: string;
+  missionGoal_ar?: string;
+  objectives?: MissionObjective[];
   initialPrompt: Partial<Record<TutorPersona, { es: string; en: string; ar: string }>> & {
     juan: { es: string; en: string; ar: string };
   };
@@ -57,6 +169,202 @@ export interface ScenarioDefinition {
 }
 
 export const LINGOPAL_SCENARIOS: ScenarioDefinition[] = [
+  // 🎯 MISSION 1: El Mercado de Coyoacán
+  {
+    id: 'coyoacan_market',
+    icon: '🥭',
+    title_es: 'El Mercado de Coyoacán',
+    title_en: 'Coyoacán Market Mission',
+    title_ar: 'سوق كويواكان الشعبي',
+    difficulty: 'A2',
+    category: 'mission',
+    isTaskMission: true,
+    missionGoal_es: 'Regatea con respeto por fruta fresca de temporada y pregunta por los ingredientes locales.',
+    missionGoal_en: 'Bargain respectfully for fresh fruit and ask about local ingredients.',
+    missionGoal_ar: 'تفاوض باحترام لشراء فواكه طازجة واسأل عن المكونات المحلية.',
+    objectives: [
+      {
+        id: 'greet_ask_fruit',
+        label_es: 'Saluda y pregunta por la fruta de temporada',
+        label_en: 'Greet politely and ask for seasonal fruit',
+        label_ar: 'التحية والسؤال عن الفواكه الموسمية',
+        completedPattern: /buen(as|os)|hola|fruta|mango|papaya|temporada/i
+      },
+      {
+        id: 'ask_sweetness',
+        label_es: 'Pregunta sobre la madurez o sabor del fruto',
+        label_en: 'Inquire about freshness, sweetness or ripeness',
+        label_ar: 'السؤال عن مدى نضج أو حلاوة الفاكهة',
+        completedPattern: /dulce|madur|sabor|prob|probar|ingrediente|origen/i
+      },
+      {
+        id: 'bargain_politely',
+        label_es: 'Pide cantidad y negocia el precio con cortesía',
+        label_en: 'Ask for price or negotiate politely (cuánto, kilo, rebaj)',
+        label_ar: 'طلب الكمية والتفاوض بلباقة على السعر',
+        completedPattern: /cuánto|cuesta|kilo|medio kilo|deja|precio|llevar/i
+      }
+    ],
+    initialPrompt: {
+      juan: {
+        es: '¡Pásele, pásele marchante! Bienvenido a mi puesto en Coyoacán. Hoy nos llegó un mango ataulfo y una papaya de Oaxaca que están para chuparse los dedos. ¿Qué se le ofrece llevar hoy?',
+        en: 'Step right up, friend! Welcome to my stall in Coyoacán. Today we received honey mangoes and papaya from Oaxaca that are delicious. What can I get for you today?',
+        ar: 'تفضل يا محترم! مرحباً بك في كشكي في كويواكان. وصل اليوم مانجو وبابايا طازجة ولذيذة جداً من أواخاكا. ماذا تحب أن تأخذ اليوم؟'
+      },
+      sofia: {
+        es: '¡Hola! Qué ambiente más vivo hay en este mercado de Coyoacán. Venga, ¿nos acercamos al puesto de frutas? ¿Qué fruta te apetece probar?',
+        en: 'Hi! What a vibrant atmosphere in this Coyoacán market. Come on, shall we check out the fruit stall? What fruit do you feel like trying?',
+        ar: 'مرحباً! يا له من جو مفعم بالحياة في هذا السوق. هل نقترب من كشك الفواكه؟ أي فاكهة ترغب بتجربتها؟'
+      },
+      mateo: {
+        es: 'Iniciamos la misión comunicativa: interacción transaccional en un mercado tradicional. Salude al vendedor e indague por el precio y frescura de la fruta.',
+        en: 'We begin the communicative task: transactional interaction in a traditional market. Greet the vendor and ask about fruit price and freshness.',
+        ar: 'نبدأ المهمة التواصلية: محادثة تسوق في سوق تقليدي. حيّ البائع واسأله عن السعر والطزاجة.'
+      },
+      elena: {
+        es: '¡Hola, qué más! ¡Qué delicia de frutas tienen aquí en el mercado! Con mucho gusto te ayudo a pedirle al señor los mejores mangos. ¿Qué le quieres preguntar primero?',
+        en: 'Hello, how are you! What delightful fruit they have here in the market! I will gladly help you ask the vendor for the best mangoes. What do you want to ask him first?',
+        ar: 'أهلاً بك، كيف حالك! ما ألذ الفواكه هنا في السوق! بكل سرور أساعدك في طلب أفضل حبات المانجو. ماذا تود أن تسأله أولاً؟'
+      }
+    },
+    suggestedReplies: [
+      { es: '¡Buenas! ¿A cuánto tiene el kilo de mango y qué tan dulce está?', en: 'Hello! How much is a kilo of mango and how sweet is it?' },
+      { es: '¿Me permite probar un pedacito antes de decidir?', en: 'May I taste a little piece before deciding?' },
+      { es: 'Deme un kilo, pero si llevo dos, ¿me hace una rebajita?', en: 'Give me one kilo, but if I take two, could you give a little discount?' }
+    ]
+  },
+
+  // 🎯 MISSION 2: Check-in en el Hotel de Madrid
+  {
+    id: 'madrid_hotel',
+    icon: '🏨',
+    title_es: 'Check-in en el Hotel de Madrid',
+    title_en: 'Madrid Hotel Check-in',
+    title_ar: 'تسجيل الوصول في فندق مدريد',
+    difficulty: 'A2',
+    category: 'mission',
+    isTaskMission: true,
+    missionGoal_es: 'Realiza el check-in, solicita una habitación tranquila en planta alta y reporta que falta una toalla.',
+    missionGoal_en: 'Complete check-in, request a quiet room on a high floor, and report a missing towel politely.',
+    missionGoal_ar: 'أتمم تسجيل الدخول، واطلب غرفة هادئة في طابق علوي، وأبلغ بأدب عن نقص منشفة.',
+    objectives: [
+      {
+        id: 'checkin_reservation',
+        label_es: 'Saluda e indica tu nombre o reserva de hotel',
+        label_en: 'Greet reception and give your name/reservation details',
+        label_ar: 'التحية وذكر الاسم أو بيانات الحجز',
+        completedPattern: /reserva|nombre|noche|lleg|habitaci/i
+      },
+      {
+        id: 'request_quiet_high',
+        label_es: 'Pide una habitación silenciosa en una planta alta',
+        label_en: 'Request a quiet room on a high floor (piso alto, tranquila)',
+        label_ar: 'طلب غرفة هادئة في طابق مرتفع',
+        completedPattern: /alto|planta alta|piso alto|tranquil|silencio|ruido/i
+      },
+      {
+        id: 'report_missing_towel',
+        label_es: 'Reporta cortésmente que falta una toalla en el baño',
+        label_en: 'Report politely that a towel is missing in the bathroom',
+        label_ar: 'الإبلاغ بلباقة عن نقص منشفة في الحمام',
+        completedPattern: /toalla|baño|falta|necesito|limpi/i
+      }
+    ],
+    initialPrompt: {
+      sofia: {
+        es: '¡Buenas tardes y bienvenido al Hotel Gran Vía de Madrid! Tienes cara de cansado tras el viaje, majo. ¿Tienes una reserva con nosotros o te busco habitación disponible?',
+        en: 'Good afternoon and welcome to Hotel Gran Vía in Madrid! You look tired after traveling, my friend. Do you have a reservation with us or shall I find a room?',
+        ar: 'مساء الخير وأهلاً بك في فندق غران فيا بمدريد! تبدو متعباً بعد السفر. هل لديك حجز مسبق أم أبحث لك عن غرفة متاحة؟'
+      },
+      juan: {
+        es: '¡Buenas tardes! Bienvenido a nuestro hotel en Madrid. Con gusto le atiendo para su registro. ¿Me permite su identificación o número de reserva, por favor?',
+        en: 'Good afternoon! Welcome to our hotel in Madrid. I will gladly assist with your check-in. May I see your ID or reservation number, please?',
+        ar: 'مساء الخير! مرحباً بك في فندقنا بمدريد. بكل سرور أساعدك في التسجيل. هل تتفضل ببطاقتك أو رقم الحجز؟'
+      },
+      mateo: {
+        es: 'Iniciamos la simulación de recepción hotelera. Practique fórmulas de cortesía y registro: exprese sus preferencias de planta y reporte cualquier necesidad de la habitación.',
+        en: 'We begin the hotel check-in simulation. Practice courtesy markers and registration: state your floor preferences and report any room needs.',
+        ar: 'نبدأ محاكاة استقبال الفندق. تدرب على أسلوب اللباقة والتسجيل وبيان تفضيلات الغرفة.'
+      },
+      elena: {
+        es: '¡Hola! Bien llegado al hotel. Con mucho gusto te recibimos. Dime, ¿tienes reserva hecha para estos días?',
+        en: 'Hello! Welcome to the hotel. We gladly welcome you. Tell me, do you have a reservation for these days?',
+        ar: 'أهلاً بك في الفندق! يسعدنا استقبالك. أخبرني، هل لديك حجز لهذه الأيام؟'
+      }
+    },
+    suggestedReplies: [
+      { es: 'Buenas tardes, tengo una reserva a mi nombre para tres noches.', en: 'Good afternoon, I have a reservation in my name for three nights.' },
+      { es: 'Si es posible, preferiría una habitación tranquila en una planta alta.', en: 'If possible, I would prefer a quiet room on a high floor.' },
+      { es: 'Muchas gracias. Noté que falta una toalla grande en el baño, ¿podrían enviarme una?', en: 'Thank you. I noticed a large towel is missing in the bathroom, could you send one?' }
+    ]
+  },
+
+  // 🎯 MISSION 3: Entrevista de Trabajo
+  {
+    id: 'job_interview',
+    icon: '💼',
+    title_es: 'Entrevista de Trabajo',
+    title_en: 'Job Interview Mission',
+    title_ar: 'محاكاة مقابلة العمل',
+    difficulty: 'B1',
+    category: 'mission',
+    isTaskMission: true,
+    missionGoal_es: 'Explica tu trayectoria profesional y responde preguntas situacionales con registro formal.',
+    missionGoal_en: 'Explain your professional background and answer situational questions in formal Spanish.',
+    missionGoal_ar: 'اشرح مسارك المهني وأجب عن الأسئلة الموقفية بأسلوب مهني رسمي.',
+    objectives: [
+      {
+        id: 'present_background',
+        label_es: 'Presenta tu perfil y tu motivación para el puesto',
+        label_en: 'Present your professional profile and motivation',
+        label_ar: 'تقديم ملفك المهني ودوافعك للوظيفة',
+        completedPattern: /experiencia|trabaj|estudi|perfil|carrera|interés|motiv/i
+      },
+      {
+        id: 'handle_challenge',
+        label_es: 'Explica cómo resuelves problemas o trabajas en equipo',
+        label_en: 'Explain how you solve problems or collaborate in a team',
+        label_ar: 'شرح كيفية حل المشكلات والعمل الجماعي',
+        completedPattern: /equipo|problem|desafío|soluci|proyect|resolv/i
+      },
+      {
+        id: 'ask_company_question',
+        label_es: 'Haz una pregunta profesional sobre metas o cultura',
+        label_en: 'Ask a pertinent professional question about goals or team culture',
+        label_ar: 'طرح سؤال مهني ذكي حول أهداف الشركة وبيئة العمل',
+        completedPattern: /[?¿]|objetiv|meta|cultura|siguiente|etapa|equipo/i
+      }
+    ],
+    initialPrompt: {
+      mateo: {
+        es: 'Estimado/a candidato/a, bienvenido a esta entrevista de selección. Hemos examinado con detenimiento su expediente. Para comenzar, ¿podría resumir su trayectoria y qué le motivó a postularse con nosotros?',
+        en: 'Dear candidate, welcome to this selection interview. We have carefully reviewed your file. To begin, could you summarize your background and what motivated you to apply with us?',
+        ar: 'عزيزي المتقدم، مرحباً بك في مقابلة التوظيف هذه. لقد راجعنا ملفك بعناية. للبدء، هل يمكنك تلخيص مسارك وما دفعك للتقدم إلينا؟'
+      },
+      sofia: {
+        es: '¡Hola! Qué placer conocerte en persona para esta entrevista. Tu perfil nos ha parecido súper interesante. Cuéntame, ¿cuál ha sido el proyecto del que más orgulloso te sientes?',
+        en: 'Hi! What a pleasure to meet you in person for this interview. Your profile looked very interesting. Tell me, which project are you most proud of?',
+        ar: 'مرحباً! يسعدني لقاؤك شخصياً في هذه المقابلة. وجدنا سيرتك مميزة. أخبرني، ما هو المشروع الذي تفخر به أكثر؟'
+      },
+      juan: {
+        es: 'Bienvenido. Muchas gracias por tu tiempo hoy. Nos alegra mucho platicar contigo sobre este puesto. Cuéntanos un poco de ti y cómo te gusta trabajar en equipo.',
+        en: 'Welcome. Thank you very much for your time today. We are glad to chat with you about this role. Tell us a bit about yourself and how you like working in a team.',
+        ar: 'أهلاً بك. شكراً جزيلاً لوقتك اليوم. يسعدنا الحديث معك حول هذا المنصب. حدثنا قليلاً عن نفسك وكيف تحب العمل الجماعي.'
+      },
+      elena: {
+        es: '¡Hola, bienvenido! Con mucho gusto te recibimos para conocer más sobre tu experiencia. Siéntete cómodo y cuéntanos sobre tus principales fortalezas.',
+        en: 'Hello, welcome! We gladly welcome you to learn more about your experience. Make yourself comfortable and tell us about your main strengths.',
+        ar: 'مرحباً وأهلاً بك! يسعدنا جداً التعرف على خبراتك. خذ راحتك وحدثنا عن أبرز نقاط قوتك.'
+      }
+    },
+    suggestedReplies: [
+      { es: 'He acumulado varios años de experiencia en proyectos colaborativos y me motiva aprender rápido.', en: 'I have accumulated several years of experience in collaborative projects and I am motivated to learn quickly.' },
+      { es: 'Frente a un problema técnico o de plazos, priorizo la comunicación clara y el análisis estructurado.', en: 'Facing a technical or deadline issue, I prioritize clear communication and structured analysis.' },
+      { es: '¿Cuáles son los retos más importantes que enfrentará el equipo durante este próximo trimestre?', en: 'What are the most important challenges the team will face during this upcoming quarter?' }
+    ]
+  },
+
+  // ☕ CASUAL SCENARIOS
   {
     id: 'cafe',
     icon: '☕',
@@ -77,24 +385,14 @@ export const LINGOPAL_SCENARIOS: ScenarioDefinition[] = [
         ar: 'مرحباً! رائع أنك أتيت. أنا أطلب الآن. ماذا تحب أن تشرب؟'
       },
       mateo: {
-        es: '¡Saludos! Imaginemos que estamos en una cafetería madrileña. ¿Cómo le pedirías un café al camarero?',
-        en: 'Greetings! Let us imagine we are in a Madrid café. How would you order a coffee from the waiter?',
-        ar: 'تحياتي! لنتخيل أننا في مقهى بمدريد. كيف تطلب قهوة من النادل؟'
+        es: '¡Saludos! Imaginemos que estamos en una cafetería salmantina. ¿Cómo le pedirías un café al camarero?',
+        en: 'Greetings! Let us imagine we are in a Salamanca café. How would you order a coffee from the waiter?',
+        ar: 'تحياتي! لنتخيل أننا في مقهى بسلامنكا. كيف تطلب قهوة من النادل؟'
       },
-      friend: {
-        es: '¡Hola! Nos vemos en el café como quedamos. ¿Pido algo para ti?',
-        en: 'Hi! We meet at the café as planned. Should I order something for you?',
-        ar: 'مرحباً! التقينا في المقهى كما اتفقنا. هل أطلب لك شيئاً؟'
-      },
-      grammar_doctor: {
-        es: '¡Hola! Practiquemos el verbo "querer" y "pedir" en contexto de cafetería. ¿Qué pides?',
-        en: 'Hello! Let us practice the verbs "to want" and "to order" at the café. What do you order?',
-        ar: 'مرحباً! لنتدرب على فعلي "يريد" و "يطلب" في المقهى.'
-      },
-      dele_examiner: {
-        es: 'Buenos días. En esta prueba de rol, usted está en un café. Ordene su consumición con cortesía.',
-        en: 'Good day. In this roleplay task, you are in a café. Order politely.',
-        ar: 'صباح الخير. في هذا الاختبار، أنت في مقهى. اطلب بأدب.'
+      elena: {
+        es: '¡Hola! Qué rico tenerte aquí en este café. ¿Te provoca un cafecito colombiano bien suave o algo frío?',
+        en: 'Hello! How nice to have you here at this cafe. Do you fancy a nice mild Colombian coffee or something cold?',
+        ar: 'مرحباً! كم هو جميل وجودك هنا في المقهى. هل ترغب في قهوة كولومبية خفيفة أم مشروب بارد؟'
       }
     },
     suggestedReplies: [
@@ -113,224 +411,30 @@ export const LINGOPAL_SCENARIOS: ScenarioDefinition[] = [
     category: 'daily',
     initialPrompt: {
       juan: {
-        es: '¡Hola, qué onda! Qué gusto conocerte. Yo soy de Oaxaca, México. ¿Y tú, de dónde eres?',
-        en: 'Hey, what\'s up! Nice to meet you. I am from Oaxaca, Mexico. And you, where are you from?',
-        ar: 'أهلاً، كيف الحال! سعيد بالتعرف عليك. أنا من أواخاكا، المكسيك. وأنت، من أين أنت؟'
+        es: '¡Hola, qué onda! Qué gusto conocerte. Yo soy Juan de Oaxaca, México. ¿Y tú, de dónde eres y qué te late hacer?',
+        en: "Hey, what's up! Nice to meet you. I am Juan from Oaxaca, Mexico. And you, where are you from and what do you like to do?",
+        ar: 'أهلاً، كيف الحال! سعيد بالتعرف عليك. أنا خوان من أواخاكا بالمكسيك. وأنت، من أين وماذا تحب أن تفعل؟'
       },
       sofia: {
-        es: '¡Hola! Me alegro de verte por aquí. Yo vivo en Madrid. Cuéntame, ¿qué tal tu día?',
-        en: 'Hi! Glad to see you here. I live in Madrid. Tell me, how has your day been?',
-        ar: 'مرحباً! سعيدة برؤيتك هنا. أعيش في مدريد. أخبرني، كيف كان يومك؟'
+        es: '¡Hola! Me alegro de verte por aquí en Madrid. ¿Qué tal, tío? Cuéntame, ¿hace cuánto tiempo estudias español?',
+        en: "Hi! Glad to see you here in Madrid. How's it going, my friend? Tell me, how long have you been studying Spanish?",
+        ar: 'مرحباً! سعيدة برؤيتك في مدريد. كيف الحال يا صديقي؟ أخبرني، كم لك تدرس الإسبانية؟'
       },
       mateo: {
-        es: '¡Hola! Hoy practicaremos cómo presentarte y hablar de tus aficiones. ¿Cómo te llamas y qué te gusta hacer?',
-        en: 'Hello! Today we practice introducing yourself and talking about hobbies. What is your name and what do you like to do?',
-        ar: 'مرحباً! اليوم نتدرب على التعريف بالنفس والهوايات. ما اسمك وماذا تحب أن تفعل؟'
+        es: '¡Hola! Hoy practicaremos cómo presentarte e intercambiar impresiones sobre tus aficiones de forma fluida. ¿Cómo te llamas?',
+        en: 'Hello! Today we practice introducing yourself and sharing impressions about your hobbies fluidly. What is your name?',
+        ar: 'مرحباً! اليوم سنتدرب على التعريف بالنفس وتبادل الحديث عن الهوايات بطلاقة. ما اسمك؟'
       },
-      friend: {
-        es: '¡Hola! Qué alegría conocerte. ¿Hace cuánto tiempo estás estudiando español?',
-        en: 'Hi! So happy to meet you. How long have you been studying Spanish?',
-        ar: 'مرحباً! كم مضى عليك وأنت تدرس الإسبانية؟'
-      },
-      grammar_doctor: {
-        es: '¡Hola! Practiquemos las formas de "ser" vs "estar" para presentarte y decir tu origen.',
-        en: 'Hello! Let us practice "ser" vs "estar" to introduce yourself and state your origin.',
-        ar: 'مرحباً! لنتدرب على صيغتي ser و estar للتعريف بالنفس.'
-      },
-      dele_examiner: {
-        es: 'Por favor, realice una breve presentación personal sobre su ocupación e intereses.',
-        en: 'Please give a short personal presentation about your occupation and interests.',
-        ar: 'يرجى تقديم تعريف موجز عن نفسك وعملك واهتماماتك.'
+      elena: {
+        es: '¡Hola! ¡Qué más! Me da mucho gusto saludarte desde Medellín. ¿Qué te motivó a empezar a hablar español?',
+        en: 'Hello! How are you doing! It is a great pleasure to greet you from Medellín. What motivated you to start speaking Spanish?',
+        ar: 'مرحباً! كيف حالك! يسعدني جداً الترحيب بك من ميديلين. ما الذي شجعك على تعلم التحدث بالإسبانية؟'
       }
     },
     suggestedReplies: [
-      { es: '¡Mucho gusto! Estoy aprendiendo español para viajar.', en: 'Nice to meet you! I am learning Spanish to travel.' },
-      { es: 'Vivo en una ciudad hermosa y me gusta la música.', en: 'I live in a beautiful city and like music.' },
-      { es: 'Llevo unos meses estudiando y me encanta.', en: 'I have been studying for a few months and love it.' }
-    ]
-  },
-  {
-    id: 'tacos',
-    icon: '🌮',
-    title_es: 'Puesto de Tacos',
-    title_en: 'Street Food Market',
-    title_ar: 'سوق الطعام الشعبي',
-    difficulty: 'A2',
-    category: 'food',
-    initialPrompt: {
-      juan: {
-        es: '¡Pásele, marchante! Aquí los mejores tacos al pastor y de birria. ¿Cuántos le vamos preparando?',
-        en: 'Step right up, friend! Best al pastor and birria tacos here. How many can we get ready for you?',
-        ar: 'تفضل يا صديقي! أفضل تاكو باستور وبيريا هنا. كم قطعة نجهز لك؟'
-      },
-      sofia: {
-        es: '¡Vaya pinta tienen estos puestos callejeros! ¿Qué plato típico quieres que probemos juntos?',
-        en: 'These street stalls look amazing! Which typical dish do you want to try together?',
-        ar: 'هذه الأكشاك تبدو شهية جداً! أي طبق تقليدي ترغب بتجربته معاً؟'
-      },
-      mateo: {
-        es: '¡Excelente! En los mercados hispanos la interacción es viva. Intenta pedir tres cosas usando cantidades.',
-        en: 'Excellent! In Hispanic markets interactions are lively. Try ordering 3 items using quantities.',
-        ar: 'ممتاز! في الأسواق الشعبية يكون الحديث حيوياً. جرب طلب 3 أشياء مستخدماً الكميات.'
-      },
-      friend: {
-        es: '¡Tengo muchísima hambre! Este puesto de comida huele delicioso. ¿Qué pedimos?',
-        en: 'I am so hungry! This food stall smells delicious. What should we order?',
-        ar: 'أنا جائع جداً! رائحة هذا الكشك شهية. ماذا نطلب؟'
-      },
-      grammar_doctor: {
-        es: 'Practiquemos vocabulario de alimentos y pronombres de objeto directo: "¿Me los preparas?"',
-        en: 'Let us practice food vocabulary and direct object pronouns.',
-        ar: 'لنتدرب على مفردات الطعام وضمائر المفعول به.'
-      },
-      dele_examiner: {
-        es: 'Simule una compra en un mercado de alimentos expresando preferencias y preguntando precios.',
-        en: 'Simulate a food market purchase expressing preferences and inquiring about prices.',
-        ar: 'قم بمحاكاة الشراء في سوق طعام مع التعبير عن التفضيل والسؤال عن الأسعار.'
-      }
-    },
-    suggestedReplies: [
-      { es: 'Deme tres tacos de pastor con todo, por favor.', en: 'Give me three pastor tacos with everything, please.' },
-      { es: '¿La salsa roja pica mucho o es suave?', en: 'Is the red salsa very spicy or mild?' },
-      { es: '¿Cuánto cuesta cada taco y qué bebida tienen?', en: 'How much is each taco and what drinks do you have?' }
-    ]
-  },
-  {
-    id: 'hotel',
-    icon: '🏨',
-    title_es: 'En el Hotel',
-    title_en: 'Hotel Check-in',
-    title_ar: 'تسجيل الدخول في الفندق',
-    difficulty: 'A2',
-    category: 'travel',
-    initialPrompt: {
-      juan: {
-        es: '¡Buenas tardes! Bienvenido a nuestro hotel. ¿Tiene una reservación hecha o busca habitación?',
-        en: 'Good afternoon! Welcome to our hotel. Do you have a reservation or are you looking for a room?',
-        ar: 'مساء الخير! مرحباً بك في فندقنا. هل لديك حجز مسبق أم تبحث عن غرفة؟'
-      },
-      sofia: {
-        es: '¡Hola! Llegamos por fin al hotel tras el viaje. Ayúdame con la recepción, por favor.',
-        en: 'Hi! We finally arrived at the hotel after the trip. Help me at reception, please.',
-        ar: 'مرحباً! وصلنا أخيراً إلى الفندق بعد السفر. ساعدني عند الاستقبال.'
-      },
-      mateo: {
-        es: 'Bienvenido. Practiquemos el lenguaje formal y de cortesía para el registro en un hotel.',
-        en: 'Welcome. Let us practice formal language and courtesy markers for hotel registration.',
-        ar: 'مرحباً. لنتدرب على لغة الأدب واللباقة في الفندق.'
-      },
-      friend: {
-        es: '¡Qué bonito es este hotel! Pregunta al recepcionista si tienen piscina y desayuno incluido.',
-        en: 'How nice this hotel is! Ask the receptionist if they have a pool and included breakfast.',
-        ar: 'ما أجمل هذا الفندق! اسأل موظف الاستقبال إن كان هناك مسبح وإفطار مشمول.'
-      },
-      grammar_doctor: {
-        es: 'Practicaremos oraciones de cortesía con "quisiera" y "sería posible".',
-        en: 'We will practice courtesy phrases with "quisiera" and "sería posible".',
-        ar: 'سنتدرب على أساليب الطلب المؤدب مثل "أود" و "هل من الممكن".'
-      },
-      dele_examiner: {
-        es: 'Comuníquese con el recepcionista para solucionar una incidencia con su reserva.',
-        en: 'Communicate with the receptionist to resolve a reservation issue.',
-        ar: 'تواصل مع موظف الاستقبال لحل مشكلة في حجزك.'
-      }
-    },
-    suggestedReplies: [
-      { es: 'Sí, tengo una reserva a mi nombre para tres noches.', en: 'Yes, I have a reservation in my name for three nights.' },
-      { es: '¿A qué hora se sirve el desayuno por las mañanas?', en: 'What time is breakfast served in the mornings?' },
-      { es: '¿La habitación cuenta con wifi de alta velocidad?', en: 'Does the room have high-speed wifi?' }
-    ]
-  },
-  {
-    id: 'airport',
-    icon: '✈️',
-    title_es: 'En el Aeropuerto',
-    title_en: 'At the Airport',
-    title_ar: 'في المطار',
-    difficulty: 'B1',
-    category: 'travel',
-    initialPrompt: {
-      juan: {
-        es: '¡Buenos días! Mostrador de vuelos internacionales. ¿Hacia dónde viaja hoy y me permite su pasaporte?',
-        en: 'Good morning! International flight desk. Where are you flying to today and may I see your passport?',
-        ar: 'صباح الخير! مكتب الرحلات الدولية. إلى أين تسافر اليوم، وهل تسمح بجواز سفرك؟'
-      },
-      sofia: {
-        es: '¡Uf, el aeropuerto está lleno! Debemos facturar el equipaje rápido. ¿Tienes los billetes a mano?',
-        en: 'Phew, the airport is packed! We need to check luggage quickly. Do you have the tickets handy?',
-        ar: 'يا إلهي، المطار مزدحم! علينا شحن الحقائب بسرعة. هل التذاكر معك؟'
-      },
-      mateo: {
-        es: 'Situación de viaje: facturación y control de seguridad. Responde con precisión a las preguntas del agente.',
-        en: 'Travel situation: check-in and security. Answer the agent\'s questions with precision.',
-        ar: 'موقف السفر: تسجيل الأمتعة والأمن. أجب بدقة على أسئلة الموظف.'
-      },
-      friend: {
-        es: '¡Qué emoción viajar juntos! ¿Llevas maleta de mano o vas a facturar?',
-        en: 'So exciting to travel together! Do you have hand luggage or will you check a bag?',
-        ar: 'كم هو رائع أن نسافر معاً! هل معك حقيبة يد أم ستشحن حقيبة؟'
-      },
-      grammar_doctor: {
-        es: 'Practiquemos verbos de movimiento y preposiciones espaciales: hacia, hasta, en la puerta.',
-        en: 'Let us practice verbs of motion and prepositions of place.',
-        ar: 'لنتدرب على أفعال الحركة وحروف الجر الدالة على المكان.'
-      },
-      dele_examiner: {
-        es: 'Usted ha perdido una maleta en la terminal. Reclame formalmente en el mostrador.',
-        en: 'You have lost a bag at the terminal. File a formal claim at the counter.',
-        ar: 'لقد فقدت حقيبة في المطار. قدم بلاغاً رسمياً عند المكتب.'
-      }
-    },
-    suggestedReplies: [
-      { es: 'Viajo a Madrid y solo llevo esta maleta de mano.', en: 'I am traveling to Madrid and only carrying this hand bag.' },
-      { es: '¿A qué hora comienza el embarque de mi vuelo?', en: 'What time does boarding start for my flight?' },
-      { es: '¿Podría darme un asiento junto a la ventana?', en: 'Could you give me a window seat, please?' }
-    ]
-  },
-  {
-    id: 'job_interview',
-    icon: '💼',
-    title_es: 'Entrevista Laboral',
-    title_en: 'Job Interview',
-    title_ar: 'مقابلة عمل',
-    difficulty: 'B2',
-    category: 'work',
-    initialPrompt: {
-      juan: {
-        es: 'Bienvenido a nuestra empresa. Gracias por tu interés. Para comenzar, ¿qué te motivó a postularte?',
-        en: 'Welcome to our company. Thank you for your interest. To start, what motivated you to apply?',
-        ar: 'مرحباً بك في شركتنا. شكراً لاهتمامك. للبدء، ما الذي دفعك للتقدم لهذه الوظيفة؟'
-      },
-      sofia: {
-        es: 'Hola, un placer. Hemos revisado tu perfil y nos parece muy interesante. ¿Cómo describirías tus mayores fortalezas?',
-        en: 'Hello, a pleasure. We reviewed your profile and find it very interesting. How would you describe your greatest strengths?',
-        ar: 'مرحباً، يسعدني لقاؤك. راجعنا ملفك ووجدناه مشوقاً. كيف تصف أبرز نقاط قوتك؟'
-      },
-      mateo: {
-        es: 'Iniciamos la simulación de entrevista profesional. Utiliza conectores formales y tiempos compuestos.',
-        en: 'We begin the professional interview simulation. Use formal discourse markers and compound tenses.',
-        ar: 'نبدأ محاكاة المقابلة المهنية. استخدم روابط الكلام الرسمية والأزمنة المركبة.'
-      },
-      friend: {
-        es: '¡Tranquilo, lo harás genial en tu entrevista! Practiquemos: ¿cómo responderás si te preguntan por tu experiencia?',
-        en: 'Relax, you\'ll do great in your interview! Let\'s practice: how will you answer about your experience?',
-        ar: 'اطمئن، ستبلي بلاءً حسناً! لنتدرب: كيف ستجيب إذا سألوك عن خبرتك؟'
-      },
-      grammar_doctor: {
-        es: 'Enfócate en el pretérito perfecto ("he trabajado") y el subjuntivo de opinión ("no creo que sea").',
-        en: 'Focus on present perfect and subjunctive of opinion.',
-        ar: 'ركز على الماضي التام وصيغة Subjuntivo للتعبير عن الرأي.'
-      },
-      dele_examiner: {
-        es: 'Defienda ante el tribunal su idoneidad para liderar un proyecto internacional.',
-        en: 'Defend your suitability to lead an international project before the panel.',
-        ar: 'دافع أمام اللجنة عن مدى ملاءمتك لقيادة مشروع دولي.'
-      }
-    },
-    suggestedReplies: [
-      { es: 'He trabajado en proyectos internacionales y disfruto del trabajo en equipo.', en: 'I have worked on international projects and enjoy teamwork.' },
-      { es: 'Me apasiona resolver problemas y aprender nuevas herramientas rápidamente.', en: 'I love solving problems and learning new tools quickly.' },
-      { es: '¿Cuáles son los objetivos principales para este puesto este año?', en: 'What are the main objectives for this role this year?' }
+      { es: '¡Mucho gusto! Estoy aprendiendo español para viajar y conversar con gente nativa.', en: 'Nice to meet you! I am learning Spanish to travel and chat with native speakers.' },
+      { es: 'Vivo en una ciudad bonita y me apasiona la música y la gastronomía.', en: 'I live in a beautiful city and I love music and gastronomy.' },
+      { es: 'Llevo unos meses practicando todos los días y me encanta el idioma.', en: 'I have been practicing every day for a few months and I love the language.' }
     ]
   }
 ];
@@ -453,16 +557,16 @@ export function generateClientSideLingoPalResponse(
     ? '¡Órale! '
     : persona === 'sofia'
     ? '¡Qué guay! '
-    : persona === 'camila'
-    ? '¡Qué chévere! '
+    : persona === 'elena' || persona === 'camila'
+    ? '¡Qué más! '
     : '¡Excelente! ';
 
   const personaName = persona === 'juan'
     ? 'Juan'
     : persona === 'sofia'
     ? 'Sofía'
-    : persona === 'camila'
-    ? 'Camila'
+    : persona === 'elena' || persona === 'camila'
+    ? 'Elena'
     : 'el Profesor Mateo';
 
   // Handling direct meta-feedback on conversational tone
@@ -479,7 +583,7 @@ export function generateClientSideLingoPalResponse(
       spanishReply = '¡Ostras, qué razón tienes! Qué vergüenza, parecía un contestador automático. Nada de rollos mecánicos: hablemos de tú a tú como amigos en una terraza. ¿Qué planes tienes o de qué te apetece hablar?';
       englishExplanation = 'You are completely right! How embarrassing, I sounded like an answering machine. No more robotic scripts: let\'s talk like friends hanging out. What are your plans or what do you feel like talking about?';
       arabicExplanation = isArabic ? 'معك حق تماماً! يا للإحراج، بدوت كجهاز رد آلي. دعنا من القوالب الآلية: لنتحدث كأصدقاء. ما هي خططك أو ماذا تحب أن نناقش؟' : '';
-    } else if (persona === 'camila') {
+    } else if (persona === 'elena' || persona === 'camila') {
       spanishReply = '¡Ay, qué pena contigo! Jajaja, me salió la voz de robot sin querer. Olvidémonos de formalidades y charlemos bien rico. Cuéntame algo de tu vida o de tu comida favorita.';
       englishExplanation = 'Oh, forgive me! Haha, my robot voice slipped out by accident. Let\'s forget formalities and have a nice friendly chat. Tell me about your life or your favorite food.';
       arabicExplanation = isArabic ? 'أعتذر منك بشدة! هههه، خرجت نبرة الروبوت بغير قصد. لننسَ الرسميات ونتحدث بود. أخبرني عن حياتك أو طعامك المفضل.' : '';
@@ -496,7 +600,7 @@ export function generateClientSideLingoPalResponse(
       analysis: {
         hasErrors: false,
         score: 100,
-        verdict: 'Feedback conversacional honesto',
+        verdict: 'Feedback conversacional procesado',
         feedback_es: '¡Gracias por tu honestidad! Las conversaciones reales fluyen mejor cuando hablamos de forma directa y relajada.',
         feedback_en: 'Thank you for your candid feedback! Real language acquisition thrives when conversation is natural and relaxed.',
         feedback_ar: isArabic ? 'شكراً لصراحتك! المحادثات الحقيقية تكون أفضل عندما نتحدث بارتياح وعفوية.' : undefined,
@@ -524,8 +628,8 @@ export function generateClientSideLingoPalResponse(
     let spanishReply = `${personaIntro}¡No te preocupes, amigo! Es completamente normal no entender a la primera. En español decimos: "No entiendo" o "¿Puedes repetir más despacio?". ¿Quieres que te repita lo anterior?`;
     if (persona === 'sofia') {
       spanishReply = `${personaIntro}¡No pasa nada! Todos nos perdemos al aprender. En España decimos: "¿Cómo?" o "No te he entendido". ¿Quieres que te lo explique de otra forma?`;
-    } else if (persona === 'camila') {
-      spanishReply = `${personaIntro}¡Tranquilo! En Medellín decimos "¡Qué pena contigo, no te entendí!". Puedes decir: "No entiendo, habla más despacio por favor". ¿Te lo repito?`;
+    } else if (persona === 'elena' || persona === 'camila') {
+      spanishReply = `${personaIntro}¡Tranquilo! En Medellín decimos "¡Qué pena contigo, no te entendí!". Puedes decir: "No entiendo, habla más despacio por favor". ¿Te lo repito con gusto?`;
     } else if (persona === 'mateo') {
       spanishReply = `¡Totalmente comprensible! Cuando experimentes una duda comunicativa, puedes solicitar aclaración diciendo: "Disculpe, no he entendido, ¿podría repetir?". ¿Qué concepto deseas repasar?`;
     }
@@ -575,14 +679,14 @@ export function generateClientSideLingoPalResponse(
       analysis: hasMiIllamo ? {
         hasErrors: true,
         score: 75,
-        verdict: 'Buen intento con corrección',
-        feedback_es: 'Hiciste un buen intento al presentarte, pero en español usamos el pronombre reflexivo "me" (no "mi") y el verbo se escribe con doble "ll": "me llamo".',
-        feedback_en: 'Good communicative attempt! In Spanish we use the reflexive pronoun "me" (not "mi") and spell it with double "ll": "me llamo".',
-        feedback_ar: isArabic ? 'محاولة تواصل جيدة! في الإسبانية نستخدم الضمير الانعكاسي "me" (وليس "mi") مع الحرفين "ll": "me llamo".' : undefined,
+        verdict: '💡 Consejo nativo',
+        feedback_es: 'Hiciste un buen intento comunicativo. En español usamos el pronombre reflexivo "me": "me llamo".',
+        feedback_en: 'Good communicative attempt! In Spanish we use the reflexive pronoun "me" (not "mi") and double "ll": "me llamo".',
+        feedback_ar: isArabic ? 'محاولة تواصل ممتازة! في الإسبانية نستخدم الضمير الانعكاسي "me" (وليس "mi") مع الحرفين "ll": "me llamo".' : undefined,
         corrections: [{
           original: 'mi illamo',
           correction: 'me llamo',
-          explanation: 'El verbo llamarse es reflexivo: "yo me llamo". "Mi" es adjetivo posesivo (mi casa).'
+          explanation: 'El verbo llamarse es reflexivo: "yo me llamo".'
         }],
         naturalAlternative: `¡Hola! Me llamo ${userName || '...'}. Mucho gusto.`,
         dialectTip: 'En todos los países hispanohablantes "me llamo..." es la forma más natural de presentarse.'
@@ -609,12 +713,184 @@ export function generateClientSideLingoPalResponse(
     };
   }
 
+  // 🥭 MISSION 1: El Mercado de Coyoacán
+  if (scenarioId === 'coyoacan_market') {
+    const isFruitOrBargain = /kilo|cuánto|cuesta|mango|papaya|fruta|dulce|madur|rebaj|llevar/i.test(lower);
+    if (isFruitOrBargain) {
+      return {
+        spanishResponse: `${personaIntro}¡Ándale, marchante! El mango ataulfo está a 35 pesos el kilo, dulce como miel. Si te llevas dos kilitos, te lo dejo en 60 pesos redondos. ¿Te lo pongo en bolsa?`,
+        englishExplanation: 'Step right up! The ataulfo mango is 35 pesos per kilo, sweet like honey. If you take two kilos, I will give it to you for 60 pesos flat. Shall I bag it for you?',
+        arabicExplanation: isArabic ? 'أهلاً بك يا محترم! مانجو أتاولفو بـ 35 بيزو للكيلو، حلو كالعسل. إذا أخذت كيلوين، سأحسبهما لك بـ 60 بيزو فقط. هل أضعهما لك في كيس؟' : '',
+        analysis: {
+          hasErrors: false,
+          score: 95,
+          verdict: '¡Misión comunicativa en progreso!',
+          feedback_es: '¡Negociaste y preguntaste por el producto con excelente cortesía y naturalidad!',
+          feedback_en: 'You inquired about the fruit and negotiated with natural native politeness!',
+          feedback_ar: isArabic ? 'تفاوضت وسألت عن المنتج بلباقة وعفوية ممتازة!' : undefined,
+          corrections: [],
+          naturalAlternative: 'Deme dos kilos de mango bien dulce, por favor.',
+          dialectTip: 'En los mercados mexicanos, el vendedor te llama afectuosamente "marchante" o "marchantita".'
+        },
+        vocabulary: [
+          { word: 'marchante', en: 'valued customer / client', ar: 'زبون عزيز / مشترٍ', contextSentence: 'Pásele marchante, fruta fresca.' },
+          { word: 'ataulfo', en: 'sweet honey mango variety', ar: 'نوع مانجو مكسيكي حلو جداً', contextSentence: 'Un mango ataulfo bien jugoso.' }
+        ],
+        followUpQuestions: [
+          '¡Trato hecho! Póngame dos kilos bien maduros. (Deal! Give me two very ripe kilos.)',
+          '¿Me regala una prueba de papaya también? (Could I taste a piece of papaya too?)',
+          '¿Acepta tarjeta o sólo efectivo? (Do you accept cards or cash only?)'
+        ]
+      };
+    }
+
+    return {
+      spanishResponse: `${personaIntro}Aquí en Coyoacán todo es fresco del día traído de Oaxaca y Veracruz. Huele este mango ataulfo, ¡está en su punto! ¿Quieres que te corte una rebanadita para que lo pruebes?`,
+      englishExplanation: 'Here in Coyoacán everything is fresh daily from Oaxaca and Veracruz. Smell this ataulfo mango, it is at its prime! Would you like me to slice a little piece for you to taste?',
+      arabicExplanation: isArabic ? 'هنا في كويواكان كل شيء طازج من أواخاكا وفيراكروز. استنشق رائحة هذا المانجو! هل تحب أن أقطع لك شريحة لتتذوقها؟' : '',
+      analysis: {
+        hasErrors: false,
+        score: 90,
+        verdict: 'Interacción de mercado lograda',
+        feedback_es: 'Muy buena formulación de saludo e interés por los productos.',
+        feedback_en: 'Very good greeting and inquiry about local market produce.',
+        corrections: [],
+        naturalAlternative: message,
+        dialectTip: 'En los mercados de México, probar la fruta antes de comprar es costumbre común y bienvenida ("la prueba").'
+      },
+      vocabulary: [
+        { word: 'en su punto', en: 'at its peak ripeness / just right', ar: 'في قمة نضجه / مثالي', contextSentence: 'La fruta está en su punto.' },
+        { word: 'rebanada', en: 'slice', ar: 'شريحة', contextSentence: 'Una rebanada de papaya.' }
+      ],
+      followUpQuestions: [
+        '¡Sí, por favor! Me encantaría probarlo. (Yes please! I would love to taste it.)',
+        '¿A cómo tiene el kilo hoy? (How much is a kilo today?)',
+        '¿Qué otras frutas de temporada me recomienda? (What other seasonal fruits do you recommend?)'
+      ]
+    };
+  }
+
+  // 🏨 MISSION 2: Check-in en el Hotel de Madrid
+  if (scenarioId === 'madrid_hotel' || scenarioId === 'hotel') {
+    const isQuietOrTowel = /toalla|tranquil|silencio|piso alto|planta alta|alta|falta/i.test(lower);
+    if (isQuietOrTowel) {
+      return {
+        spanishResponse: `${personaIntro}¡Por supuesto que sí! Le he asignado la habitación 504 en la última planta, con vistas al patio interior ajardinado para garantizar máximo silencio. Y sobre la toalla, ya mismo le pido al servicio de habitaciones que le suban un juego completo. ¿Necesita algo más?`,
+        englishExplanation: 'Of course! I have assigned you room 504 on the top floor, facing the quiet interior courtyard garden. And regarding the towel, I am immediately sending room service up with a full fresh set. Do you need anything else?',
+        arabicExplanation: isArabic ? 'بالتأكيد! لقد خصصت لك الغرفة 504 في الطابق الأخير المطلة على الفناء الداخلي الهادئ. وبالنسبة للمنشفة، طلبت فوراً من خدمة الغرف إحضار طقم كامل. هل تحتاج أي شيء آخر؟' : '',
+        analysis: {
+          hasErrors: false,
+          score: 95,
+          verdict: '¡Petición hotelera perfecta!',
+          feedback_es: 'Solicitaste la habitación tranquila y reportaste la toalla con una cortesía impecable.',
+          feedback_en: 'You requested the quiet room and reported the missing towel with impeccable courtesy.',
+          feedback_ar: isArabic ? 'طلبت الغرفة الهادئة وأبلغت عن المنشفة بلباقة وأدب فائقين.' : undefined,
+          corrections: [],
+          naturalAlternative: 'Preferiría una habitación en planta alta y necesitaría una toalla adicional en el baño, por favor.',
+          dialectTip: 'En España se usa "planta" para pisos en edificios y hoteles ("tercera planta", "planta alta").'
+        },
+        vocabulary: [
+          { word: 'planta alta', en: 'high floor / upper story', ar: 'طابق علوي', contextSentence: 'Una habitación en planta alta.' },
+          { word: 'servicio de habitaciones', en: 'room service', ar: 'خدمة الغرف', contextSentence: 'Avisaré al servicio de habitaciones.' }
+        ],
+        followUpQuestions: [
+          'Muchísimas gracias por su amabilidad. (Thank you very much for your kindness.)',
+          '¿A qué hora se sirve el desayuno mañana? (What time is breakfast served tomorrow?)',
+          '¿Tienen servicio de consigna para guardar maletas? (Do you have luggage storage service?)'
+        ]
+      };
+    }
+
+    return {
+      spanishResponse: `${personaIntro}He localizado su reserva en el sistema a nombre del titular. La estancia incluye desayuno buffet y conexión wifi de alta velocidad. ¿Tiene alguna preferencia especial para su habitación, como planta o vistas?`,
+      englishExplanation: 'I have located your reservation in the system. The stay includes buffet breakfast and high-speed wifi. Do you have any special preferences for your room, such as floor or views?',
+      arabicExplanation: isArabic ? 'لقد وجدت حجزك في النظام. تشمل الإقامة بوفيه إفطار وإنترنت سريع. هل لديك أي تفضيلات خاصة للغرفة كالطابق أو الإطلالة؟' : '',
+      analysis: {
+        hasErrors: false,
+        score: 90,
+        verdict: 'Registro hotelero en curso',
+        feedback_es: 'Registro fluido y profesional.',
+        feedback_en: 'Smooth and professional registration turn.',
+        corrections: [],
+        naturalAlternative: message,
+        dialectTip: 'En recepciones formales es estándar emplear fórmulas de usted ("le atiendo", "su estancia").'
+      },
+      vocabulary: [
+        { word: 'estancia', en: 'stay / visit duration', ar: 'إقامة', contextSentence: 'Que disfrute de su estancia.' },
+        { word: 'vistas', en: 'views', ar: 'إطلالات', contextSentence: 'Habitación con buenas vistas.' }
+      ],
+      followUpQuestions: [
+        'Preferiría una habitación tranquila en una planta alta. (I would prefer a quiet room on a high floor.)',
+        'Noté que falta una toalla en el baño, ¿pueden enviarme una? (I noticed a towel is missing in the bathroom, can you send one?)',
+        '¿Dónde está ubicado el ascensor? (Where is the elevator located?)'
+      ]
+    };
+  }
+
+  // 💼 MISSION 3: Entrevista de Trabajo
+  if (scenarioId === 'job_interview') {
+    const isProfessionalPitch = /experiencia|trabaj|proyect|equipo|desafío|solucion|meta|objetiv|carrera/i.test(lower);
+    if (isProfessionalPitch) {
+      return {
+        spanishResponse: `${personaIntro}Me parece una respuesta sumamente sólida y estructurada. Se aprecia que valoras el impacto colaborativo y la proactividad. En cuanto a nuestros objetivos este año, buscamos expandir nuestras operaciones internacionales con un equipo dinámico. ¿Cómo te ves contribuyendo a esa meta?`,
+        englishExplanation: 'That strikes me as a remarkably solid and structured answer. It is clear you value collaborative impact and proactivity. Regarding our goals this year, we aim to expand our international operations with a dynamic team. How do you see yourself contributing to that goal?',
+        arabicExplanation: isArabic ? 'إجابة قوية ومنظمة جداً. يتضح تقديرك للعمل التعاوني والمبادرة. بالنسبة لأهدافنا هذا العام، نسعى لتوسيع أعمالنا الدولية بفريق ديناميكي. كيف ترى مساهمتك في ذلك؟' : '',
+        analysis: {
+          hasErrors: false,
+          score: 95,
+          verdict: '¡Dominio profesional demostrado!',
+          feedback_es: 'Utilizaste un registro formal excelente, coherente y persuasivo para el ámbito laboral.',
+          feedback_en: 'You used an excellent, coherent, and persuasive formal register appropriate for professional settings.',
+          feedback_ar: isArabic ? 'استخدمت أسلوباً رسمياً ممتازاً ومقنعاً في السياق المهني.' : undefined,
+          corrections: [],
+          naturalAlternative: 'Cuento con experiencia sólida resolviendo desafíos en equipo y me adapto con rapidez.',
+          dialectTip: 'En entrevistas formales en el mundo hispano se combinan la calidez humana y la precisión en los logros alcanzados.'
+        },
+        vocabulary: [
+          { word: 'sumamente', en: 'extremely / highly', ar: 'للغاية / بشكل ملحوظ', contextSentence: 'Una propuesta sumamente clara.' },
+          { word: 'proactividad', en: 'proactivity', ar: 'المبادرة والاستباقية', contextSentence: 'Valoramos la proactividad en el equipo.' }
+        ],
+        followUpQuestions: [
+          'Me entusiasma liderar iniciativas y aportar ideas creativas. (I am excited to lead initiatives and contribute creative ideas.)',
+          '¿Cuál es el estilo de gestión predominante en el departamento? (What is the predominant management style in the department?)',
+          '¿Cuáles serían los siguientes pasos del proceso de selección? (What would be the next steps in the selection process?)'
+        ]
+      };
+    }
+
+    return {
+      spanishResponse: `${personaIntro}Nos entusiasma mucho tu interés en formar parte de nuestro equipo. Para conocerte mejor en el ámbito profesional, ¿podrías compartirnos un ejemplo concreto de cómo resolviste una situación desafiante en el pasado?`,
+      englishExplanation: 'We are very excited about your interest in joining our team. To get to know you better professionally, could you share a concrete example of how you resolved a challenging situation in the past?',
+      arabicExplanation: isArabic ? 'يسعدنا جداً اهتمامك بالانضمام إلى فريقنا. للتعرف عليك مهنياً بشكل أفضل، هل يمكنك مشاركة مثال ملموس عن كيفية تعاملك مع موقف صعب في الماضي؟' : '',
+      analysis: {
+        hasErrors: false,
+        score: 90,
+        verdict: 'Interacción formal iniciada',
+        feedback_es: 'Inicio de entrevista con registro formal adecuado.',
+        feedback_en: 'Interview opening with appropriate formal register.',
+        corrections: [],
+        naturalAlternative: message,
+        dialectTip: 'Usar conectores como "por consiguiente", "en primer lugar" y "asimismo" eleva tu nivel percibido en el DELE B1/B2.'
+      },
+      vocabulary: [
+        { word: 'desafiante', en: 'challenging / demanding', ar: 'مليء بالتحدي', contextSentence: 'Un proyecto desafiante pero gratificante.' },
+        { word: 'desempeño', en: 'performance / track record', ar: 'أداء مهني', contextSentence: 'Un alto desempeño laboral.' }
+      ],
+      followUpQuestions: [
+        'He liderado proyectos complejos coordinando equipos multidisciplinarios. (I have led complex projects coordinating multidisciplinary teams.)',
+        'Frente a los imprevistos, mantengo la calma y analizo alternativas. (Facing the unexpected, I stay calm and analyze alternatives.)',
+        '¿Qué cualidades consideran más importantes para triunfar en este rol? (What qualities do you consider most important to succeed in this role?)'
+      ]
+    };
+  }
+
+  // ☕ CAFE SCENARIO
   if (scenarioId === 'cafe') {
     if (lower.includes('café') || lower.includes('tostada') || lower.includes('leche') || lower.includes('pedir') || lower.includes('favor')) {
       return {
-        spanishResponse: `${personaIntro}Perfecto, te lo preparo enseguida. ¿Lo prefieres con azúcar blanca, morena o prefieres sacarina?`,
+        spanishResponse: `${personaIntro}Perfecto, te lo preparo enseguida con mucho gusto. ¿Lo prefieres con azúcar blanca, morena o prefieres sacarina?`,
         englishExplanation: 'Perfect, I will prepare it for you right away. Do you prefer it with white sugar, brown sugar, or sweetener?',
-        arabicExplanation: 'ممتاز، سأجهزه لك فوراً. هل تفضله بسكر أبيض، بني، أم محلي اصطناعي؟',
+        arabicExplanation: isArabic ? 'ممتاز، سأجهزه لك فوراً بكل سرور. هل تفضله بسكر أبيض، بني، أم محلي اصطناعي؟' : '',
         analysis: {
           hasErrors: false,
           score: 90,
@@ -623,7 +899,7 @@ export function generateClientSideLingoPalResponse(
           feedback_en: 'Well formulated cafe request! You used accurate vocabulary.',
           corrections: [],
           naturalAlternative: 'Un café con leche y una tostada, por favor.',
-          dialectTip: 'En España se suele pedir "un cortado" o "un café con leche", en México "un americano" o "un café de olla".'
+          dialectTip: 'En España se suele pedir "un cortado" o "un café con leche", en México "un americano" o "un café de olla", y en Colombia "un tinto".'
         },
         vocabulary: [
           { word: 'azúcar', en: 'sugar', ar: 'سكر', contextSentence: '¿Le pongo azúcar al café?' },
@@ -632,14 +908,14 @@ export function generateClientSideLingoPalResponse(
         followUpQuestions: [
           'Con azúcar morena, por favor. (With brown sugar, please.)',
           'Sin azúcar, me gusta amargo. (No sugar, I like it bitter.)',
-          '¿Tienen sacarina o estevia? (Do you have sweetener or stevia?)'
+          '¿Tienen leche de avena o almendra? (Do you have oat or almond milk?)'
         ]
       };
     }
     return {
       spanishResponse: `${personaIntro}En este café tenemos una terraza muy agradable. ¿Quieres que nos sentemos afuera para disfrutar del buen tiempo?`,
       englishExplanation: 'In this café we have a very nice outdoor terrace. Would you like to sit outside to enjoy the nice weather?',
-      arabicExplanation: 'في هذا المقهى لدينا شرفة خارجية جميلة جداً. هل ترغب بالجلوس في الخارج؟',
+      arabicExplanation: isArabic ? 'في هذا المقهى لدينا شرفة خارجية جميلة جداً. هل ترغب بالجلوس في الخارج للاستمتاع بالطقس الجميل؟' : '',
       analysis: {
         hasErrors: false,
         score: 85,
@@ -662,65 +938,11 @@ export function generateClientSideLingoPalResponse(
     };
   }
 
-  if (scenarioId === 'tacos') {
-    return {
-      spanishResponse: `${personaIntro}Aquí servimos los tacos al momento con tortillas recién hechas. ¿Te gustaría ponerles un poco de limón y guacamole?`,
-      englishExplanation: 'Here we serve tacos fresh on the spot with freshly made tortillas. Would you like to add some lime and guacamole?',
-      arabicExplanation: 'هنا نقدم التاكو طازجاً مع خبز التورتيلا الطازج. هل تحب إضافة القليل من الليمون والغواكامولي؟',
-      analysis: {
-        hasErrors: false,
-        score: 90,
-        verdict: '¡Buen provecho!',
-        feedback_es: 'Tu interacción en la taquería es natural y adecuada.',
-        feedback_en: 'Your interaction at the taco stand is natural and context-appropriate.',
-        corrections: [],
-        naturalAlternative: message,
-        dialectTip: 'En México, los tacos se comen tradicionalmente con la mano y un toque de salsa y limón.'
-      },
-      vocabulary: [
-        { word: 'recién', en: 'freshly / just now', ar: 'طازج / تواً', contextSentence: 'Tortillas recién hechas.' },
-        { word: 'guacamole', en: 'avocado dip', ar: 'صلصة الأفوكادو', contextSentence: 'Un poco de guacamole sabroso.' }
-      ],
-      followUpQuestions: [
-        'Sí, con mucho limón y guacamole. (Yes, with lots of lime and guacamole.)',
-        '¿Tienen refrescos mexicanos fríos? (Do you have cold Mexican sodas?)',
-        '¿Cuánto es la cuenta en total? (How much is the total bill?)'
-      ]
-    };
-  }
-
-  if (scenarioId === 'hotel') {
-    return {
-      spanishResponse: `${personaIntro}He registrado sus datos en el sistema. La habitación incluye toallas limpias, minibar y vistas panorámicas. ¿Desea servicio de despertador por la mañana?`,
-      englishExplanation: 'I have registered your details in the system. The room includes clean towels, minibar, and panoramic views. Would you like a morning wake-up call?',
-      arabicExplanation: 'سجلت بياناتك في النظام. تشمل الغرفة مناشف نظيفة ومشروبات وإطلالة بانورامية. هل ترغب في خدمة الإيقاظ صباحاً؟',
-      analysis: {
-        hasErrors: false,
-        score: 90,
-        verdict: 'Formalidad adecuada',
-        feedback_es: 'Registro hotelero completado con éxito.',
-        feedback_en: 'Hotel check-in completed with proper courteous tone.',
-        corrections: [],
-        naturalAlternative: message,
-        dialectTip: 'En hoteles de habla hispana es habitual usar "usted" para mayor cortesía.'
-      },
-      vocabulary: [
-        { word: 'registrado', en: 'registered / checked in', ar: 'مسجّل', contextSentence: 'Sus datos están registrados.' },
-        { word: 'despertador', en: 'alarm / wake-up call', ar: 'منبه / خدمة إيقاظ', contextSentence: 'Servicio de despertador a las 8.' }
-      ],
-      followUpQuestions: [
-        'Sí, por favor, a las ocho de la mañana. (Yes, please, at eight in the morning.)',
-        'No, usaré la alarma de mi teléfono móvil. (No, I will use my phone alarm.)',
-        '¿Dónde está la piscina y el gimnasio? (Where are the pool and gym?)'
-      ]
-    };
-  }
-
   // General conversational response
   return {
     spanishResponse: `${personaIntro}Me gusta mucho conversar contigo sobre esto. Se nota tu progreso día a día. ¿Qué opinas si seguimos explorando este tema?`,
     englishExplanation: 'I really enjoy chatting with you about this. Your progress is noticeable day by day. How about we keep exploring this topic?',
-    arabicExplanation: 'يسعدني جداً التحدث معك في هذا الموضوع. تقدمك ملحوظ يوماً بعد يوم. ما رأيك أن نواصل؟',
+    arabicExplanation: isArabic ? 'يسعدني جداً التحدث معك في هذا الموضوع. تقدمك ملحوظ يوماً بعد يوم. ما رأيك أن نواصل؟' : '',
     analysis: {
       hasErrors: false,
       score: 85,

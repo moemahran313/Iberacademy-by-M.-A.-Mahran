@@ -29,6 +29,7 @@ import { getLessonVocabulary, autoEnrollLessonWordsInSRS } from '../utils/srs';
 import { generate3ContextClozeExercises } from '../utils/lingqEngine';
 import { recordLessonCompletionInProgress } from '../utils/streak';
 import { SuccessCheckmark } from './SuccessCheckmark';
+import { FeedbackBanner } from './practice/FeedbackBanner';
 
 interface LessonModalProps {
   lesson: Lesson;
@@ -1130,9 +1131,10 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                 if (isDrillChecked) {
                   const isCorrectAnswer = opt.trim().toLowerCase() === currentDrill.correctAnswer.trim().toLowerCase();
                   if (isCorrectAnswer) {
-                    btnStyle = 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-900 dark:text-emerald-200';
+                    btnStyle = 'bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-extrabold';
                   } else if (isSelected && !isCorrectAnswer) {
-                    btnStyle = 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-900 dark:text-rose-200';
+                    // Soft pastel amber attention styling instead of severe harsh red
+                    btnStyle = 'bg-amber-500/15 border-amber-500/80 text-amber-900 dark:text-amber-200 font-bold';
                   }
                 } else if (isSelected) {
                   btnStyle = 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/20 text-stone-900 dark:text-white';
@@ -1153,55 +1155,49 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                       <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                     )}
                     {isDrillChecked && isSelected && opt.trim().toLowerCase() !== currentDrill.correctAnswer.trim().toLowerCase() && (
-                      <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                      <HelpCircle className="w-5 h-5 text-amber-500 shrink-0" />
                     )}
                   </button>
                 );
               })}
             </div>
 
-            {/* Socratic Feedback Box on Checked */}
+            {/* Cognitive Feedback via FeedbackBanner (Low Affective Filter) */}
             {isDrillChecked && (
-              <div
-                className={`p-4 rounded-2xl border space-y-2 animate-fadeIn ${
-                  isDrillCorrect
-                    ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900 text-emerald-900 dark:text-emerald-200'
-                    : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900 text-rose-900 dark:text-rose-200'
-                }`}
-              >
-                <div className="flex items-center gap-2 font-black text-sm">
-                  {isDrillCorrect ? (
-                    <>
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                      <span>🟢 Correct! Great Active Recall</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-5 h-5 text-rose-500" />
-                      <span>🔴 Target Correction: {currentDrill.correctAnswer}</span>
-                    </>
-                  )}
-                </div>
-                <p className="text-xs leading-relaxed">
-                  💡 <strong>Linguistic Explanation:</strong> {currentDrill.explanation_en}
-                </p>
-                <p className="text-xs font-arabic leading-relaxed" dir="rtl">
-                  💡 {currentDrill.explanation_ar}
-                </p>
-              </div>
+              <FeedbackBanner
+                feedback={{
+                  status: isDrillCorrect ? 'success' : 'attention',
+                  title: isDrillCorrect ? '¡Bien hecho! Active Recall Consolidado' : '💡 Oportunidad de Aprendizaje y Contraste',
+                  message_en: isDrillCorrect
+                    ? (currentDrill.explanation_en || 'Your selection matches authentic Spanish communicative usage.')
+                    : `Notice: "${selectedOpt}" differs from the target collocation. Preferred native form: "${currentDrill.correctAnswer}". ${currentDrill.explanation_en || ''}`,
+                  message_ar: currentDrill.explanation_ar,
+                  nativeAudioModel: currentDrill.audioText || currentDrill.correctAnswer,
+                  canTryWithHint: !isDrillCorrect,
+                  hint: currentDrill.hints?.[0] || currentDrill.explanation_en,
+                  energyDeducted: 0
+                }}
+                onTryWithHint={() => {
+                  setIsDrillChecked(false);
+                  setSelectedOpt(null);
+                  setShowDrillHint(true);
+                }}
+                onProceed={handleNextDrill}
+                proceedLabel={currentDrillIdx + 1 < totalDrills ? 'Siguiente Ejercicio' : 'Ir al Mastery Quiz'}
+              />
             )}
 
-            {/* Check / Next Drill Button */}
-            <div className="flex justify-between items-center pt-2">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setCurrentPhase(2)}
-                className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
-              >
-                Back to Grammar
-              </motion.button>
+            {/* Bottom Actions if not checked */}
+            {!isDrillChecked && (
+              <div className="flex justify-between items-center pt-2">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setCurrentPhase(2)}
+                  className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
+                >
+                  Back to Grammar
+                </motion.button>
  
-              {!isDrillChecked ? (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.96 }}
@@ -1211,18 +1207,8 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                 >
                   Check Answer
                 </motion.button>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleNextDrill}
-                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
-                >
-                  {currentDrillIdx + 1 < totalDrills ? 'Next Drill' : 'Go to Mastery Quiz'}
-                  <ArrowRight className="w-4 h-4" />
-                </motion.button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1333,8 +1319,9 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
                     {/* Post-submit pedagogical feedback */}
                     {quizSubmitted && !isCorrect && (
-                      <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200">
-                        🔴 Correct answer: <strong>{ex.correctAnswer}</strong> • {ex.explanation_en}
+                      <div className="p-2.5 bg-amber-500/10 dark:bg-amber-950/40 rounded-xl border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-0.5">
+                        <span className="font-bold">💡 Forma nativa recomendada: </span>
+                        <strong>{ex.correctAnswer}</strong> • {ex.explanation_en}
                       </div>
                     )}
                   </div>
@@ -1348,7 +1335,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                 className={`p-5 rounded-2xl border text-center space-y-2 animate-fadeIn ${
                   hasPassedQuiz
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100'
-                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100'
+                    : 'bg-amber-500/10 dark:bg-amber-950/40 border-amber-500/30 text-amber-950 dark:text-amber-100'
                 }`}
               >
                 {hasPassedQuiz && (
@@ -1357,13 +1344,13 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                   </div>
                 )}
                 <div className="text-3xl font-black flex items-center justify-center gap-2">
-                  <span>{!hasPassedQuiz && '⚠️'}</span>
+                  <span>{!hasPassedQuiz && '💡'}</span>
                   <span>{quizScore}% Score</span>
                 </div>
                 <p className="text-sm font-extrabold">
                   {hasPassedQuiz
                     ? 'Mastery Achieved! Lesson successfully cleared and saved (+75 XP).'
-                    : 'Score was below 80%. Review the drills and try again to unlock the next unit.'}
+                    : 'Puntaje de consolidación alcanzado. Repasa con las pistas guiadas para completar la lección.'}
                 </p>
               </div>
             )}

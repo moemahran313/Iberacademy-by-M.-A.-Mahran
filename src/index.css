@@ -42,12 +42,26 @@
 html {
   -webkit-text-size-adjust: 100%;
   touch-action: pan-y;
+  background-color: #FBF9F5;
+  color: #1c1917;
+}
+
+html.dark {
+  background-color: #121110;
+  color: #f5f5f4;
 }
 
 body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  background-color: #FBF9F5;
+  color: #1c1917;
+}
+
+.dark body {
+  background-color: #121110;
+  color: #f5f5f4;
 }
 
 /* Hardware accelerated smooth scroll containers */
@@ -117,8 +131,8 @@ html.lang-ar,
 }
 
 @keyframes pulseGlow {
-  0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.8)); }
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
 }
 
 @keyframes shimmer {
@@ -155,18 +169,35 @@ html.lang-ar,
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* Safe area inset paddings for iOS notch and Android gesture bars */
+/* Safe area inset paddings for iOS notch, dynamic island, and Android gesture navigation bars */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
 }
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
 }
 .pl-safe {
-  padding-left: env(safe-area-inset-left, 0px);
+  padding-left: max(env(safe-area-inset-left, 0px), 0.75rem);
 }
 .pr-safe {
-  padding-right: env(safe-area-inset-right, 0px);
+  padding-right: max(env(safe-area-inset-right, 0px), 0.75rem);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile viewport keyboard adaptability */
+.keyboard-aware-container {
+  max-height: 100dvh;
+  height: 100dvh;
+  overscroll-behavior: contain;
 }
 
 /* Mobile touch handling and fast-click 300ms delay bypass */
@@ -179,11 +210,25 @@ input[type="submit"] {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Explicit touch-target utility classes for mobile touch accessibility */
+/* 44px minimum touch targets enforcement for interactive elements on touch screens */
+@media (pointer: coarse) {
+  button:not(.no-min-touch),
+  [role="button"]:not(.no-min-touch),
+  a.touch-target,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 .touch-target,
 .fast-touch-target {
   min-width: 44px;
   min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 

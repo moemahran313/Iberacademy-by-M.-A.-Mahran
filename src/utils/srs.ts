@@ -1,4 +1,4 @@
-import { VocabularyItem, SRSItem, SRSGrade, Lesson } from '../types';
+import { VocabularyItem, SRSItem, SRSGrade, Lesson, UserProgress, LingQItem, MinedSentence } from '../types';
 
 export function getTodayDateString(): string {
   const d = new Date();
@@ -524,4 +524,367 @@ export function generateChunksAndCollocationsPracticeSet(
 
   return chunks;
 }
+
+export interface UnifiedMemoryCard {
+  id: string;
+  word: string;
+  translation_en: string;
+  translation_ar: string;
+  gender?: string;
+  partOfSpeech?: string;
+  phonetic?: string;
+  sentence_es: string;
+  sentence_en?: string;
+  sentence_ar?: string;
+  collocation?: string;
+  stage: 1 | 2 | 3 | 4 | 5; // 1: New, 2: Recognized, 3: Familiar, 4: Learned, 5: Mastered
+  source: 'reader' | 'tutor' | 'mined' | 'curriculum';
+  interval: number;
+  repetitions: number;
+  easeFactor: number;
+  nextReviewDate: string;
+  lastReviewedDate?: string;
+  isDue: boolean;
+  retention: number;
+  srsItem?: SRSItem;
+}
+
+export interface UnifiedSRSStats {
+  totalCount: number;
+  dueCount: number;
+  learningCount: number;
+  masteredCount: number;
+  averageRetention: number;
+  stageCounts: Record<1 | 2 | 3 | 4 | 5, number>;
+  retentionHistory7Days: { day: string; date: string; reviewedCount: number; retentionPct: number }[];
+}
+
+/**
+ * Aggregates all words from Reader, AI Tutor, Mined Sentences, and Saved Curriculum Words
+ * into a single unified Anki-grade collection without decontextualizing any card.
+ */
+export function getUnifiedMemoryCollection(
+  userProgress: UserProgress,
+  allVocab: VocabularyItem[]
+): {
+  allCards: UnifiedMemoryCard[];
+  dueCards: UnifiedMemoryCard[];
+  stats: UnifiedSRSStats;
+} {
+  const today = getTodayDateString();
+  const seenWords = new Set<string>();
+  const cards: UnifiedMemoryCard[] = [];
+
+  // Helper dictionary lookup
+  const vocabLookup = new Map<string, VocabularyItem>();
+  allVocab.forEach(v => {
+    vocabLookup.set((v.spanish || v.word || '').toLowerCase().trim(), v);
+    if (v.id) vocabLookup.set(v.id.toLowerCase().trim(), v);
+  });
+
+  // 1. Process LingQs (saved from Interactive Reader or AI Tutor)
+  if (userProgress.lingqs) {
+    Object.entries(userProgress.lingqs).forEach(([wordKey, rawLingq]) => {
+      const lingq = rawLingq as LingQItem;
+      const cleanWord = (lingq.word || wordKey).toLowerCase().trim();
+      if (cleanWord && !seenWords.has(cleanWord)) {
+        seenWords.add(cleanWord);
+
+        const dictItem = vocabLookup.get(cleanWord);
+        const srsRecord = userProgress.srsData?.[cleanWord] || userProgress.srsData?.[`w-${cleanWord}`];
+        const retention = srsRecord ? calculateMemoryRetention(srsRecord) : 100;
+        const nextReviewDate = srsRecord?.nextReviewDate || today;
+        const isDue = !srsRecord || nextReviewDate <= today || retention < 80;
+
+        // Contextual sentence from reader or dictionary fallback
+        const sentence_es = lingq.sentenceContext || dictItem?.exampleSentences?.[0]?.es || `El uso de "${cleanWord}" es muy común en español.`;
+        const sentence_en = dictItem?.exampleSentences?.[0]?.en || lingq.translation_en || '';
+        const sentence_ar = dictItem?.exampleSentences?.[0]?.ar || lingq.translation_ar || '';
+
+        const currentSRSItem: SRSItem = srsRecord || {
+          wordId: cleanWord,
+          interval: 1,
+          repetitions: 0,
+          easeFactor: 2.5,
+          nextReviewDate: today,
+          streak: 0,
+          successCount: 0,
+          failCount: 0
+        };
+
+        cards.push({
+          id: `lingq-${cleanWord}`,
+          word: lingq.word || cleanWord,
+          translation_en: lingq.translation_en || dictItem?.english || dictItem?.translation_en || '',
+          translation_ar: lingq.translation_ar || dictItem?.arabic || dictItem?.translation_ar || '',
+          gender: lingq.gender || dictItem?.gender,
+          partOfSpeech: lingq.partOfSpeech || (dictItem?.partOfSpeech as string),
+          phonetic: lingq.phonetic || dictItem?.phonetic,
+          sentence_es,
+          sentence_en,
+          sentence_ar,
+          collocation: (dictItem?.collocations?.[0] as string) || dictItem?.memoryHook,
+          stage: (Math.min(5, Math.max(1, lingq.status || 1))) as 1 | 2 | 3 | 4 | 5,
+          source: lingq.notes?.includes('Tutor') ? 'tutor' : 'reader',
+          interval: srsRecord?.interval ?? 0,
+          repetitions: srsRecord?.repetitions ?? 0,
+          easeFactor: srsRecord?.easeFactor ?? 2.5,
+          nextReviewDate,
+          lastReviewedDate: srsRecord?.lastReviewedDate,
+          isDue,
+          retention,
+          srsItem: currentSRSItem
+        });
+      }
+    });
+  }
+
+  // 2. Process Mined Sentences
+  if (userProgress.minedSentences) {
+    userProgress.minedSentences.forEach(m => {
+      const cleanWord = (m.targetWord || '').toLowerCase().trim();
+      if (cleanWord && !seenWords.has(cleanWord)) {
+        seenWords.add(cleanWord);
+
+        const dictItem = vocabLookup.get(cleanWord);
+        const srsRecord = userProgress.srsData?.[cleanWord] || {
+          wordId: cleanWord,
+          interval: m.interval || 1,
+          repetitions: m.repetitions || 0,
+          easeFactor: m.easeFactor || 2.5,
+          nextReviewDate: m.nextReviewDate || today,
+          streak: 0,
+          successCount: m.repetitions || 0,
+          failCount: 0
+        };
+
+        const retention = calculateMemoryRetention(srsRecord);
+        const nextReviewDate = m.nextReviewDate || srsRecord.nextReviewDate || today;
+        const isDue = nextReviewDate <= today || retention < 80;
+
+        let stage: 1 | 2 | 3 | 4 | 5 = 1;
+        if (m.repetitions >= 4) stage = 5;
+        else if (m.repetitions === 3) stage = 4;
+        else if (m.repetitions === 2) stage = 3;
+        else if (m.repetitions === 1) stage = 2;
+
+        cards.push({
+          id: m.id,
+          word: m.targetWord,
+          translation_en: m.sentence_en || dictItem?.english || dictItem?.translation_en || '',
+          translation_ar: m.sentence_ar || dictItem?.arabic || dictItem?.translation_ar || '',
+          gender: dictItem?.gender,
+          partOfSpeech: dictItem?.partOfSpeech as string | undefined,
+          phonetic: dictItem?.phonetic,
+          sentence_es: m.sentence_es,
+          sentence_en: m.sentence_en,
+          sentence_ar: m.sentence_ar,
+          collocation: (dictItem?.collocations?.[0] as string) || dictItem?.memoryHook,
+          stage,
+          source: 'mined',
+          interval: m.interval || 1,
+          repetitions: m.repetitions || 0,
+          easeFactor: m.easeFactor || 2.5,
+          nextReviewDate,
+          isDue,
+          retention,
+          srsItem: srsRecord
+        });
+      }
+    });
+  }
+
+  // 3. Process Saved Curriculum Words
+  if (userProgress.savedWordIds) {
+    userProgress.savedWordIds.forEach(id => {
+      const dictItem = vocabLookup.get(id.toLowerCase().trim());
+      if (dictItem) {
+        const cleanWord = (dictItem.spanish || dictItem.word || '').toLowerCase().trim();
+        if (cleanWord && !seenWords.has(cleanWord)) {
+          seenWords.add(cleanWord);
+
+          const srsRecord = userProgress.srsData?.[dictItem.id] || userProgress.srsData?.[cleanWord];
+          const retention = srsRecord ? calculateMemoryRetention(srsRecord) : 100;
+          const nextReviewDate = srsRecord?.nextReviewDate || today;
+          const isDue = !srsRecord || nextReviewDate <= today || retention < 80;
+
+          let stage: 1 | 2 | 3 | 4 | 5 = 1;
+          if (srsRecord) {
+            if (srsRecord.repetitions >= 4) stage = 5;
+            else if (srsRecord.repetitions === 3) stage = 4;
+            else if (srsRecord.repetitions === 2) stage = 3;
+            else if (srsRecord.repetitions === 1) stage = 2;
+          }
+
+          const currentSRSItem: SRSItem = srsRecord || {
+            wordId: cleanWord,
+            interval: 1,
+            repetitions: 0,
+            easeFactor: 2.5,
+            nextReviewDate: today,
+            streak: 0,
+            successCount: 0,
+            failCount: 0
+          };
+
+          cards.push({
+            id: dictItem.id,
+            word: dictItem.spanish || dictItem.word || cleanWord,
+            translation_en: dictItem.english || dictItem.translation_en || '',
+            translation_ar: dictItem.arabic || dictItem.translation_ar || '',
+            gender: dictItem.gender,
+            partOfSpeech: dictItem.partOfSpeech as string | undefined,
+            phonetic: dictItem.phonetic,
+            sentence_es: dictItem.exampleSentences?.[0]?.es || `El término "${dictItem.spanish || dictItem.word}" es fundamental en español.`,
+            sentence_en: dictItem.exampleSentences?.[0]?.en || dictItem.english || dictItem.translation_en,
+            sentence_ar: dictItem.exampleSentences?.[0]?.ar || dictItem.arabic || dictItem.translation_ar,
+            collocation: (dictItem?.collocations?.[0] as string) || dictItem?.memoryHook,
+            stage,
+            source: 'curriculum',
+            interval: srsRecord?.interval ?? 0,
+            repetitions: srsRecord?.repetitions ?? 0,
+            easeFactor: srsRecord?.easeFactor ?? 2.5,
+            nextReviewDate,
+            lastReviewedDate: srsRecord?.lastReviewedDate,
+            isDue,
+            retention,
+            srsItem: currentSRSItem
+          });
+        }
+      }
+    });
+  }
+
+  // Calculate high-precision SRS stats
+  const dueCards = cards.filter(c => c.isDue);
+  let totalRetention = 0;
+  let masteredCount = 0;
+  let learningCount = 0;
+  const stageCounts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+  cards.forEach(c => {
+    totalRetention += c.retention;
+    stageCounts[c.stage] = (stageCounts[c.stage] || 0) + 1;
+    if (c.stage >= 4 || c.interval >= 21) {
+      masteredCount++;
+    } else {
+      learningCount++;
+    }
+  });
+
+  const averageRetention = cards.length > 0 ? Math.round(totalRetention / cards.length) : 95;
+
+  // Build 7-day memory retention graph data
+  const retentionHistory7Days = [];
+  const daysLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const now = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayName = daysLabels[d.getDay()];
+
+    // Count reviews on this date from srsData history
+    let reviewedCount = 0;
+    if (userProgress.srsData) {
+      Object.values(userProgress.srsData).forEach(rawItem => {
+        const item = rawItem as SRSItem;
+        if (item && item.history) {
+          item.history.forEach(h => {
+            if (h.date === dateStr) reviewedCount++;
+          });
+        }
+      });
+    }
+
+    // Retention curve for that day (simulated realistic baseline + active boost)
+    const retentionPct = Math.min(100, Math.max(78, averageRetention - (i * 1.5) + (reviewedCount > 0 ? 8 : 0)));
+
+    retentionHistory7Days.push({
+      day: dayName,
+      date: dateStr,
+      reviewedCount,
+      retentionPct: Math.round(retentionPct)
+    });
+  }
+
+  return {
+    allCards: cards,
+    dueCards,
+    stats: {
+      totalCount: cards.length,
+      dueCount: dueCards.length,
+      learningCount,
+      masteredCount,
+      averageRetention,
+      stageCounts,
+      retentionHistory7Days
+    }
+  };
+}
+
+/**
+ * Schedules and updates a Unified Memory Card using SM-2
+ */
+export function scheduleUnifiedCard(
+  card: UnifiedMemoryCard,
+  grade: SRSGrade,
+  userProgress: UserProgress
+): UserProgress {
+  const cleanWord = card.word.toLowerCase().trim();
+  const currentSRS = userProgress.srsData?.[cleanWord] || userProgress.srsData?.[card.id];
+
+  const updatedSRS = calculateNextSRS(currentSRS, cleanWord, grade);
+
+  // Calculate new LingQ stage based on grade
+  let newStage: 1 | 2 | 3 | 4 | 5 = card.stage;
+  if (grade === 1) {
+    newStage = 1; // Again drops to stage 1
+  } else if (grade === 2) {
+    newStage = Math.max(1, (card.stage) as number) as 1 | 2 | 3 | 4 | 5;
+  } else if (grade === 3) {
+    newStage = Math.min(5, (card.stage + 1)) as 1 | 2 | 3 | 4 | 5;
+  } else if (grade === 4) {
+    newStage = Math.min(5, (card.stage + 2)) as 1 | 2 | 3 | 4 | 5;
+  }
+
+  const updatedLingqs = { ...(userProgress.lingqs || {}) };
+  if (updatedLingqs[cleanWord]) {
+    updatedLingqs[cleanWord] = {
+      ...updatedLingqs[cleanWord],
+      status: (newStage <= 4 ? newStage : 4) as 1 | 2 | 3 | 4,
+      lastReviewed: getTodayDateString()
+    };
+  }
+
+  const updatedMined = (userProgress.minedSentences || []).map(m => {
+    if (m.id === card.id || m.targetWord.toLowerCase() === cleanWord) {
+      return {
+        ...m,
+        interval: updatedSRS.interval,
+        repetitions: updatedSRS.repetitions,
+        easeFactor: updatedSRS.easeFactor,
+        nextReviewDate: updatedSRS.nextReviewDate,
+        lastGrade: grade
+      };
+    }
+    return m;
+  });
+
+  const xpBonus = grade === 1 ? 5 : grade === 2 ? 15 : grade === 3 ? 25 : 35;
+
+  return {
+    ...userProgress,
+    xp: userProgress.xp + xpBonus,
+    srsData: {
+      ...userProgress.srsData,
+      [cleanWord]: updatedSRS,
+      [card.id]: updatedSRS
+    },
+    lingqs: updatedLingqs,
+    minedSentences: updatedMined
+  };
+}
+
 

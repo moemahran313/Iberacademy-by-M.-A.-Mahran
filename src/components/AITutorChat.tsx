@@ -21,10 +21,11 @@ import {
   Zap,
   Info,
   X,
-  Star,
-  Award,
   Target,
-  Play
+  Play,
+  Square,
+  Compass,
+  BookmarkPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
@@ -35,6 +36,9 @@ import {
   ChatMessage,
   LINGOPAL_SCENARIOS,
   ScenarioDefinition,
+  MissionObjective,
+  TUTOR_PERSONAS,
+  TutorPersonaConfig,
   TutorAnalysis,
   analyzeUserSpanishInput,
   streamTutorMessage
@@ -45,76 +49,6 @@ interface AITutorChatProps {
   setUserProgress: React.Dispatch<React.SetStateAction<UserProgress>>;
 }
 
-interface PersonaInfo {
-  id: TutorPersona;
-  name: string;
-  country: string;
-  flag: string;
-  gender: 'male' | 'female';
-  voiceTag: string;
-  role: string;
-  accent: string;
-  sampleGreeting: string;
-  avatarBg: string;
-  accentColor: string;
-}
-
-const PERSONAS: PersonaInfo[] = [
-  {
-    id: 'juan',
-    name: 'Juan',
-    country: 'Oaxaca, Mexico',
-    flag: '🇲🇽',
-    gender: 'male',
-    voiceTag: '👨 Baritone Male Voice (Mex)',
-    role: 'Warm & Casual Local',
-    accent: 'Mexican Spanish (carro, platicar, ¿qué onda?)',
-    sampleGreeting: '¡Hola, qué onda! Soy Juan de Oaxaca. ¿Listo para platicar un rato?',
-    avatarBg: 'from-amber-500 to-orange-600',
-    accentColor: 'text-amber-500'
-  },
-  {
-    id: 'sofia',
-    name: 'Sofía',
-    country: 'Madrid, Spain',
-    flag: '🇪🇸',
-    gender: 'female',
-    voiceTag: '👩 Vibrant Female Voice (Mad)',
-    role: 'Lively Modern Speaker',
-    accent: 'Castilian Iberian (guay, qué tal, de tapas)',
-    sampleGreeting: '¡Hola! Soy Sofía de Madrid. ¡Qué ilusión charlar y practicar juntos hoy!',
-    avatarBg: 'from-rose-500 to-red-600',
-    accentColor: 'text-rose-500'
-  },
-  {
-    id: 'mateo',
-    name: 'Prof. Mateo',
-    country: 'Salamanca, Spain',
-    flag: '👨‍🏫',
-    gender: 'male',
-    voiceTag: '👨 Professorial Male Voice (Cast)',
-    role: 'Encouraging Mentor',
-    accent: 'Standard Academic Castilian (CEFR Method)',
-    sampleGreeting: 'Saludos cordiales. Soy el Profesor Mateo. Iniciemos nuestra sesión comunicativa.',
-    avatarBg: 'from-blue-600 to-indigo-700',
-    accentColor: 'text-blue-500'
-  },
-  {
-    id: 'camila',
-    name: 'Camila',
-    country: 'Medellín, Colombia',
-    flag: '🇨🇴',
-    gender: 'female',
-    voiceTag: '👩 Melodic Female Voice (Col)',
-    role: 'Sweet Coffee Enthusiast',
-    accent: 'Paisa Colombian (chévere, con gusto, súper bien)',
-    sampleGreeting: '¡Hola! Soy Camila de Medellín. ¡Qué chévere tenerte aquí practicando español!',
-    avatarBg: 'from-emerald-500 to-teal-600',
-    accentColor: 'text-emerald-500'
-  }
-];
-
-// Word dictionary translation popover state
 interface SelectedWordInfo {
   word: string;
   cleanWord: string;
@@ -124,21 +58,12 @@ interface SelectedWordInfo {
   y: number;
 }
 
-// Conversation Quest Interface
-interface ConversationQuest {
-  id: string;
-  title_es: string;
-  title_en: string;
-  xpReward: number;
-  completed: boolean;
-  checker: (text: string, turnCount: number, scenarioId: string) => boolean;
-}
-
 export const AITutorChat: React.FC<AITutorChatProps> = ({
   userProgress,
   setUserProgress
 }) => {
   const { grammarPracticeTopic } = useApp();
+  const isArabic = userProgress.settings?.nativeLanguage === 'ar';
 
   // Selected persona & scenario
   const [selectedPersona, setSelectedPersona] = useState<TutorPersona>('juan');
@@ -152,84 +77,35 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [currentlyPlayingId, setCurrentlyPlayingId] = useState<string | null>(null);
 
-  // Audio settings
-  const [audioSpeed, setAudioSpeed] = useState<0.8 | 1.0>(1.0);
+  // Audio settings: 0.8x, 1.0x, 1.2x
+  const [audioSpeed, setAudioSpeed] = useState<0.8 | 1.0 | 1.2>(1.0);
   const [autoPlayAudio, setAutoPlayAudio] = useState(true);
 
-  // LingoPal Gamification stats for this session
+  // Task-based mission objectives completion state
+  const [completedObjectives, setCompletedObjectives] = useState<Record<string, boolean>>({});
+  const [missionCelebrated, setMissionCelebrated] = useState(false);
+
+  // Gamification session stats
   const [sessionTurnCount, setSessionTurnCount] = useState(0);
   const [sessionXpEarned, setSessionXpEarned] = useState(0);
-  const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
-  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
   const [revealedAnalyses, setRevealedAnalyses] = useState<Record<string, boolean>>({});
 
-  const toggleAnalysis = (id: string) => {
-    soundEffects.playPop();
-    setRevealedAnalyses(prev => ({ ...prev, [id]: prev[id] === false ? true : false }));
-  };
-
-  // Dynamic suggested quick-replies (LingoPal smart chips)
+  // Dynamic suggested quick replies
   const [suggestedReplies, setSuggestedReplies] = useState<{ es: string; en: string }[]>([]);
 
-  // Interactive Tap-to-Translate popover
+  // Interactive Tap-to-Translate popover state
   const [selectedWord, setSelectedWord] = useState<SelectedWordInfo | null>(null);
   const [savedWordToast, setSavedWordToast] = useState<string | null>(null);
-  const [questToast, setQuestToast] = useState<string | null>(null);
-
-  // Topic mastery simulation storage
-  const [topicMastery, setTopicMastery] = useState<Record<string, number>>({
-    cafe: 80,
-    friends: 65,
-    tacos: 45,
-    hotel: 30,
-    job: 20
-  });
-
-  // Conversation Quests
-  const [quests, setQuests] = useState<ConversationQuest[]>([
-    {
-      id: 'quest_greet',
-      title_es: 'Saludar con Cortesía',
-      title_en: 'Greet naturally (hola, buenas, qué tal)',
-      xpReward: 15,
-      completed: false,
-      checker: text => /hola|buen(as|os)|saludos|qué tal|onda/i.test(text)
-    },
-    {
-      id: 'quest_question',
-      title_es: 'Hacer una Pregunta',
-      title_en: 'Ask a question using ¿ or ?, qué, cómo...',
-      xpReward: 20,
-      completed: false,
-      checker: text => /[?¿]|(qué|cómo|cuándo|dónde|por qué|cuánto)/i.test(text)
-    },
-    {
-      id: 'quest_vocab',
-      title_es: 'Vocabulario Contextual',
-      title_en: 'Use scenario-relevant vocabulary',
-      xpReward: 25,
-      completed: false,
-      checker: (text, _, scenarioId) => {
-        if (scenarioId === 'cafe') return /café|leche|tostada|pedir|tomar|desayunar|azúcar/i.test(text);
-        if (scenarioId === 'tacos') return /taco|pastor|birria|salsa|limón|ordenar|puesto/i.test(text);
-        if (scenarioId === 'friends') return /amigo|gusto|música|vivo|estudio|español|país/i.test(text);
-        return text.split(' ').length >= 3;
-      }
-    },
-    {
-      id: 'quest_turns',
-      title_es: 'Racha de Diálogo',
-      title_en: 'Complete 4 back-and-forth turns',
-      xpReward: 35,
-      completed: false,
-      checker: (_, turns) => turns >= 4
-    }
-  ]);
+  const [missionToast, setMissionToast] = useState<string | null>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Active persona configuration
+  const activePersonaObj = useMemo(() => {
+    return TUTOR_PERSONAS.find(p => p.id === selectedPersona) || TUTOR_PERSONAS[0];
+  }, [selectedPersona]);
 
   // Gamification Level calculations
   const userXp = userProgress.xp || 0;
@@ -245,6 +121,36 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     return 'Novato Curioso 🥉';
   }, [currentLevel]);
 
+  // Audio speech handling with duration tracker & stop capability
+  const handleSpeak = (msgId: string, text: string, personaOverride?: TutorPersona) => {
+    cancelSpanishSpeech();
+    setCurrentlyPlayingId(msgId);
+    const personaToUse = personaOverride || selectedPersona;
+    speakSpanishPersona(text, personaToUse, audioSpeed);
+
+    const estimatedDuration = Math.max(1800, (text.length * 65) / audioSpeed);
+    setTimeout(() => {
+      setCurrentlyPlayingId(prev => (prev === msgId ? null : prev));
+    }, estimatedDuration);
+  };
+
+  const handleStopSpeak = () => {
+    cancelSpanishSpeech();
+    setCurrentlyPlayingId(null);
+  };
+
+  // Toggle reveal translation
+  const toggleTranslation = (id: string) => {
+    soundEffects.playPop();
+    setRevealedTranslations(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Toggle recast / analysis pill
+  const toggleAnalysis = (id: string) => {
+    soundEffects.playPop();
+    setRevealedAnalyses(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Initialize or reset scenario conversation
   const initScenario = (scenario: ScenarioDefinition, persona: TutorPersona) => {
     cancelSpanishSpeech();
@@ -257,18 +163,15 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       spanishText: promptData.es,
       englishExplanation: promptData.en,
       arabicExplanation: promptData.ar,
-      phase: 'Greeting Hook',
+      phase: scenario.isTaskMission ? 'Misión Iniciada' : 'Charla Activa',
       followUpQuestions: scenario.suggestedReplies.map(r => `${r.es} (${r.en})`)
     };
 
     setMessages([initialMsg]);
     setSuggestedReplies(scenario.suggestedReplies);
     setSessionTurnCount(0);
-    setSessionCompleted(false);
-    setShowCelebrationModal(false);
-
-    // Reset quests completion for fresh scenario practice
-    setQuests(prev => prev.map(q => ({ ...q, completed: false })));
+    setCompletedObjectives({});
+    setMissionCelebrated(false);
 
     if (autoPlayAudio) {
       handleSpeak(initialMsg.id, promptData.es, personaKey);
@@ -280,7 +183,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     initScenario(currentScenario, selectedPersona);
   }, []);
 
-  // When active grammar practice topic changes from outside (e.g. from Grammar Encyclopedia)
+  // When active grammar practice topic changes from outside
   useEffect(() => {
     if (grammarPracticeTopic) {
       const topicMsg: ChatMessage = {
@@ -298,48 +201,54 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       setMessages([topicMsg]);
       setSuggestedReplies([
         { es: `Dame un reto con ${grammarPracticeTopic.title_es}.`, en: 'Give me a challenge with this rule.' },
-        { es: `Escribiré una frase para que me corrijas.`, en: 'I will write a sentence for you to correct.' },
-        { es: `¿Cuál es el error más común?`, en: 'What is the most common mistake?' }
+        { es: `¿Cómo se usa ${grammarPracticeTopic.title_es} en la vida real?`, en: 'How is this used in real life?' }
       ]);
     }
   }, [grammarPracticeTopic]);
 
-  // Auto-scroll chat smoothly
+  // Auto-scroll chat to bottom
   useEffect(() => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
-  }, [messages, isLoading, isStreaming, suggestedReplies]);
+  }, [messages, isStreaming]);
 
-  // Text-To-Speech with dedicated male/female persona voice resolution
-  const handleSpeak = (msgId: string, text: string, personaOverride?: TutorPersona) => {
-    setCurrentlyPlayingId(msgId);
-    const personaToUse = personaOverride || selectedPersona;
-    speakSpanishPersona(text, personaToUse, audioSpeed);
-    const estimatedDuration = Math.max(2000, text.length * 65);
-    setTimeout(() => {
-      setCurrentlyPlayingId(prev => (prev === msgId ? null : prev));
-    }, estimatedDuration);
-  };
+  // Check task mission objectives
+  const checkMissionObjectives = (text: string) => {
+    if (!currentScenario.objectives || currentScenario.objectives.length === 0) return;
 
-  // Switch scenario
-  const handleSelectScenario = (scenario: ScenarioDefinition) => {
-    soundEffects.playPop();
-    setCurrentScenario(scenario);
-    initScenario(scenario, selectedPersona);
-  };
+    let newlyCompleted = 0;
+    const updated = { ...completedObjectives };
 
-  // Switch persona with distinct voice greeting preview
-  const handleSelectPersona = (personaId: TutorPersona) => {
-    soundEffects.playPop();
-    setSelectedPersona(personaId);
-    initScenario(currentScenario, personaId);
-  };
+    currentScenario.objectives.forEach(obj => {
+      if (!updated[obj.id] && obj.completedPattern && obj.completedPattern.test(text)) {
+        updated[obj.id] = true;
+        newlyCompleted += 1;
+      }
+    });
 
-  // Toggle reveal translation
-  const toggleTranslation = (id: string) => {
-    soundEffects.playPop();
-    setRevealedTranslations(prev => ({ ...prev, [id]: !prev[id] }));
+    if (newlyCompleted > 0) {
+      setCompletedObjectives(updated);
+      soundEffects.playPop();
+
+      // Check if all objectives are now completed
+      const allDone = currentScenario.objectives.every(obj => updated[obj.id]);
+      if (allDone && !missionCelebrated) {
+        setMissionCelebrated(true);
+        soundEffects.playLevelUp();
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        setMissionToast('🎉 ¡Objetivos de la misión completados con éxito! +40 XP');
+        setUserProgress(prev => ({ ...prev, xp: prev.xp + 40 }));
+        setTimeout(() => setMissionToast(null), 4500);
+      }
+    }
   };
 
   // Save vocabulary to LingQs and UserProgress
@@ -377,7 +286,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     setSelectedWord(null);
   };
 
-  // Interactive word click
+  // Interactive word click popover
   const handleWordClick = (e: React.MouseEvent, word: string) => {
     e.stopPropagation();
     const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'¡¿]/g, '').trim();
@@ -387,20 +296,19 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
     const knownVocab: Record<string, { en: string; ar: string }> = {
       hola: { en: 'hello / hi', ar: 'مرحباً' },
-      café: { en: 'coffee / café', ar: 'قهوة / مقهى' },
-      leche: { en: 'milk', ar: 'حليب' },
-      tostada: { en: 'toast', ar: 'شريحة خبز محمص' },
-      gracias: { en: 'thank you', ar: 'شكراً' },
-      por: { en: 'for / by / through', ar: 'من أجل / عبر' },
-      para: { en: 'for / in order to', ar: 'لأجل / لكي' },
-      amigo: { en: 'friend', ar: 'صديق' },
+      mango: { en: 'mango', ar: 'مانجو' },
+      kilo: { en: 'kilogram', ar: 'كيلوغرام' },
+      fruta: { en: 'fruit', ar: 'فاكهة' },
+      dulce: { en: 'sweet', ar: 'حلو' },
+      toalla: { en: 'towel', ar: 'منشفة' },
+      habitación: { en: 'room', ar: 'غرفة' },
       hotel: { en: 'hotel', ar: 'فندق' },
-      tacos: { en: 'tacos', ar: 'تاكو' },
-      aeropuerto: { en: 'airport', ar: 'مطار' },
-      viajar: { en: 'to travel', ar: 'يسافر' },
+      planta: { en: 'floor / story', ar: 'طابق' },
       trabajo: { en: 'work / job', ar: 'عمل / وظيفة' },
-      bienvenido: { en: 'welcome', ar: 'أهلاً بك' },
-      desayunar: { en: 'to have breakfast', ar: 'يتناول الإفطار' }
+      equipo: { en: 'team', ar: 'فريق' },
+      experiencia: { en: 'experience', ar: 'خبرة' },
+      café: { en: 'coffee', ar: 'قهوة' },
+      gracias: { en: 'thank you', ar: 'شكراً' }
     };
 
     const translation = knownVocab[clean.toLowerCase()] || {
@@ -426,7 +334,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     return () => window.removeEventListener('click', handleDocClick);
   }, []);
 
-  // Voice recording using Web Speech API
+  // Web Speech API Voice Recognition with visual waveform state
   const handleToggleMic = () => {
     if (typeof window === 'undefined') return;
     const SpeechRecognition =
@@ -445,7 +353,12 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = selectedPersona === 'juan' ? 'es-MX' : selectedPersona === 'camila' ? 'es-CO' : 'es-ES';
+      recognition.lang =
+        selectedPersona === 'juan'
+          ? 'es-MX'
+          : selectedPersona === 'elena'
+          ? 'es-CO'
+          : 'es-ES';
       recognition.continuous = false;
       recognition.interimResults = true;
 
@@ -472,39 +385,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     }
   };
 
-  // Check and award quest rewards
-  const evaluateQuests = (text: string, turnCount: number) => {
-    let questXpGained = 0;
-    let completedQuestTitle: string | null = null;
-
-    setQuests(prevQuests =>
-      prevQuests.map(q => {
-        if (!q.completed && q.checker(text, turnCount, currentScenario.id)) {
-          questXpGained += q.xpReward;
-          completedQuestTitle = q.title_es;
-          return { ...q, completed: true };
-        }
-        return q;
-      })
-    );
-
-    if (questXpGained > 0) {
-      soundEffects.playLevelUp();
-      confetti({
-        particleCount: 40,
-        spread: 50,
-        origin: { y: 0.7 }
-      });
-      if (completedQuestTitle) {
-        setQuestToast(`🎯 ¡Misión cumplida: ${completedQuestTitle}! +${questXpGained} XP`);
-        setTimeout(() => setQuestToast(null), 3000);
-      }
-    }
-
-    return questXpGained;
-  };
-
-  // Send message using Streaming Vercel AI SDK Integration
+  // Send message using Streaming Engine with Formative Recasting
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputVal).trim();
     if (!text || isLoading || isStreaming) return;
@@ -515,11 +396,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     const userMsg: ChatMessage = {
       id: userMsgId,
       sender: 'user',
-      spanishText: text,
-      feedbackBadge: {
-        type: 'analyzing',
-        text: 'Analizando con IA...'
-      }
+      spanishText: text
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -529,52 +406,13 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     const newTurnCount = sessionTurnCount + 1;
     setSessionTurnCount(newTurnCount);
 
-    // Update topic mastery score
-    setTopicMastery(prev => ({
-      ...prev,
-      [currentScenario.id]: Math.min(100, (prev[currentScenario.id] || 40) + 10)
-    }));
+    // Check task mission objectives from user input
+    checkMissionObjectives(text);
 
-    // Evaluate conversation quests
-    const questBonusXp = evaluateQuests(text, newTurnCount);
-
-    // Base XP + Quest Bonus
-    const baseEarnedXp = 10 + questBonusXp;
+    // Award base conversational XP
+    const baseEarnedXp = 15;
     setSessionXpEarned(prev => prev + baseEarnedXp);
-
-    const prevLevel = Math.floor((userProgress.xp || 0) / 250) + 1;
-    const nextTotalXp = (userProgress.xp || 0) + baseEarnedXp;
-    const nextLevel = Math.floor(nextTotalXp / 250) + 1;
-
     setUserProgress(prev => ({ ...prev, xp: prev.xp + baseEarnedXp }));
-
-    // Level-up celebration check
-    if (nextLevel > prevLevel) {
-      setTimeout(() => {
-        soundEffects.playLevelUp();
-        confetti({
-          particleCount: 100,
-          spread: 80,
-          origin: { y: 0.5 }
-        });
-        setShowLevelUpModal(true);
-      }, 500);
-    }
-
-    // Trigger 5-turn completion celebration
-    if (newTurnCount === 5 && !sessionCompleted) {
-      setSessionCompleted(true);
-      setTimeout(() => {
-        soundEffects.playLevelUp();
-        confetti({
-          particleCount: 70,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-        setShowCelebrationModal(true);
-        setUserProgress(prev => ({ ...prev, xp: prev.xp + 50 }));
-      }, 1000);
-    }
 
     // Prepare streaming AI placeholder
     const aiMsgId = `ai-${Date.now()}`;
@@ -582,7 +420,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       id: aiMsgId,
       sender: 'ai',
       spanishText: '',
-      phase: 'Escribiendo respuesta en vivo...'
+      phase: `${activePersonaObj.name} respondiendo...`
     };
 
     setMessages(prev => [...prev, streamingAiMsg]);
@@ -594,7 +432,6 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         text: m.spanishText
       }));
 
-      // Stream response token-by-token with Vercel serverless safety
       const response = await streamTutorMessage({
         message: text,
         history,
@@ -609,57 +446,12 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         }
       });
 
-      // Update user message badge based on AI analysis
-      if (response.analysis) {
-        const hasErrors = response.analysis.hasErrors;
-        const score = response.analysis.score ?? (hasErrors ? 75 : 95);
-        const corrCount = response.analysis.corrections?.length || 0;
-        const xpBonus = hasErrors ? 10 : 20;
-
-        setUserProgress(prev => ({ ...prev, xp: prev.xp + xpBonus }));
-
-        const verdict = response.analysis.verdict || '';
-        const isMeta = verdict.toLowerCase().includes('feedback') || /\b(robotic|robot|same|talk normal|speak normal)\b/i.test(text);
-        const isEnglish = verdict.toLowerCase().includes('inglés') || verdict.toLowerCase().includes('english') || /\b(what|understand|heard|repeat|slower|slow|dont|don't|huh|mean|say|saying|speak|same|robotic)\b/i.test(text);
-
-        let badgeText = '';
-        let badgeType: 'correct' | 'warning' | 'analyzing' = hasErrors ? 'warning' : 'correct';
-        if (isMeta) {
-          badgeText = '💬 Feedback conversacional recibido';
-          badgeType = 'correct';
-        } else if (isEnglish) {
-          badgeText = '💡 Expresión en inglés analizada';
-          badgeType = 'warning';
-        } else if (hasErrors) {
-          badgeText = corrCount > 0
-            ? `⚠️ ${corrCount} ${corrCount === 1 ? 'detalle lingüístico' : 'detalles lingüísticos'} por IA`
-            : '⚠️ Ajuste sugerido por IA';
-        } else {
-          badgeText = `✨ ¡Buen español! (${score}/100)`;
-        }
-
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === userMsgId
-              ? {
-                  ...m,
-                  feedbackBadge: {
-                    type: badgeType,
-                    text: badgeText,
-                    xpBonus
-                  }
-                }
-              : m
-          )
-        );
-      } else {
-        const { feedback } = analyzeUserSpanishInput(text);
-        setMessages(prev =>
-          prev.map(m => (m.id === userMsgId ? { ...m, feedbackBadge: feedback } : m))
-        );
+      // Also check mission objectives from AI response
+      if (response.spanishResponse) {
+        checkMissionObjectives(response.spanishResponse);
       }
 
-      // Finalize completed message
+      // Update AI message with final payload, linguistic analysis, and vocabulary
       setMessages(prev =>
         prev.map(m =>
           m.id === aiMsgId
@@ -668,7 +460,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                 spanishText: response.spanishResponse,
                 englishExplanation: response.englishExplanation,
                 arabicExplanation: response.arabicExplanation,
-                phase: response.phase,
+                phase: response.phase || 'Conversación Activa',
                 analysis: response.analysis || undefined,
                 corrections: response.corrections,
                 vocabulary: response.vocabulary,
@@ -680,183 +472,190 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
       // Update suggested replies
       if (response.followUpQuestions && response.followUpQuestions.length > 0) {
-        const parsedSuggestions = response.followUpQuestions.map(q => {
+        const parsedChips = response.followUpQuestions.map(q => {
           const match = q.match(/^(.*?)\s*\((.*?)\)$/);
-          if (match) {
-            return { es: match[1].trim(), en: match[2].trim() };
-          }
-          return { es: q, en: 'Quick reply' };
+          return match ? { es: match[1].trim(), en: match[2].trim() } : { es: q, en: '' };
         });
-        setSuggestedReplies(parsedSuggestions);
+        setSuggestedReplies(parsedChips);
       }
 
-      soundEffects.playCorrect();
-
-      if (autoPlayAudio) {
+      // Auto-play audio if enabled
+      if (autoPlayAudio && response.spanishResponse) {
         handleSpeak(aiMsgId, response.spanishResponse, selectedPersona);
       }
     } catch (err) {
-      console.error('Chat error:', err);
+      console.warn('Error in tutor interaction:', err);
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
     }
   };
 
-  const activePersonaObj = PERSONAS.find(p => p.id === selectedPersona) || PERSONAS[0];
+  const handleSelectPersona = (personaId: TutorPersona) => {
+    soundEffects.playPop();
+    setSelectedPersona(personaId);
+    initScenario(currentScenario, personaId);
+  };
+
+  const handleSelectScenario = (scenario: ScenarioDefinition) => {
+    soundEffects.playPop();
+    setCurrentScenario(scenario);
+    initScenario(scenario, selectedPersona);
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 px-2 sm:px-4 pb-16">
-      {/* 🎮 LINGOPAL GAMIFIED STATUS HUD */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
-        {/* Top Row: Level Indicator, Streak Counter & Session Stats */}
+    <div className="max-w-5xl mx-auto space-y-5 px-3 sm:px-6 pb-20">
+      {/* 🧭 STUDIO EDITORIAL HEADER & METRICS */}
+      <div className="p-5 rounded-2xl bg-white dark:bg-[#181615] border border-stone-200/80 dark:border-stone-800/80 shadow-xs space-y-4">
+        {/* Top Bar: Title, Streak & Audio Toolbar */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* Level Progress Badge */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-stone-950 font-black flex flex-col items-center justify-center shadow-md shrink-0">
-              <span className="text-[9px] uppercase tracking-wider font-bold">LVL</span>
-              <span className="text-lg leading-none">{currentLevel}</span>
+          <div className="space-y-0.5">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#C85A32]/10 text-[#C85A32] dark:text-[#E07A5F] text-xs font-semibold border border-[#C85A32]/20">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Estudio de Inmersión Conversacional</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-black text-stone-900 dark:text-stone-100">
-                  {rankTitle}
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                  +{sessionXpEarned} XP Today
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-36 sm:w-48 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ type: 'spring', damping: 15 }}
-                  />
-                </div>
-                <span className="text-[11px] font-mono font-bold text-stone-500 dark:text-stone-400">
-                  {currentLevelProgress}/250 XP
-                </span>
-              </div>
-            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100 tracking-tight font-header">
+              Simulador de Diálogo Nativo
+            </h1>
           </div>
 
-          {/* Streak & Controls */}
-          <div className="flex items-center gap-2">
-            {/* Streak Widget */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 font-black text-xs shadow-2xs">
-              <Flame className="w-4 h-4 fill-orange-500 text-orange-500 animate-pulse" />
-              <span>{userProgress.streakDays || 5} Días en Racha</span>
+          {/* Right Toolbar: Streak, Audio Speed, Auto-Play, Reset */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Streak Counter */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C85A32]/10 border border-[#C85A32]/25 text-[#C85A32] dark:text-[#E07A5F] text-xs font-bold">
+              <Flame className="w-4 h-4 fill-current" />
+              <span>{userProgress.streakDays || 1} días en racha</span>
             </div>
 
-            {/* Audio Speed */}
-            <button
-              onClick={() => {
-                soundEffects.playPop();
-                setAudioSpeed(s => (s === 1.0 ? 0.8 : 1.0));
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
-              title="Toggle Audio Speed"
-            >
-              {audioSpeed === 1.0 ? '1.0x 🐇' : '0.8x 🐢'}
-            </button>
+            {/* Speech Rate Selector: 0.8x, 1.0x, 1.2x */}
+            <div className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-xl p-0.5 border border-stone-200/80 dark:border-stone-700/80">
+              {([0.8, 1.0, 1.2] as const).map(speed => (
+                <button
+                  key={speed}
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playPop();
+                    setAudioSpeed(speed);
+                  }}
+                  className={`px-2 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                    audioSpeed === speed
+                      ? 'bg-white dark:bg-stone-900 text-[#C85A32] dark:text-[#E07A5F] shadow-xs'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+                  }`}
+                  title={`Velocidad de reproducción ${speed}x`}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
 
-            {/* Auto Audio */}
+            {/* Auto-Play Toggle */}
             <button
+              type="button"
               onClick={() => {
                 soundEffects.playPop();
-                setAutoPlayAudio(a => !a);
+                setAutoPlayAudio(prev => !prev);
               }}
-              className={`p-2 rounded-xl border transition cursor-pointer ${
+              className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                 autoPlayAudio
-                  ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
-                  : 'border-stone-200 dark:border-stone-700 text-stone-400'
+                  ? 'border-[#2D5A43]/30 bg-[#2D5A43]/10 text-[#2D5A43] dark:text-emerald-400'
+                  : 'border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500'
               }`}
-              title={autoPlayAudio ? 'Voice auto-play ON' : 'Voice auto-play OFF'}
+              title={autoPlayAudio ? 'Voz automática activada' : 'Voz automática desactivada'}
             >
               {autoPlayAudio ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              <span className="hidden sm:inline">{autoPlayAudio ? 'Audio ON' : 'Audio OFF'}</span>
             </button>
 
-            {/* Reset */}
+            {/* Stop Voice If Playing */}
+            {currentlyPlayingId && (
+              <button
+                type="button"
+                onClick={handleStopSpeak}
+                className="p-2 rounded-xl bg-rose-500 text-white text-xs font-bold transition hover:bg-rose-600 cursor-pointer flex items-center gap-1"
+                title="Detener audio"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span className="hidden sm:inline">Pausar</span>
+              </button>
+            )}
+
+            {/* Reset Scenario */}
             <button
+              type="button"
               onClick={() => initScenario(currentScenario, selectedPersona)}
-              className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
-              title="Reset conversation"
+              className="p-2 rounded-xl border border-stone-200/80 dark:border-stone-700/80 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              title="Reiniciar diálogo"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* 🎭 CHARACTER SELECTION UI: Juan, Sofía, Mateo, Camila */}
-        <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
+        {/* 🎭 NATIVE PERSONAS & REGIONAL DIALECT PROFILES */}
+        <div className="pt-3 border-t border-stone-100 dark:border-stone-800/80">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500 flex items-center gap-1.5">
-              <span>Select AI Native Tutor:</span>
-              <span className="font-normal text-stone-400">
-                (Distinct voice synthesis & dialect)
-              </span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              Perfiles Nativos & Dialectos Regionales
             </span>
-            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-              Active: {activePersonaObj.name} ({activePersonaObj.country})
+            <span className="text-xs font-bold text-[#C85A32] dark:text-[#E07A5F]">
+              {activePersonaObj.name} ({activePersonaObj.city}, {activePersonaObj.country})
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {PERSONAS.map(p => {
-              const isSelected = p.id === selectedPersona;
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {TUTOR_PERSONAS.map(persona => {
+              const isSelected = persona.id === selectedPersona;
               return (
                 <div
-                  key={p.id}
+                  key={persona.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => handleSelectPersona(p.id)}
+                  onClick={() => handleSelectPersona(persona.id)}
                   onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      handleSelectPersona(p.id);
+                      handleSelectPersona(persona.id);
                     }
                   }}
-                  className={`relative p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 group select-none ${
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 select-none ${
                     isSelected
-                      ? 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500 ring-2 ring-amber-400/50 shadow-sm'
-                      : 'bg-stone-50/70 dark:bg-stone-800/40 border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                      ? `${persona.accentBgLight} ${persona.accentBorder} ring-2 ring-[#C85A32]/40 shadow-xs`
+                      : 'bg-stone-50/60 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-9 h-9 rounded-xl bg-gradient-to-br ${p.avatarBg} text-white flex items-center justify-center font-black text-sm shadow-xs`}
-                      >
-                        {p.name[0]}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-black text-xs text-stone-900 dark:text-stone-100">
-                            {p.name}
-                          </span>
-                          <span className="text-xs">{p.flag}</span>
-                        </div>
-                        <span className="text-[10px] text-stone-500 dark:text-stone-400 block line-clamp-1">
-                          {p.role}
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-9 h-9 rounded-xl bg-gradient-to-br ${persona.avatarBg} text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0`}
+                    >
+                      {persona.avatar}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-xs text-stone-900 dark:text-stone-100 truncate">
+                          {persona.name}
                         </span>
+                        <span className="text-xs shrink-0">{persona.flag}</span>
                       </div>
+                      <span className="text-[10px] text-stone-500 dark:text-stone-400 block truncate">
+                        {persona.city}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="pt-1.5 border-t border-stone-200/50 dark:border-stone-800 flex items-center justify-between text-[10px]">
-                    <span className="font-semibold text-stone-600 dark:text-stone-400">
-                      {p.gender === 'male' ? '👨 Baritone' : '👩 Melodic'}
+                  {/* Colloquialism Tags */}
+                  <div className="pt-1.5 border-t border-stone-200/60 dark:border-stone-800 flex items-center justify-between text-[10px]">
+                    <span className="font-mono text-stone-500 dark:text-stone-400 truncate">
+                      {persona.colloquialisms[0]}
                     </span>
                     <button
                       type="button"
                       onClick={e => {
                         e.stopPropagation();
-                        handleSpeak(`greet-${p.id}`, p.sampleGreeting, p.id);
+                        handleSpeak(`sample-${persona.id}`, persona.sampleGreeting, persona.id);
                       }}
-                      className="p-1 rounded-md bg-stone-200/70 dark:bg-stone-700/70 text-stone-700 dark:text-stone-300 hover:bg-amber-500 hover:text-stone-950 transition cursor-pointer"
-                      title="Test Voice Synthesis"
+                      className="p-1 rounded-md bg-stone-200/70 dark:bg-stone-700/70 text-stone-700 dark:text-stone-300 hover:bg-[#C85A32] hover:text-white transition cursor-pointer"
+                      title="Probar voz del tutor"
                     >
                       <Play className="w-2.5 h-2.5 fill-current" />
                     </button>
@@ -867,139 +666,140 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           </div>
         </div>
 
-        {/* 🎯 CONVERSATION QUESTS HUD */}
-        <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500 flex items-center gap-1">
-              <Target className="w-3.5 h-3.5 text-amber-500" />
-              <span>Conversation Quests:</span>
+        {/* 🎯 TASK-BASED SCENARIOS & ROLEPLAY MISSIONS */}
+        <div className="pt-3 border-t border-stone-100 dark:border-stone-800/80 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-[#C85A32]" />
+              <span>Misiones de Rol & Tareas Prácticas</span>
             </span>
-            <span className="text-[11px] font-bold text-stone-500">
-              {quests.filter(q => q.completed).length} of {quests.length} Completed
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {quests.map(q => (
-              <div
-                key={q.id}
-                className={`p-2.5 rounded-2xl border transition-all flex items-center gap-2.5 ${
-                  q.completed
-                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
-                    : 'bg-stone-50 dark:bg-stone-800/40 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
-                }`}
-              >
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                    q.completed
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-stone-200 dark:bg-stone-700 text-stone-500'
-                  }`}
-                >
-                  {q.completed ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '•'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold truncate">{q.title_es}</span>
-                    <span
-                      className={`text-[10px] font-mono font-extrabold ${
-                        q.completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
-                      }`}
-                    >
-                      +{q.xpReward} XP
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-stone-400 dark:text-stone-500 truncate">
-                    {q.title_en}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 📊 VISUAL TOPIC MASTERY BARS */}
-        <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500">
-              Topic Mastery & Scenarios:
-            </span>
-            <span className="text-[11px] font-bold text-stone-400">
-              Turn {sessionTurnCount}/5 (
-              {Math.min(100, Math.round((sessionTurnCount / 5) * 100))}% Completed)
+            <span className="text-xs font-mono text-stone-500">
+              Turno {sessionTurnCount} • +{sessionXpEarned} XP
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {LINGOPAL_SCENARIOS.map(sc => {
-              const isCurrent = sc.id === currentScenario.id;
-              const mastery = topicMastery[sc.id] || 35;
-
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {LINGOPAL_SCENARIOS.map(scenario => {
+              const isSelected = scenario.id === currentScenario.id;
               return (
                 <button
-                  key={sc.id}
-                  onClick={() => handleSelectScenario(sc)}
-                  className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer space-y-1.5 ${
-                    isCurrent
-                      ? 'bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 border-transparent shadow-sm'
-                      : 'bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
+                  key={scenario.id}
+                  type="button"
+                  onClick={() => handleSelectScenario(scenario)}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950 border-transparent shadow-xs'
+                      : 'bg-stone-50/80 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800 text-stone-800 dark:text-stone-200 hover:border-stone-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-base">{sc.icon}</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-base">{scenario.icon}</span>
                     <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-black ${
-                        isCurrent
+                      className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                        isSelected
                           ? 'bg-white/20 text-white dark:text-stone-950'
-                          : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
+                          : 'bg-stone-200/80 dark:bg-stone-700/80 text-stone-600 dark:text-stone-300'
                       }`}
                     >
-                      {sc.difficulty}
+                      {scenario.difficulty}
                     </span>
                   </div>
-                  <p className="text-xs font-bold truncate leading-tight">{sc.title_es}</p>
-                  {/* Mastery Progress bar */}
-                  <div className="w-full h-1.5 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isCurrent ? 'bg-amber-400 dark:bg-stone-950' : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${mastery}%` }}
-                    />
-                  </div>
+                  <p className="text-xs font-bold leading-tight line-clamp-1">{scenario.title_es}</p>
                 </button>
               );
             })}
           </div>
         </div>
+
+        {/* 📋 ACTIVE MISSION CAN-DO OBJECTIVES CARD */}
+        {currentScenario.isTaskMission && currentScenario.objectives && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3.5 rounded-xl bg-[#2D5A43]/8 dark:bg-[#2D5A43]/15 border border-[#2D5A43]/25 space-y-2.5"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-[#2D5A43] dark:text-emerald-400 shrink-0" />
+                <span className="text-xs font-bold text-[#2D5A43] dark:text-emerald-300">
+                  {currentScenario.title_es}: {isArabic && currentScenario.missionGoal_ar ? currentScenario.missionGoal_ar : currentScenario.missionGoal_es}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono font-bold text-[#2D5A43] dark:text-emerald-400">
+                {Object.values(completedObjectives).filter(Boolean).length} / {currentScenario.objectives.length} Objetivos
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {currentScenario.objectives.map((obj, idx) => {
+                const isDone = !!completedObjectives[obj.id];
+                return (
+                  <div
+                    key={obj.id}
+                    className={`p-2 rounded-lg border text-xs flex items-center gap-2 transition ${
+                      isDone
+                        ? 'bg-emerald-100/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                        : 'bg-white/80 dark:bg-[#181615] border-stone-200/80 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
+                        isDone ? 'bg-emerald-600 text-white' : 'bg-stone-200 dark:bg-stone-700 text-stone-600'
+                      }`}
+                    >
+                      {isDone ? <Check className="w-3 h-3 stroke-[3]" /> : idx + 1}
+                    </div>
+                    <span className="text-[11px] font-medium leading-tight line-clamp-2">
+                      {isArabic ? obj.label_ar : obj.label_es}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      {/* 💬 MAIN CHAT WINDOW WITH STREAMING REAL-TIME OUTPUT */}
+      {/* 🔔 FLOATING TOASTS */}
+      <AnimatePresence>
+        {missionToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md flex items-center gap-2 justify-center"
+          >
+            <span>{missionToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 💬 CHAT CONTAINER */}
       <div
         ref={messagesContainerRef}
-        className="bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800/80 rounded-3xl p-4 sm:p-6 min-h-[420px] max-h-[580px] overflow-y-auto space-y-4 shadow-inner relative"
+        className="bg-[#FBF9F5] dark:bg-[#121110] border border-stone-200/80 dark:border-stone-800/80 rounded-2xl p-4 sm:p-6 min-h-[440px] max-h-[580px] overflow-y-auto space-y-4 shadow-xs relative"
       >
         <AnimatePresence initial={false}>
           {messages.map(msg => {
             const isAI = msg.sender === 'ai';
             const isPlaying = currentlyPlayingId === msg.id;
             const isTranslationOpen = revealedTranslations[msg.id];
-            const isAnalysisOpen = revealedAnalyses[msg.id] !== false;
+            const isAnalysisOpen = revealedAnalyses[msg.id];
             const isCurrentlyStreaming = isStreaming && isAI && !msg.englishExplanation;
 
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
                 className={`flex gap-3 ${isAI ? 'justify-start' : 'justify-end'}`}
               >
-                {/* AI Avatar */}
+                {/* AI Persona Avatar */}
                 {isAI && (
                   <div className="relative shrink-0 self-end">
                     <div
-                      className={`w-9 h-9 rounded-2xl bg-gradient-to-br ${activePersonaObj.avatarBg} text-white flex items-center justify-center text-sm font-bold shadow-sm`}
+                      className={`w-9 h-9 rounded-xl bg-gradient-to-br ${activePersonaObj.avatarBg} text-white flex items-center justify-center text-sm font-bold shadow-2xs`}
                     >
                       {activePersonaObj.name[0]}
                     </div>
@@ -1009,48 +809,49 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                   </div>
                 )}
 
-                {/* Message Bubble Container */}
+                {/* Message Bubble */}
                 <div
-                  className={`max-w-[88%] sm:max-w-[78%] space-y-2 ${
+                  className={`max-w-[88%] sm:max-w-[80%] space-y-2 ${
                     isAI ? 'items-start' : 'items-end'
                   }`}
                 >
                   <div
-                    className={`p-4 rounded-3xl text-sm leading-relaxed shadow-xs relative ${
+                    className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xs relative ${
                       isAI
-                        ? 'bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 text-stone-900 dark:text-stone-100 rounded-bl-xs'
-                        : 'bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 font-medium rounded-br-xs'
+                        ? 'bg-white dark:bg-[#181615] border border-stone-200/80 dark:border-stone-800/80 text-stone-900 dark:text-stone-100 rounded-bl-xs'
+                        : 'bg-[#C85A32] text-white font-medium rounded-br-xs shadow-2xs'
                     }`}
                   >
-                    {/* Audio speak trigger for AI */}
+                    {/* Header bar inside AI bubble: speaker and phase */}
                     {isAI && (
                       <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-stone-100 dark:border-stone-800/60">
                         <div className="flex items-center gap-1.5">
                           <button
+                            type="button"
                             onClick={() => handleSpeak(msg.id, msg.spanishText, selectedPersona)}
-                            className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
+                            className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
                               isPlaying
-                                ? 'bg-amber-500 text-stone-950 animate-pulse'
-                                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-stone-700'
+                                ? 'bg-[#C85A32] text-white animate-pulse'
+                                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200'
                             }`}
                           >
                             <Volume2 className="w-3.5 h-3.5" />
-                            <span>{isPlaying ? 'Speaking...' : 'Listen'}</span>
+                            <span>{isPlaying ? 'Reproduciendo...' : 'Escuchar'}</span>
                           </button>
-                          <span className="text-[10px] text-stone-400 font-bold">
-                            {activePersonaObj.name} ({activePersonaObj.gender === 'male' ? '♂' : '♀'})
+                          <span className="text-[11px] text-stone-500 font-medium">
+                            {activePersonaObj.name} • {audioSpeed}x
                           </span>
                         </div>
 
                         {msg.phase && (
-                          <span className="text-[10px] font-mono font-bold text-stone-400 dark:text-stone-500 px-2 py-0.5 rounded-md bg-stone-50 dark:bg-stone-800">
+                          <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800">
                             {msg.phase}
                           </span>
                         )}
                       </div>
                     )}
 
-                    {/* Spanish Speech Text with Tap-to-Translate Tokens */}
+                    {/* Spanish Text with Tap-to-Translate Tokens */}
                     <div className="font-semibold text-base select-text">
                       {msg.spanishText ? (
                         msg.spanishText.split(' ').map((word, wIdx) => (
@@ -1059,7 +860,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                             onClick={e => isAI && handleWordClick(e, word)}
                             className={
                               isAI
-                                ? 'hover:text-amber-500 hover:underline decoration-amber-400 cursor-pointer transition inline-block mr-1'
+                                ? 'hover:text-[#C85A32] hover:underline decoration-[#C85A32]/40 cursor-pointer transition inline-block mr-1'
                                 : 'inline-block mr-1'
                             }
                           >
@@ -1068,241 +869,162 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                         ))
                       ) : isCurrentlyStreaming ? (
                         <span className="inline-flex items-center gap-2 text-stone-400 font-normal italic">
-                          <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                          <Loader2 className="w-4 h-4 animate-spin text-[#C85A32]" />
                           <span>{activePersonaObj.name} está respondiendo...</span>
                         </span>
                       ) : null}
 
-                      {/* Live streaming cursor */}
                       {isCurrentlyStreaming && (
-                        <span className="inline-block w-2 h-4 ml-1 bg-amber-500 animate-pulse align-middle" />
+                        <span className="inline-block w-2 h-4 ml-1 bg-[#C85A32] animate-pulse align-middle" />
                       )}
                     </div>
 
-                    {/* Collapsible Progressive Unveiling: English & Arabic Translations */}
+                    {/* Collapsible Translations (English & Arabic) */}
                     {isAI && (msg.englishExplanation || msg.arabicExplanation) && (
-                      <div className="mt-2.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <div className="mt-2 pt-1.5 border-t border-stone-100 dark:border-stone-800">
                         <button
+                          type="button"
                           onClick={() => toggleTranslation(msg.id)}
-                          className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 hover:underline cursor-pointer"
+                          className="text-[11px] font-semibold text-[#B47832] dark:text-amber-400 flex items-center gap-1 hover:underline cursor-pointer"
                         >
                           <Languages className="w-3.5 h-3.5" />
-                          <span>
-                            {isTranslationOpen
-                              ? 'Hide Translations'
-                              : 'Progressive Unveil: Translations & Breakdown'}
-                          </span>
-                          {isTranslationOpen ? (
-                            <ChevronUp className="w-3 h-3" />
-                          ) : (
-                            <ChevronDown className="w-3 h-3" />
-                          )}
+                          <span>{isTranslationOpen ? 'Ocultar traducciones' : 'Ver traducción pedagógica (EN / AR)'}</span>
+                          {isTranslationOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
 
                         {isTranslationOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="mt-2 space-y-1 text-xs text-stone-600 dark:text-stone-300 font-normal bg-stone-50 dark:bg-stone-800/40 p-3 rounded-2xl border border-stone-200/60 dark:border-stone-800"
-                          >
+                          <div className="mt-2 space-y-1 text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-900/60 p-2.5 rounded-xl border border-stone-200/60 dark:border-stone-800">
                             {msg.englishExplanation && (
                               <p>
-                                <span className="font-bold text-stone-900 dark:text-stone-100">
-                                  🇬🇧 EN:{' '}
-                                </span>
+                                <span className="font-bold text-stone-800 dark:text-stone-200">EN: </span>
                                 {msg.englishExplanation}
                               </p>
                             )}
                             {msg.arabicExplanation && (
-                              <p className="font-arabic text-stone-700 dark:text-stone-200" dir="rtl">
-                                <span className="font-bold text-stone-900 dark:text-stone-100">
-                                  🇦🇪 AR:{' '}
-                                </span>
+                              <p className="font-arabic text-stone-700 dark:text-stone-300" dir="rtl">
+                                <span className="font-bold text-stone-800 dark:text-stone-200">AR: </span>
                                 {msg.arabicExplanation}
                               </p>
                             )}
-                          </motion.div>
+                          </div>
                         )}
                       </div>
                     )}
 
-                    {/* 🧠 REAL-TIME AI LINGUISTIC ANALYSIS OF USER'S MESSAGE */}
-                    {isAI && msg.analysis && (
-                      <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-800">
-                        {/* Header with expand/collapse */}
-                        <div
+                    {/* 💡 FORMATIVE RECAST PILL & NON-DISRUPTIVE SLA FEEDBACK */}
+                    {isAI && msg.analysis && (msg.analysis.naturalAlternative || (msg.analysis.corrections && msg.analysis.corrections.length > 0)) && (
+                      <div className="mt-2.5 pt-2 border-t border-stone-100 dark:border-stone-800/80">
+                        <button
+                          type="button"
                           onClick={() => toggleAnalysis(msg.id)}
-                          className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#B47832]/10 dark:bg-[#B47832]/15 text-[#B47832] dark:text-amber-400 border border-[#B47832]/25 hover:bg-[#B47832]/20 transition cursor-pointer"
                         >
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                            <span className="text-xs font-black text-stone-900 dark:text-stone-100 uppercase tracking-wider">
-                              Análisis Lingüístico IA
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>💡 Consejo nativo</span>
+                          {msg.analysis.naturalAlternative && !isAnalysisOpen && (
+                            <span className="hidden sm:inline font-normal text-stone-600 dark:text-stone-400 text-[11px] max-w-[200px] truncate">
+                              • "{msg.analysis.naturalAlternative}"
                             </span>
-                            {msg.analysis.score !== undefined && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/60">
-                                {msg.analysis.score}/100
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                msg.analysis.hasErrors
-                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60'
-                                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60'
-                              }`}
-                            >
-                              {msg.analysis.verdict || (msg.analysis.hasErrors ? 'Atención a detalles' : '¡Excelente!')}
-                            </span>
-                            {isAnalysisOpen ? (
-                              <ChevronUp className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-600 transition" />
-                            ) : (
-                              <ChevronDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-600 transition" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Detailed Analysis Body */}
-                        {isAnalysisOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="mt-2.5 space-y-2.5 text-xs bg-stone-50 dark:bg-stone-800/40 p-3 rounded-2xl border border-stone-200/70 dark:border-stone-800"
-                          >
-                            {/* Explanatory feedback */}
-                            {msg.analysis.feedback_es && (
-                              <p className="text-stone-800 dark:text-stone-200 font-medium leading-relaxed">
-                                {msg.analysis.feedback_es}
-                              </p>
-                            )}
-                            {msg.analysis.feedback_en && (
-                              <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-normal">
-                                <span className="font-bold text-stone-700 dark:text-stone-300">Feedback: </span>
-                                {msg.analysis.feedback_en}
-                              </p>
-                            )}
-                            {userProgress.settings?.nativeLanguage === 'ar' && msg.analysis.feedback_ar && (
-                              <p className="text-[11px] text-stone-600 dark:text-stone-400 font-arabic leading-normal" dir="rtl">
-                                <span className="font-bold text-stone-700 dark:text-stone-300">التقييم: </span>
-                                {msg.analysis.feedback_ar}
-                              </p>
-                            )}
-
-                            {/* Precise corrections breakdown */}
-                            {msg.analysis.corrections && msg.analysis.corrections.length > 0 && (
-                              <div className="space-y-1.5 pt-1">
-                                {msg.analysis.corrections.map((c, cIdx) => (
-                                  <div
-                                    key={cIdx}
-                                    className="p-2.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-1 text-xs"
-                                  >
-                                    <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap">
-                                      <span className="line-through text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded font-semibold">
-                                        ❌ {c.original}
-                                      </span>
-                                      <span className="text-stone-400 font-bold">➔</span>
-                                      <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded font-bold">
-                                        ✅ {c.correction}
-                                      </span>
-                                    </div>
-                                    {c.explanation && (
-                                      <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-normal font-sans">
-                                        💡 {c.explanation}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Native natural alternative */}
-                            {msg.analysis.naturalAlternative && (
-                              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-start gap-1.5">
-                                <span className="font-bold text-amber-700 dark:text-amber-400 shrink-0">
-                                  🗣️ Nativo:
-                                </span>
-                                <span className="italic font-medium text-stone-900 dark:text-stone-100">
-                                  "{msg.analysis.naturalAlternative}"
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Persona regional/dialect note */}
-                            {msg.analysis.dialectTip && (
-                              <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-start gap-1.5 pt-0.5">
-                                <span className="font-bold text-stone-700 dark:text-stone-300 shrink-0">
-                                  {activePersonaObj.flag} Nota de {activePersonaObj.name}:
-                                </span>
-                                <span>{msg.analysis.dialectTip}</span>
-                              </div>
-                            )}
-                          </motion.div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* User feedback badge */}
-                    {!isAI && msg.feedbackBadge && (
-                      <div className={`mt-2 pt-1.5 border-t border-amber-600/30 flex items-center justify-between text-[11px] ${
-                        msg.feedbackBadge.type === 'analyzing' ? 'animate-pulse text-amber-950' : ''
-                      }`}>
-                        <div className="flex items-center gap-1.5">
-                          {msg.feedbackBadge.type === 'analyzing' ? (
-                            <Loader2 className="w-3 h-3 animate-spin text-stone-950" />
-                          ) : msg.feedbackBadge.type === 'warning' ? (
-                            <AlertCircle className="w-3 h-3 text-stone-950" />
-                          ) : (
-                            <CheckCircle2 className="w-3 h-3 text-stone-950" />
                           )}
-                          <span className="font-bold text-stone-950">{msg.feedbackBadge.text}</span>
-                        </div>
-                        {msg.feedbackBadge.xpBonus ? (
-                          <span className="font-black bg-stone-950/20 px-1.5 py-0.5 rounded text-[10px] text-stone-950">
-                            +{msg.feedbackBadge.xpBonus} XP
-                          </span>
-                        ) : null}
+                          {isAnalysisOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+
+                        <AnimatePresence>
+                          {isAnalysisOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-2 space-y-2 text-xs bg-stone-50/80 dark:bg-stone-900/60 p-3 rounded-xl border border-stone-200/80 dark:border-stone-800"
+                            >
+                              {/* Natural Recast Alternative */}
+                              {msg.analysis.naturalAlternative && (
+                                <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-stone-800 dark:text-stone-200">
+                                  <span className="font-bold text-[#B47832] dark:text-amber-400 shrink-0">
+                                    🗣️ Expresión nativa:
+                                  </span>
+                                  <span className="italic font-medium">
+                                    "{msg.analysis.naturalAlternative}"
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Formative Recast Note */}
+                              {msg.analysis.feedback_es && (
+                                <p className="text-stone-700 dark:text-stone-300 leading-relaxed font-sans text-[11px]">
+                                  {msg.analysis.feedback_es}
+                                </p>
+                              )}
+
+                              {/* English or Arabic Explanation depending on user language */}
+                              {isArabic && msg.analysis.feedback_ar ? (
+                                <p className="text-[11px] text-stone-600 dark:text-stone-400 font-arabic leading-relaxed" dir="rtl">
+                                  <span className="font-bold text-stone-700 dark:text-stone-300">ملاحظة لغوية: </span>
+                                  {msg.analysis.feedback_ar}
+                                </p>
+                              ) : msg.analysis.feedback_en ? (
+                                <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
+                                  <span className="font-bold text-stone-700 dark:text-stone-300">Language note: </span>
+                                  {msg.analysis.feedback_en}
+                                </p>
+                              ) : null}
+
+                              {/* Soft adjustments breakdown if present */}
+                              {msg.analysis.corrections && msg.analysis.corrections.length > 0 && (
+                                <div className="space-y-1 pt-1">
+                                  {msg.analysis.corrections.map((c, cIdx) => (
+                                    <div
+                                      key={cIdx}
+                                      className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center justify-between text-[11px] flex-wrap gap-1"
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-stone-500 line-through">{c.original}</span>
+                                        <span className="text-stone-400">➔</span>
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{c.correction}</span>
+                                      </div>
+                                      {c.explanation && (
+                                        <span className="text-stone-500 dark:text-stone-400 text-[10px]">
+                                          {c.explanation}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Regional/Dialect note */}
+                              {msg.analysis.dialectTip && (
+                                <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-start gap-1 pt-1 border-t border-stone-200/50 dark:border-stone-800">
+                                  <span className="font-semibold text-stone-700 dark:text-stone-300">
+                                    {activePersonaObj.flag} {activePersonaObj.name}:
+                                  </span>
+                                  <span>{msg.analysis.dialectTip}</span>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>
 
-                  {/* Silent Corrections & Key Vocabulary */}
-                  {isAI && msg.corrections && msg.corrections.length > 0 && (
-                    <div className="space-y-1">
-                      {msg.corrections.map((corr, cIdx) => (
-                        <div
-                          key={cIdx}
-                          className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5"
-                        >
-                          <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span>{corr}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
                   {/* Key Vocabulary Chips */}
                   {isAI && msg.vocabulary && msg.vocabulary.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span className="text-[10px] font-bold text-stone-400 self-center mr-1">
-                        Lexis:
-                      </span>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
                       {msg.vocabulary.map((vocab, vIdx) => (
-                        <div
+                        <button
                           key={vIdx}
+                          type="button"
                           onClick={() => handleSaveWordToLingQ(vocab.word, vocab.en, vocab.ar)}
-                          className="px-2.5 py-1 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 text-stone-800 dark:text-stone-200 text-xs font-semibold cursor-pointer shadow-2xs flex items-center gap-1.5 group"
-                          title={`Click to save "${vocab.word}" to LingQs`}
+                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#181615] border border-stone-200/80 dark:border-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold cursor-pointer shadow-2xs hover:border-[#C85A32] flex items-center gap-1.5 group"
+                          title={`Guardar "${vocab.word}" en tu vocabulario SRS`}
                         >
-                          <span className="font-bold text-amber-600 dark:text-amber-400">
+                          <span className="font-bold text-[#C85A32] dark:text-[#E07A5F]">
                             {vocab.word}
                           </span>
                           <span className="text-stone-400 text-[10px]">({vocab.en})</span>
-                          <Plus className="w-3 h-3 text-stone-400 group-hover:text-amber-500" />
-                        </div>
+                          <Plus className="w-3 h-3 text-stone-400 group-hover:text-[#C85A32]" />
+                        </button>
                       ))}
                     </div>
                   )}
@@ -1311,31 +1033,24 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
             );
           })}
         </AnimatePresence>
-
-        {/* Loading spinner */}
-        {isLoading && !isStreaming && (
-          <div className="flex items-center gap-2 text-stone-400 text-xs font-bold animate-pulse p-2">
-            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-            <span>{activePersonaObj.name} está pensando...</span>
-          </div>
-        )}
       </div>
 
-      {/* 💡 LINGOPAL SMART CHIPS (Suggested Quick Replies) */}
+      {/* 💡 SUGGESTED REPLIES */}
       {suggestedReplies.length > 0 && !isLoading && !isStreaming && (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-stone-400 dark:text-stone-500">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Quick Replies (Smart Chips):</span>
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            <Sparkles className="w-3.5 h-3.5 text-[#B47832]" />
+            <span>Respuestas sugeridas para la misión:</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {suggestedReplies.map((reply, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => handleSendMessage(reply.es)}
-                className="text-left p-2.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-stone-800/60 transition group cursor-pointer shadow-xs space-y-0.5"
+                className="text-left p-2.5 rounded-xl bg-white dark:bg-[#181615] border border-stone-200/80 dark:border-stone-800 hover:border-[#C85A32] dark:hover:border-[#E07A5F] transition group cursor-pointer shadow-2xs space-y-0.5"
               >
-                <p className="text-xs font-bold text-stone-800 dark:text-stone-200 group-hover:text-amber-700 dark:group-hover:text-amber-400 leading-snug">
+                <p className="text-xs font-bold text-stone-800 dark:text-stone-200 group-hover:text-[#C85A32] dark:group-hover:text-[#E07A5F] leading-snug">
                   {reply.es}
                 </p>
                 {reply.en && (
@@ -1349,204 +1064,132 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         </div>
       )}
 
-      {/* 🎙️ INTERACTIVE INPUT BAR */}
-      <div className="relative bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-2 shadow-sm flex items-center gap-2">
-        {/* Voice recording button */}
-        <button
-          onClick={handleToggleMic}
-          className={`p-3 rounded-xl transition cursor-pointer ${
-            isListening
-              ? 'bg-rose-500 text-white animate-pulse shadow-md ring-4 ring-rose-200 dark:ring-rose-950'
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
-          }`}
-          title={isListening ? 'Stop listening' : 'Speak in Spanish'}
-        >
-          {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        </button>
+      {/* 🎙️ INPUT BAR WITH VISUAL WAVEFORM STATE - STICKY ABOVE SOFT KEYBOARD & SAFE-AREA */}
+      <div className="sticky bottom-0 z-30 pb-safe pt-2 bg-stone-100/90 dark:bg-stone-950/90 backdrop-blur-md space-y-2">
+        {/* Animated Speech Waveform when Listening */}
+        {isListening && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs font-semibold text-rose-700 dark:text-rose-300"
+          >
+            <div className="flex items-center gap-1 h-4">
+              {[40, 95, 60, 100, 75, 45, 85].map((h, i) => (
+                <motion.span
+                  key={i}
+                  animate={{ height: [`${h * 0.3}%`, `${h}%`, `${h * 0.25}%`] }}
+                  transition={{ repeat: Infinity, duration: 0.5 + i * 0.08, ease: 'easeInOut' }}
+                  className="w-1 bg-rose-500 dark:bg-rose-400 rounded-full inline-block"
+                />
+              ))}
+            </div>
+            <span>Micrófono activo • Escuchando tu español en vivo...</span>
+          </motion.div>
+        )}
 
-        {/* Text Input */}
-        <input
-          type="text"
-          value={inputVal}
-          onChange={e => setInputVal(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') handleSendMessage();
-          }}
-          placeholder={
-            isListening
-              ? 'Escuchando tu voz en español...'
-              : `Escribe a ${activePersonaObj.name} en español...`
-          }
-          className="flex-1 bg-transparent px-2 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-hidden font-medium"
-        />
+        <div className="relative bg-white dark:bg-[#181615] border border-stone-200/80 dark:border-stone-800 rounded-2xl p-2 shadow-sm flex items-center gap-2">
+          {/* Voice recording button */}
+          <button
+            type="button"
+            onClick={handleToggleMic}
+            className={`min-w-[44px] min-h-[44px] p-3 rounded-xl transition cursor-pointer flex items-center justify-center ${
+              isListening
+                ? 'bg-rose-500 text-white animate-pulse shadow-xs ring-2 ring-rose-300 dark:ring-rose-900'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+            }`}
+            title={isListening ? 'Detener micrófono' : 'Hablar en español con el micrófono'}
+          >
+            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
 
-        {/* Send Button */}
-        <button
-          onClick={() => handleSendMessage()}
-          disabled={!inputVal.trim() || isLoading || isStreaming}
-          className="p-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-stone-950 rounded-xl font-bold transition shadow-xs cursor-pointer flex items-center justify-center"
-        >
-          <Send className="w-4 h-4" />
-        </button>
+          {/* Text Input */}
+          <input
+            type="text"
+            value={inputVal}
+            onChange={e => setInputVal(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleSendMessage();
+            }}
+            placeholder={
+              isListening
+                ? 'Escuchando tu voz...'
+                : `Responde a ${activePersonaObj.name} en español...`
+            }
+            className="flex-1 bg-transparent px-2 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-hidden font-medium min-h-[44px]"
+          />
+
+          {/* Send Button */}
+          <button
+            type="button"
+            onClick={() => handleSendMessage()}
+            disabled={!inputVal.trim() || isLoading || isStreaming}
+            className="min-w-[44px] min-h-[44px] p-3 bg-[#C85A32] hover:bg-[#B44C27] disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl font-bold transition shadow-xs cursor-pointer flex items-center justify-center"
+            title="Enviar mensaje"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* 📖 WORD DICTIONARY POPOVER (Tap-to-Translate) */}
+      {/* 📖 TAP-TO-TRANSLATE POPOVER */}
       {selectedWord && (
         <div
           style={{
             position: 'fixed',
             left: `${Math.min(window.innerWidth - 220, Math.max(16, selectedWord.x - 100))}px`,
-            top: `${selectedWord.y - 110}px`,
+            top: `${selectedWord.y - 100}px`,
             zIndex: 100
           }}
           onClick={e => e.stopPropagation()}
-          className="bg-stone-900 text-white p-3 rounded-2xl shadow-2xl border border-stone-700 w-52 space-y-2 animate-in fade-in zoom-in duration-150"
+          className="bg-white dark:bg-[#181615] border border-stone-200 dark:border-stone-800 rounded-xl p-3 shadow-md w-56 space-y-2 animate-in fade-in zoom-in-95 duration-150"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-amber-400">{selectedWord.cleanWord}</span>
+          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-1.5">
+            <span className="font-bold text-xs text-[#C85A32] dark:text-[#E07A5F]">
+              {selectedWord.cleanWord}
+            </span>
             <button
+              type="button"
               onClick={() => setSelectedWord(null)}
-              className="text-stone-400 hover:text-white cursor-pointer"
+              className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="text-[11px] text-stone-300 space-y-0.5">
-            <p>🇬🇧 {selectedWord.en}</p>
-            <p className="font-arabic text-stone-300" dir="rtl">
-              🇦🇪 {selectedWord.ar}
+          <p className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
+            {selectedWord.en}
+          </p>
+          {isArabic && (
+            <p className="text-[11px] text-stone-600 dark:text-stone-300 font-arabic" dir="rtl">
+              {selectedWord.ar}
             </p>
-          </div>
+          )}
           <button
-            onClick={() =>
-              handleSaveWordToLingQ(selectedWord.cleanWord, selectedWord.en, selectedWord.ar)
-            }
-            className="w-full py-1 px-2 bg-amber-500 text-stone-950 font-bold text-[11px] rounded-lg hover:bg-amber-400 transition cursor-pointer flex items-center justify-center gap-1"
+            type="button"
+            onClick={() => handleSaveWordToLingQ(selectedWord.cleanWord, selectedWord.en, selectedWord.ar)}
+            className="w-full py-1.5 px-2 bg-[#C85A32] hover:bg-[#B44C27] text-white text-[11px] font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
           >
-            <Plus className="w-3 h-3" />
-            <span>+ Save to LingQs</span>
+            <BookmarkPlus className="w-3 h-3" />
+            <span>Guardar en SRS</span>
           </button>
         </div>
       )}
 
-      {/* Word Saved Toast */}
-      {savedWordToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 animate-bounce">
-          <Check className="w-4 h-4" />
-          <span>"{savedWordToast}" guardada en tu baraja LingQ (+5 XP)!</span>
-        </div>
-      )}
-
-      {/* Quest Completed Toast */}
-      {questToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-amber-400 border border-amber-500 px-5 py-2.5 rounded-full text-xs font-black shadow-2xl flex items-center gap-2 animate-in slide-in-from-top duration-200">
-          <Trophy className="w-4 h-4 text-amber-400" />
-          <span>{questToast}</span>
-        </div>
-      )}
-
-      {/* 🌟 LEVEL-UP CELEBRATION MODAL */}
-      {showLevelUpModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+      {/* SAVED WORD TOAST */}
+      <AnimatePresence>
+        {savedWordToast && (
           <motion.div
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.85, opacity: 0 }}
-            className="bg-white dark:bg-stone-900 border border-amber-400 dark:border-amber-500 rounded-3xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl relative overflow-hidden"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="fixed bottom-6 right-6 z-50 px-3.5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold shadow-lg flex items-center gap-2"
           >
-            <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-orange-500 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-lg text-stone-950 font-black">
-              🏆
-            </div>
-            <div className="space-y-1">
-              <span className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                ¡LEVEL UP!
-              </span>
-              <h3 className="text-2xl font-black text-stone-900 dark:text-white">
-                ¡Has alcanzado el Nivel {currentLevel}!
-              </h3>
-              <p className="text-sm font-bold text-stone-600 dark:text-stone-300">
-                Nuevo Rango: <span className="text-amber-500">{rankTitle}</span>
-              </p>
-            </div>
-
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              Tu fluidez conversacional sigue creciendo a través de la práctica activa con {activePersonaObj.name}.
-            </p>
-
-            <button
-              onClick={() => setShowLevelUpModal(false)}
-              className="w-full py-3 bg-amber-500 text-stone-950 rounded-2xl font-black text-sm hover:bg-amber-400 transition cursor-pointer shadow-md"
-            >
-              ¡Continuar Conversación! 🚀
-            </button>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>"{savedWordToast}" guardado en tu memoria activa</span>
           </motion.div>
-        </div>
-      )}
-
-      {/* 🎉 5-TURN SCENARIO COMPLETION CELEBRATION MODAL */}
-      {showCelebrationModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl"
-          >
-            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950/60 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-inner">
-              ⭐
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-xl font-black text-stone-900 dark:text-white">
-                ¡Escenario Completado!
-              </h3>
-              <p className="text-sm text-stone-600 dark:text-stone-300">
-                Has completado 5 turnos de diálogo en{' '}
-                <span className="font-bold">{currentScenario.title_es}</span> con {activePersonaObj.name}.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 py-2">
-              <div className="bg-amber-50 dark:bg-stone-800 p-3 rounded-2xl border border-amber-200/60 dark:border-stone-700">
-                <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400 block">
-                  XP de Misión
-                </span>
-                <span className="text-2xl font-black text-amber-800 dark:text-amber-300">
-                  +50 XP
-                </span>
-              </div>
-              <div className="bg-emerald-50 dark:bg-stone-800 p-3 rounded-2xl border border-emerald-200/60 dark:border-stone-700">
-                <span className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 block">
-                  Dominio del Tema
-                </span>
-                <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
-                  {topicMastery[currentScenario.id] || 85}%
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setShowCelebrationModal(false)}
-                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 rounded-xl font-bold text-xs hover:bg-stone-200 transition cursor-pointer"
-              >
-                Seguir Charlando
-              </button>
-              <button
-                onClick={() => {
-                  setShowCelebrationModal(false);
-                  const nextIdx =
-                    (LINGOPAL_SCENARIOS.findIndex(s => s.id === currentScenario.id) + 1) %
-                    LINGOPAL_SCENARIOS.length;
-                  handleSelectScenario(LINGOPAL_SCENARIOS[nextIdx]);
-                }}
-                className="flex-1 py-3 bg-amber-500 text-stone-950 rounded-xl font-black text-xs hover:bg-amber-400 transition cursor-pointer shadow-md"
-              >
-                Siguiente Escenario 🚀
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+export default AITutorChat;

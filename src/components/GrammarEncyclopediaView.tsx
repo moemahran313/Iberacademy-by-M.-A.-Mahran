@@ -53,8 +53,8 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
 }) => {
   const { setActiveTab, setGrammarPracticeTopic } = useApp();
   const [activeTabMode, setActiveTabMode] = useState<
-    'path' | 'pattern_discovery' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'visual_mapping' | 'encyclopedia'
-  >('path');
+    'pattern_discovery' | 'path' | 'minimal_pairs' | 'output_drills' | 'syntax_repair' | 'visual_mapping' | 'encyclopedia'
+  >('pattern_discovery');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Selected lesson/topic
@@ -328,6 +328,19 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
       {/* Mode Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-stone-200 dark:border-stone-800">
         <button
+          onClick={() => setActiveTabMode('pattern_discovery')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
+            activeTabMode === 'pattern_discovery'
+              ? 'bg-[#C85A32] text-white shadow-md font-mono'
+              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+          }`}
+        >
+          <Brain className="w-4 h-4 text-amber-200" />
+          <span>Descubrimiento de Patrones</span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-400 text-stone-900 font-black">SLA</span>
+        </button>
+
+        <button
           onClick={() => setActiveTabMode('path')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
             activeTabMode === 'path'
@@ -337,18 +350,6 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
         >
           <Compass className="w-4 h-4" />
           <span>Curriculum Path</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTabMode('pattern_discovery')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-2xl text-xs font-black transition cursor-pointer shrink-0 ${
-            activeTabMode === 'pattern_discovery'
-              ? 'bg-amber-500 text-stone-950 shadow-md font-mono'
-              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-          }`}
-        >
-          <Brain className="w-4 h-4" />
-          <span>Pattern Discovery</span>
         </button>
 
         <button
@@ -884,18 +885,79 @@ export const GrammarEncyclopediaView: React.FC<GrammarEncyclopediaViewProps> = (
               <motion.div
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2 text-xs"
+                className="space-y-3"
               >
-                <div className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>SLA Rule Revealed:</span>
+                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>SLA Rule Revealed:</span>
+                  </div>
+                  <p className="text-stone-800 dark:text-stone-200 font-medium leading-relaxed">
+                    {currentPd.ruleExplanation_en}
+                  </p>
+                  <p className="text-amber-900 dark:text-amber-300 font-arabic text-right font-bold leading-relaxed" dir="rtl">
+                    {currentPd.ruleExplanation_ar}
+                  </p>
                 </div>
-                <p className="text-stone-800 dark:text-stone-200 font-medium">
-                  {currentPd.ruleExplanation_en}
-                </p>
-                <p className="text-amber-900 dark:text-amber-300 font-arabic text-right font-bold" dir="rtl">
-                  {currentPd.ruleExplanation_ar}
-                </p>
+
+                {/* Contrastive Notes: False Friends & L1 Interference */}
+                {currentPd.contrastiveNotes && currentPd.contrastiveNotes.length > 0 && (
+                  <div className="p-4 rounded-xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/30 space-y-3 text-xs">
+                    <div className="flex items-center gap-2 text-stone-900 dark:text-amber-200 font-black">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>Notas Contrastivas: Falsos Amigos e Interferencia (Español / Inglés / Árabe)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {currentPd.contrastiveNotes.map((note, nIdx) => (
+                        <div
+                          key={nIdx}
+                          className="p-3 bg-white dark:bg-stone-900 rounded-lg border border-amber-200/60 dark:border-stone-800 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[#C85A32] dark:text-[#E07A5F]">
+                              {note.title}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            <div className="space-y-0.5 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 p-2 rounded-md">
+                              <span className="font-bold block">⚠️ The Interference Trap (L1):</span>
+                              <p className="text-stone-700 dark:text-stone-300">{note.trap_en}</p>
+                              <p className="font-arabic text-right text-stone-700 dark:text-stone-300 mt-1" dir="rtl">
+                                {note.trap_ar}
+                              </p>
+                            </div>
+
+                            <div className="space-y-0.5 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded-md">
+                              <span className="font-bold block">✅ Native Spanish Rule:</span>
+                              <p className="text-stone-700 dark:text-stone-300">{note.correctRule_en}</p>
+                              <p className="font-arabic text-right text-stone-700 dark:text-stone-300 mt-1" dir="rtl">
+                                {note.correctRule_ar}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Contrastive example with native audio */}
+                          <div className="pt-1 flex items-center justify-between flex-wrap gap-2 text-stone-700 dark:text-stone-300 text-[11px] border-t border-stone-100 dark:border-stone-800">
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <span>Ejemplo:</span>
+                              <span className="italic text-stone-900 dark:text-white">"{note.contrastExample_es}"</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => speakSpanish(note.contrastExample_es)}
+                              className="px-2 py-1 rounded bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/50 text-stone-600 dark:text-stone-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Volume2 className="w-3 h-3 text-[#C85A32]" />
+                              <span>Pronunciar</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </div>

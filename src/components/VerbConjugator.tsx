@@ -5,7 +5,7 @@ import {
   Volume2,
   Sparkles,
   BookOpen,
-  CheckCircle,
+  CheckCircle2,
   HelpCircle,
   Layers,
   Flame,
@@ -17,13 +17,24 @@ import {
   Shuffle,
   ChevronRight,
   TrendingUp,
-  Award
+  Award,
+  ArrowRight,
+  CheckCircle,
+  Compass,
+  MessageSquare
 } from 'lucide-react';
 import { Verb, VerbConjugationTable } from '../types';
 import { SPANISH_VERBS } from '../data';
 import { speakSpanish, soundEffects } from '../utils/audio';
+import {
+  getContextualVerbSentence,
+  SITUATIONAL_FILL_IN_DRILLS,
+  TENSE_CONTRAST_DRILLS,
+  SituationalFillInDrill,
+  TenseContrastDrill
+} from '../data/verbContextualSentences';
 
-type PracticeMode = 'mcq' | 'cloze' | 'surgeon';
+type PracticeMode = 'situational_fill' | 'tense_contrast';
 
 export const VerbConjugator: React.FC = () => {
   // Navigation & Search
@@ -33,42 +44,40 @@ export const VerbConjugator: React.FC = () => {
   const [filterCEFR, setFilterCEFR] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
 
-  // Gamification & Scientific Practice State
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>('mcq');
+  // Gamification & Communicative Practice State
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('situational_fill');
   const [isPracticing, setIsPracticing] = useState(false);
   const [practiceStreak, setPracticeStreak] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
 
-  // Mode States
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-  const [selectedMCQOption, setSelectedMCQOption] = useState<string | null>(null);
-  const [clozeUserInput, setClozeUserInput] = useState('');
-  const [clozeIsSubmitted, setClozeIsSubmitted] = useState(false);
-  const [surgeonSelectedStem, setSurgeonSelectedStem] = useState<string | null>(null);
-  const [surgeonSelectedSuffix, setSurgeonSelectedSuffix] = useState<string | null>(null);
-  const [surgeonFeedback, setSurgeonFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  // Situational Fill-in Mode state
+  const [situationalIdx, setSituationalIdx] = useState(0);
+  const [selectedFillOption, setSelectedFillOption] = useState<string | null>(null);
+  const [fillFeedbackChecked, setFillFeedbackChecked] = useState(false);
 
-  // Trigger sound effect on practice activation
-  const togglePractice = () => {
-    soundEffects.playFlip();
-    setIsPracticing(!isPracticing);
-    resetQuestionState();
-  };
+  // Tense Contrast Mode state
+  const [contrastIdx, setContrastIdx] = useState(0);
+  const [selectedContrastOption, setSelectedContrastOption] = useState<number | null>(null);
+  const [contrastFeedbackChecked, setContrastFeedbackChecked] = useState(false);
+
+  // Audio animation toast
+  const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
 
   // Find active verb
   const selectedVerb = useMemo(() => {
     return SPANISH_VERBS.find(v => v.id === selectedVerbId) || SPANISH_VERBS[0];
   }, [selectedVerbId]);
 
-  // Filters for verbs list
+  // Filters for verbs list (searchable by infinitive, english, or arabic)
   const filteredVerbs = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
     return SPANISH_VERBS.filter(v => {
       const matchesSearch =
-        searchTerm === '' ||
-        v.infinitive.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.english.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.arabic.includes(searchTerm);
+        term === '' ||
+        v.infinitive.toLowerCase().includes(term) ||
+        v.english.toLowerCase().includes(term) ||
+        v.arabic.includes(searchTerm.trim());
 
       const matchesCEFR = filterCEFR === 'all' || v.cefr === filterCEFR;
 
@@ -89,16 +98,16 @@ export const VerbConjugator: React.FC = () => {
     }
   }, [filteredVerbs, selectedVerbId]);
 
-  // Scientific configuration of tenses
+  // Communicative configuration of tenses
   const tensesConfig = useMemo(() => [
-    { id: 'present' as keyof VerbConjugationTable, name_es: 'Presente', name_en: 'Present', name_ar: 'المضارع البسيط', level: 'A1' },
-    { id: 'preterite' as keyof VerbConjugationTable, name_es: 'Pretérito Indefinido', name_en: 'Preterite (Simple Past)', name_ar: 'الماضي البسيط', level: 'A2' },
-    { id: 'imperfect' as keyof VerbConjugationTable, name_es: 'Pretérito Imperfecto', name_en: 'Imperfect Past', name_ar: 'الماضي المستمر', level: 'A2' },
-    { id: 'future' as keyof VerbConjugationTable, name_es: 'Futuro Simple', name_en: 'Simple Future', name_ar: 'المستقبل البسيط', level: 'A2' },
-    { id: 'conditional' as keyof VerbConjugationTable, name_es: 'Condicional Simple', name_en: 'Conditional', name_ar: 'صيغة الشرط', level: 'B1' },
-    { id: 'presentSubjunctive' as keyof VerbConjugationTable, name_es: 'Presente de Subjuntivo', name_en: 'Present Subjunctive', name_ar: 'منصوب الحاضر', level: 'B1' },
-    { id: 'imperfectSubjunctive' as keyof VerbConjugationTable, name_es: 'Imperfecto de Subjuntivo', name_en: 'Imperfect Subjunctive', name_ar: 'منصوب الماضي', level: 'B2' },
-    { id: 'imperativeAffirmative' as keyof VerbConjugationTable, name_es: 'Imperativo Afirmativo', name_en: 'Imperative (Commands)', name_ar: 'فعل الأمر', level: 'A2' }
+    { id: 'present' as keyof VerbConjugationTable, name_es: 'Presente', name_en: 'Present (Daily Routine & Facts)', name_ar: 'المضارع البسيط (العادات والحقائق)', level: 'A1' },
+    { id: 'preterite' as keyof VerbConjugationTable, name_es: 'Pretérito Indefinido', name_en: 'Preterite (Completed Past Events)', name_ar: 'الماضي البسيط (الأحداث المكتملة)', level: 'A2' },
+    { id: 'imperfect' as keyof VerbConjugationTable, name_es: 'Pretérito Imperfecto', name_en: 'Imperfect (Past Scenery & Age)', name_ar: 'الماضي المستمر (الوصف والذكريات والعمر)', level: 'A2' },
+    { id: 'future' as keyof VerbConjugationTable, name_es: 'Futuro Simple', name_en: 'Simple Future (Plans & Predictions)', name_ar: 'المستقبل البسيط (الخطط والتوقعات)', level: 'A2' },
+    { id: 'conditional' as keyof VerbConjugationTable, name_es: 'Condicional Simple', name_en: 'Conditional (Polite Requests & Wishes)', name_ar: 'صيغة الشرط (التأدب والرغبات)', level: 'B1' },
+    { id: 'presentSubjunctive' as keyof VerbConjugationTable, name_es: 'Presente de Subjuntivo', name_en: 'Present Subjunctive (Wishes & Doubts)', name_ar: 'منصوب الحاضر (الأمنيات والشك)', level: 'B1' },
+    { id: 'imperfectSubjunctive' as keyof VerbConjugationTable, name_es: 'Imperfecto de Subjuntivo', name_en: 'Imperfect Subjunctive (Hypotheses)', name_ar: 'منصوب الماضي (الافتراضات الخيالية)', level: 'B2' },
+    { id: 'imperativeAffirmative' as keyof VerbConjugationTable, name_es: 'Imperativo Afirmativo', name_en: 'Imperative (Direct Commands & Advice)', name_ar: 'صيغة الأمر (التوجيهات والنصائح)', level: 'A2' }
   ], []);
 
   const conjugationSet = useMemo(() => {
@@ -114,138 +123,136 @@ export const VerbConjugator: React.FC = () => {
     { key: 'ellos_ellas_ustedes', label_es: 'Ellos / Ellas / Ustedes', label_en: 'They / You all', label_ar: 'هم / هن / أنتم' }
   ], []);
 
-  // Helper: Split Spanish forms into Stem & Suffix dynamically for visual parsing
-  const parseStemAndSuffix = (infinitive: string, conjugation: string, pronoun: string) => {
+  // Split Spanish forms into Stem & Suffix dynamically for communicative visual parsing
+  const parseStemAndSuffix = (infinitive: string, conjugation: string) => {
     if (!conjugation || conjugation === '—') return { stem: conjugation, suffix: '' };
-    
-    // Default suffix options
-    const arSuffixes = ['o', 'as', 'a', 'amos', 'áis', 'an', 'é', 'aste', 'ó', 'aron', 'aba', 'abas', 'ábamos', 'abais', 'aban', 'ará', 'arás', 'aremos', 'aréis', 'arán', 'aría', 'arías', 'aríamos', 'aríais', 'arían', 'e', 'es', 'emos', 'éis', 'en', 'ara', 'aras', 'áramos', 'arais', 'aran'];
-    const erirSuffixes = ['o', 'es', 'e', 'emos', 'imos', 'éis', 'ís', 'en', 'í', 'iste', 'ió', 'imos', 'isteis', 'ieron', 'ía', 'ías', 'íamos', 'íais', 'ían', 'erá', 'erás', 'eremos', 'eréis', 'erán', 'irá', 'irás', 'iremos', 'iréis', 'irán', 'ería', 'erías', 'eríamos', 'eríais', 'erían', 'iría', 'irías', 'iríamos', 'iríais', 'irían', 'a', 'as', 'amos', 'áis', 'an', 'iera', 'ieras', 'iéramos', 'ierais', 'ieran'];
-    
+
+    const clean = conjugation.trim();
+    const arSuffixes = [
+      'áramos', 'aremos', 'aríais', 'aríamos', 'asteis', 'ábamos', 'abais',
+      'arás', 'arán', 'aría', 'arías', 'arían', 'aron', 'aste', 'aban', 'abas', 'amos', 'áis',
+      'ará', 'aba', 'aron', 'ara', 'aras', 'aran', 'emos', 'éis', 'an', 'as', 'es', 'en', 'é', 'ó', 'o', 'a', 'e'
+    ];
+    const erirSuffixes = [
+      'iéramos', 'ierais', 'eríamos', 'iríamos', 'eríais', 'iríais', 'eremos', 'iremos', 'isteis', 'íamos', 'íais',
+      'ieron', 'erás', 'erán', 'irás', 'irán', 'ería', 'erías', 'erían', 'iría', 'irías', 'irían',
+      'iera', 'ieras', 'ieran', 'iste', 'imos', 'emos', 'imos', 'ieron', 'iendo', 'ieron',
+      'erá', 'irá', 'ían', 'ías', 'ías', 'ida', 'ido', 'ió', 'ía', 'en', 'es', 'er', 'ir', 'ís', 'éis', 'ió', 'í', 'e', 'a', 'o'
+    ];
+
     const allSuffixes = [...arSuffixes, ...erirSuffixes].sort((a, b) => b.length - a.length);
-    
-    // Find matching suffix at the end of the conjugated word
+
     for (const suffix of allSuffixes) {
-      if (conjugation.endsWith(suffix) && conjugation.length > suffix.length) {
-        const stem = conjugation.substring(0, conjugation.length - suffix.length);
-        return { stem, suffix };
+      if (clean.toLowerCase().endsWith(suffix.toLowerCase()) && clean.length > suffix.length) {
+        const stem = clean.substring(0, clean.length - suffix.length);
+        const actualSuffix = clean.substring(clean.length - suffix.length);
+        return { stem, suffix: actualSuffix };
       }
     }
-    
-    // Fallback split (last 2 characters)
-    if (conjugation.length > 2) {
+
+    if (clean.length > 2) {
       return {
-        stem: conjugation.substring(0, conjugation.length - 2),
-        suffix: conjugation.substring(conjugation.length - 2)
+        stem: clean.substring(0, clean.length - 2),
+        suffix: clean.substring(clean.length - 2)
       };
     }
-    return { stem: conjugation, suffix: '' };
+    return { stem: clean, suffix: '' };
   };
 
-  // Generate Current Drill Questions based on selected mode
-  const currentDrillQuestion = useMemo(() => {
-    if (!selectedVerb) return null;
-
-    const subList = subjects.filter(s => conjugationSet[s.key] && conjugationSet[s.key] !== '—');
-    if (subList.length === 0) return null;
-
-    // Pick pronoun based on index
-    const sub = subList[currentQuestionIdx % subList.length];
-    const correctAnswer = conjugationSet[sub.key] || '';
-
-    // Generate MCQ distractors
-    let options: string[] = [correctAnswer];
-    const otherVerbs = SPANISH_VERBS.filter(v => v.id !== selectedVerb.id);
-    
-    // Distractor 1: Same subject, different verb
-    for (const v of otherVerbs) {
-      const altSet = v.conjugations[activeTense] as Record<string, string>;
-      if (altSet && altSet[sub.key] && altSet[sub.key] !== '—' && altSet[sub.key] !== correctAnswer) {
-        options.push(altSet[sub.key]);
-        break;
-      }
+  // Helper: Highlight conjugated verb ending in context with color coding (stems in neutral, endings in bold terracotta)
+  const renderHighlightedSentence = (sentence: string, verbForm: string, infinitive: string) => {
+    if (!verbForm || verbForm === '—') {
+      return <span>{sentence}</span>;
     }
 
-    // Distractor 2: Different subject, same verb
-    for (const otherSub of subList) {
-      if (otherSub.key !== sub.key) {
-        const altAnswer = conjugationSet[otherSub.key];
-        if (altAnswer && altAnswer !== correctAnswer && !options.includes(altAnswer)) {
-          options.push(altAnswer);
-          break;
-        }
-      }
+    // Clean any multi-word forms like "ha / hay" or "vamos / vayamos"
+    const targetWord = verbForm.split('/')[0].trim();
+    if (!targetWord) return <span>{sentence}</span>;
+
+    const regex = new RegExp(`(\\b${targetWord}\\b)`, 'i');
+    const parts = sentence.split(regex);
+
+    if (parts.length <= 1) {
+      return <span>{sentence}</span>;
     }
 
-    // Fill up to 3 options with random forms
-    while (options.length < 3) {
-      const randSub = subList[Math.floor(Math.random() * subList.length)];
-      const val = conjugationSet[randSub.key];
-      if (val && !options.includes(val)) {
-        options.push(val);
-      } else {
-        options.push(correctAnswer + 's'); // Simple artificial distractor
-      }
-    }
+    const { stem, suffix } = parseStemAndSuffix(infinitive, targetWord);
 
-    // Shuffle options
-    options = options.sort(() => 0.5 - Math.random());
-
-    // Generate Cloze context sentences
-    // Attempt to find a real example sentence from the verb data matching the active tense
-    const matchingExample = selectedVerb.examples.find(
-      ex => ex.es.toLowerCase().includes(correctAnswer.toLowerCase())
-    ) || selectedVerb.examples[0] || { es: `${sub.label_es} [conjugate] hoy.`, en: `I [conjugate] today.`, ar: `أقوم بالتصريف اليوم.` };
-
-    // Format Cloze Spanish Sentence with blank spaces
-    let clozeSentence = matchingExample.es;
-    const regex = new RegExp(`\\b${correctAnswer}\\b`, 'gi');
-    if (regex.test(clozeSentence)) {
-      clozeSentence = clozeSentence.replace(regex, '_______');
-    } else {
-      // Manual replacement fallback
-      clozeSentence = clozeSentence.replace(correctAnswer, '_______');
-    }
-
-    // Surgeon Mode stem & suffix
-    const parsed = parseStemAndSuffix(selectedVerb.infinitive, correctAnswer, sub.key);
-
-    return {
-      subject: sub,
-      correctAnswer,
-      options,
-      clozeSentence,
-      sentenceTranslations: {
-        en: matchingExample.en,
-        ar: matchingExample.ar
-      },
-      stem: parsed.stem,
-      suffix: parsed.suffix
-    };
-  }, [selectedVerb, activeTense, conjugationSet, currentQuestionIdx, subjects]);
-
-  const resetQuestionState = () => {
-    setSelectedMCQOption(null);
-    setClozeUserInput('');
-    setClozeIsSubmitted(false);
-    setSurgeonSelectedStem(null);
-    setSurgeonSelectedSuffix(null);
-    setSurgeonFeedback(null);
+    return (
+      <span className="leading-relaxed">
+        {parts.map((part, pIdx) => {
+          if (part.toLowerCase() === targetWord.toLowerCase()) {
+            return (
+              <span
+                key={pIdx}
+                className="inline-flex items-baseline px-1.5 py-0.5 mx-0.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/30 font-medium"
+              >
+                {/* Stem in neutral bold */}
+                <span className="text-stone-900 dark:text-stone-100 font-extrabold tracking-tight">
+                  {stem}
+                </span>
+                {/* Ending in bold terracotta */}
+                <span className="text-[#C85A32] dark:text-[#E07A5F] font-black underline decoration-2 decoration-[#C85A32]/60 ml-0.5">
+                  {suffix}
+                </span>
+              </span>
+            );
+          }
+          return <span key={pIdx}>{part}</span>;
+        })}
+      </span>
+    );
   };
 
-  const handleNextQuestion = () => {
-    soundEffects.playPop();
-    setCurrentQuestionIdx(prev => prev + 1);
-    resetQuestionState();
+  // Audio trigger with visual feedback
+  const handlePlaySentenceAudio = (text: string, id: string) => {
+    setPlayingSentenceId(id);
+    speakSpanish(text);
+    setTimeout(() => {
+      setPlayingSentenceId(null);
+    }, 2500);
   };
 
-  // MCQ selection check
-  const handleMCQSelect = (option: string) => {
-    if (selectedMCQOption !== null) return; // Answered already
-    setSelectedMCQOption(option);
+  // Mode A: Situational Fill-in Handler
+  const currentFillDrill = SITUATIONAL_FILL_IN_DRILLS[situationalIdx % SITUATIONAL_FILL_IN_DRILLS.length];
+
+  const handleSelectFillOption = (option: string) => {
+    if (fillFeedbackChecked) return;
+    setSelectedFillOption(option);
+    setFillFeedbackChecked(true);
     setTotalAttempted(prev => prev + 1);
 
-    const isCorrect = option.toLowerCase() === currentDrillQuestion?.correctAnswer.toLowerCase();
+    const isCorrect = option.toLowerCase() === currentFillDrill.correctAnswer.toLowerCase();
+    if (isCorrect) {
+      soundEffects.playCorrect();
+      setPracticeStreak(prev => prev + 1);
+      setTotalCorrect(prev => prev + 1);
+    } else {
+      soundEffects.playIncorrect();
+      setPracticeStreak(0);
+    }
+
+    // Instant audio feedback with full sentence pronunciation
+    speakSpanish(currentFillDrill.fullSentence);
+  };
+
+  const handleNextFillDrill = () => {
+    soundEffects.playPop();
+    setSelectedFillOption(null);
+    setFillFeedbackChecked(false);
+    setSituationalIdx(prev => (prev + 1) % SITUATIONAL_FILL_IN_DRILLS.length);
+  };
+
+  // Mode B: Tense Contrast Handler
+  const currentContrastDrill = TENSE_CONTRAST_DRILLS[contrastIdx % TENSE_CONTRAST_DRILLS.length];
+
+  const handleSelectContrastOption = (optionIdx: number) => {
+    if (contrastFeedbackChecked) return;
+    setSelectedContrastOption(optionIdx);
+    setContrastFeedbackChecked(true);
+    setTotalAttempted(prev => prev + 1);
+
+    const isCorrect = currentContrastDrill.challenge.options[optionIdx].isCorrect;
     if (isCorrect) {
       soundEffects.playCorrect();
       setPracticeStreak(prev => prev + 1);
@@ -256,130 +263,90 @@ export const VerbConjugator: React.FC = () => {
     }
   };
 
-  // Cloze submit check
-  const handleClozeSubmit = () => {
-    if (clozeIsSubmitted) return;
-    setClozeIsSubmitted(true);
-    setTotalAttempted(prev => prev + 1);
-
-    const isCorrect = clozeUserInput.trim().toLowerCase() === currentDrillQuestion?.correctAnswer.toLowerCase();
-    if (isCorrect) {
-      soundEffects.playCorrect();
-      setPracticeStreak(prev => prev + 1);
-      setTotalCorrect(prev => prev + 1);
-    } else {
-      soundEffects.playIncorrect();
-      setPracticeStreak(0);
-    }
-  };
-
-  // Suffix Surgeon selection
-  const handleSurgeonSelect = (type: 'stem' | 'suffix', value: string) => {
+  const handleNextContrastDrill = () => {
     soundEffects.playPop();
-    if (type === 'stem') {
-      setSurgeonSelectedStem(value);
-    } else {
-      setSurgeonSelectedSuffix(value);
-    }
+    setSelectedContrastOption(null);
+    setContrastFeedbackChecked(false);
+    setContrastIdx(prev => (prev + 1) % TENSE_CONTRAST_DRILLS.length);
   };
-
-  // Suffix Surgeon submit action
-  useEffect(() => {
-    if (surgeonSelectedStem && surgeonSelectedSuffix && currentDrillQuestion) {
-      const combined = surgeonSelectedStem + surgeonSelectedSuffix;
-      const isCorrect = combined.toLowerCase() === currentDrillQuestion.correctAnswer.toLowerCase();
-      
-      setTotalAttempted(prev => prev + 1);
-      if (isCorrect) {
-        setSurgeonFeedback('correct');
-        soundEffects.playCorrect();
-        setPracticeStreak(prev => prev + 1);
-        setTotalCorrect(prev => prev + 1);
-      } else {
-        setSurgeonFeedback('incorrect');
-        soundEffects.playIncorrect();
-        setPracticeStreak(0);
-      }
-    }
-  }, [surgeonSelectedStem, surgeonSelectedSuffix, currentDrillQuestion]);
 
   return (
-    <div className="space-y-6 pb-24 md:pb-12">
-      {/* Upper Agency Intro Header Banner */}
+    <div className="space-y-6 pb-24 md:pb-12 max-w-7xl mx-auto">
+      {/* 🏛️ Editorial Header */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 border border-stone-800/80 rounded-3xl p-6 sm:p-8 text-stone-100 shadow-xl"
+        className="relative overflow-hidden bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs text-stone-900 dark:text-stone-100"
       >
-        <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-500 text-white shadow-lg shadow-red-500/25">
-                Cognitive Mastery Engine
+              <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#C85A32]/10 text-[#C85A32] dark:text-[#E07A5F] border border-[#C85A32]/25">
+                Estudio de Gramática Contextual
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-stone-900 text-amber-300 border border-stone-800">
-                Scientifically Proven Recall
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-100 dark:bg-stone-850 text-stone-600 dark:text-stone-300">
+                Uso Comunicativo e Inductivo
               </span>
             </div>
-            
-            <h1 className="text-2xl sm:text-3xl font-black text-white font-arabic tracking-tight">
-              Spanish Verb Conjugator & Drill Lab
+
+            <h1 className="text-2xl sm:text-3xl font-black font-serif tracking-tight text-stone-900 dark:text-stone-100">
+              Conjugador Contextual y Laboratorio Comunicativo
             </h1>
-            <p className="text-xs sm:text-sm text-stone-300 max-w-2xl font-arabic">
-              اكتساب تصريف الأفعال الإسبانية وتطبيقها تلقائياً بالاعتماد على الفهم السياقي وعلم الذاكرة المعرفي.
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 max-w-2xl leading-relaxed">
+              Descubre las formas verbales a través de frases reales ilustrativas, con raíces en tono neutro y desinencias en terracota. Domina contrastes temporales en situaciones cotidianas.
             </p>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={togglePractice}
-            className={`px-5 py-3 rounded-2xl text-xs font-black flex items-center gap-2 transition duration-200 cursor-pointer shadow-lg font-arabic ${
+          <button
+            type="button"
+            onClick={() => {
+              soundEffects.playFlip();
+              setIsPracticing(!isPracticing);
+            }}
+            className={`px-5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs ${
               isPracticing
-                ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
-                : 'bg-stone-900 hover:bg-stone-850 text-amber-300 border border-stone-800'
+                ? 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900'
+                : 'bg-[#C85A32] hover:bg-[#B44C27] text-white'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-            <span>{isPracticing ? 'العودة لجدول التصريف' : 'ابدأ تمرين تفاعلي'}</span>
-          </motion.button>
+            <Sparkles className="w-4 h-4" />
+            <span>{isPracticing ? 'Ver Frases Ilustrativas' : 'Entrenar con Ejercicios'}</span>
+          </button>
         </div>
       </motion.div>
 
-      {/* Gamified stats bar during active practice */}
+      {/* 📊 Gamified stats bar during active practice */}
       {isPracticing && (
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-sm"
+          className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-2xs"
         >
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-red-100 dark:bg-red-950/40 rounded-2xl">
-              <TrendingUp className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <div className="p-2.5 bg-[#C85A32]/10 text-[#C85A32] dark:text-[#E07A5F] rounded-xl">
+              <TrendingUp className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase text-stone-400 tracking-wider">Practice Arena</span>
-              <h3 className="text-sm font-black text-stone-900 dark:text-white font-arabic">
-                Active Training Mode
+              <span className="text-[10px] font-bold uppercase text-stone-400 tracking-wider">Modo de Práctica Activa</span>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-white">
+                {practiceMode === 'situational_fill' ? 'Completar en Situación Real' : 'Contraste de Tiempos Verbales'}
               </h3>
             </div>
           </div>
 
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <Flame className="w-5 h-5 text-orange-500 animate-pulse" />
+              <Flame className="w-5 h-5 text-amber-500" />
               <div>
-                <span className="text-[9px] font-black uppercase text-stone-400 block tracking-wider">Streak</span>
-                <span className="text-xs font-extrabold text-stone-900 dark:text-stone-200">{practiceStreak} Correct</span>
+                <span className="text-[10px] font-bold uppercase text-stone-400 block tracking-wider">Racha</span>
+                <span className="text-xs font-extrabold text-stone-900 dark:text-stone-200">{practiceStreak} Aciertos</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2 border-l border-stone-200 dark:border-stone-800 pl-6">
-              <Award className="w-5 h-5 text-amber-500" />
+              <Award className="w-5 h-5 text-emerald-500" />
               <div>
-                <span className="text-[9px] font-black uppercase text-stone-400 block tracking-wider">Accuracy</span>
+                <span className="text-[10px] font-bold uppercase text-stone-400 block tracking-wider">Precisión</span>
                 <span className="text-xs font-extrabold text-stone-900 dark:text-stone-200">
                   {totalAttempted > 0 ? `${Math.round((totalCorrect / totalAttempted) * 100)}%` : '0%'}
                 </span>
@@ -387,15 +354,19 @@ export const VerbConjugator: React.FC = () => {
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 soundEffects.playFlip();
                 setPracticeStreak(0);
                 setTotalAttempted(0);
                 setTotalCorrect(0);
-                resetQuestionState();
+                setSelectedFillOption(null);
+                setFillFeedbackChecked(false);
+                setSelectedContrastOption(null);
+                setContrastFeedbackChecked(false);
               }}
-              className="p-2.5 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500 transition"
-              title="Reset stats"
+              className="p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 transition cursor-pointer"
+              title="Reiniciar estadísticas"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -403,110 +374,114 @@ export const VerbConjugator: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Main Layout grid */}
+      {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Side: Verb directory selection list */}
+        {/* Left Sidebar: Verbs Selector & Multi-Language Search */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-stone-400 flex items-center gap-1.5 font-arabic">
-              <Sliders className="w-4 h-4 text-amber-500" />
-              <span>فلاتر واختيار الأفعال</span>
+          <div className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-4 sm:p-5 shadow-2xs space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
+              <Sliders className="w-4 h-4 text-[#C85A32]" />
+              <span>Búsqueda de Verbos</span>
             </h3>
 
-            {/* Quick search input */}
+            {/* Multi-language search: infinitive, english, or arabic */}
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 type="text"
-                placeholder="ابحث عن فعل (e.g. ser, tener)..."
+                placeholder="Buscar (ej. tener, to have, يملك)..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-2xl text-xs sm:text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:outline-none shadow-xs font-arabic"
+                className="w-full pl-10 pr-4 py-2.5 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl text-xs sm:text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 focus:outline-hidden focus:border-[#C85A32] shadow-2xs"
               />
             </div>
 
-            {/* Categorization selectors */}
+            {/* CEFR & Verb Type Filters */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <label className="text-[10px] font-black uppercase text-stone-400 tracking-wider block mb-1">CEFR Level</label>
+                <label className="text-[10px] font-bold uppercase text-stone-400 tracking-wider block mb-1">Nivel MCER</label>
                 <select
                   value={filterCEFR}
                   onChange={e => { soundEffects.playPop(); setFilterCEFR(e.target.value); }}
-                  className="w-full p-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-stone-800 dark:text-stone-200 font-extrabold focus:outline-none"
+                  className="w-full p-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-stone-800 dark:text-stone-200 font-bold focus:outline-hidden"
                 >
-                  <option value="all">All CEFR</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
+                  <option value="all">Todos los niveles</option>
+                  <option value="A1">A1 Inicial</option>
+                  <option value="A2">A2 Elemental</option>
+                  <option value="B1">B1 Intermedio</option>
+                  <option value="B2">B2 Avanzado</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-stone-400 tracking-wider block mb-1">Verb Class</label>
+                <label className="text-[10px] font-bold uppercase text-stone-400 tracking-wider block mb-1">Tipo de Verbo</label>
                 <select
                   value={filterType}
                   onChange={e => { soundEffects.playPop(); setFilterType(e.target.value); }}
-                  className="w-full p-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-stone-800 dark:text-stone-200 font-extrabold focus:outline-none"
+                  className="w-full p-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-stone-800 dark:text-stone-200 font-bold focus:outline-hidden"
                 >
-                  <option value="all">All Classes</option>
-                  <option value="regular">Regular</option>
-                  <option value="irregular">Irregular</option>
-                  <option value="stem-changing">Stem-change</option>
+                  <option value="all">Todas las clases</option>
+                  <option value="irregular">Irregulares</option>
+                  <option value="stem-changing">Cambio de raíz</option>
+                  <option value="regular">Regulares</option>
                 </select>
               </div>
             </div>
 
-            {/* Actionable verb select panel */}
-            <div className="bg-stone-50 dark:bg-stone-950/50 border border-stone-200/60 dark:border-stone-800/60 rounded-2xl p-1.5 max-h-[420px] overflow-y-auto space-y-1 no-scrollbar">
+            {/* Scrollable Verb List */}
+            <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
               {filteredVerbs.length === 0 ? (
-                <div className="text-center py-10 text-stone-400 text-xs font-arabic">
-                  لا توجد أفعال تطابق الفلاتر
+                <div className="p-6 text-center text-xs text-stone-400 space-y-1">
+                  <p>No se encontraron verbos con ese criterio.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setSearchTerm(''); setFilterCEFR('all'); setFilterType('all'); }}
+                    className="text-[#C85A32] font-bold underline cursor-pointer"
+                  >
+                    Restablecer filtros
+                  </button>
                 </div>
               ) : (
-                filteredVerbs.map(verb => {
-                  const isSelected = verb.id === selectedVerbId;
+                filteredVerbs.map(v => {
+                  const isSelected = v.id === selectedVerbId;
                   return (
-                    <motion.button
-                      key={verb.id}
-                      whileTap={{ scale: 0.98 }}
+                    <button
+                      key={v.id}
+                      type="button"
                       onClick={() => {
                         soundEffects.playPop();
-                        setSelectedVerbId(verb.id);
-                        resetQuestionState();
+                        setSelectedVerbId(v.id);
                       }}
-                      className={`w-full text-left p-3 rounded-xl flex items-center justify-between transition-all border ${
+                      className={`w-full text-left p-3 rounded-xl transition cursor-pointer flex items-center justify-between border ${
                         isSelected
-                          ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md'
-                          : 'hover:bg-stone-100 dark:hover:bg-stone-900 bg-transparent border-transparent text-stone-800 dark:text-stone-200'
+                          ? 'bg-[#C85A32]/10 dark:bg-[#C85A32]/15 border-[#C85A32] text-stone-900 dark:text-white shadow-2xs'
+                          : 'bg-stone-50/60 dark:bg-stone-900/40 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 text-stone-700 dark:text-stone-300'
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-black text-sm tracking-tight">
-                            {verb.infinitive}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm tracking-tight text-stone-900 dark:text-stone-100 font-serif">
+                            {v.infinitive}
                           </span>
-                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase ${
-                            isSelected
-                              ? 'bg-stone-950 text-amber-400'
-                              : verb.regularType === 'irregular'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
-                              : verb.regularType === 'stem-changing'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                            v.regularType === 'irregular'
+                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                              : v.regularType === 'stem-changing'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                           }`}>
-                            {verb.regularType.replace('regular-', '')}
+                            {v.regularType === 'irregular' ? 'Irregular' : v.regularType === 'stem-changing' ? 'Diéresis' : 'Regular'}
                           </span>
                         </div>
-                        <p className={`text-[10px] mt-0.5 line-clamp-1 ${isSelected ? 'text-stone-900/80 font-medium' : 'text-stone-400'}`}>
-                          {verb.english}
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate mt-0.5">
+                          {v.english}
                         </p>
                       </div>
 
-                      <span className={`text-[10px] font-black ${isSelected ? 'text-stone-950' : 'text-stone-400'}`}>
-                        {verb.cefr}
+                      <span className="text-[11px] font-bold text-stone-400 font-arabic shrink-0 ml-2" dir="rtl">
+                        {v.arabic}
                       </span>
-                    </motion.button>
+                    </button>
                   );
                 })
               )}
@@ -514,72 +489,68 @@ export const VerbConjugator: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: Showcase OR Interactive Practice Arena */}
-        <div className="lg:col-span-8 space-y-5">
-          {/* Active Verb Details Showcase Header */}
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-sm">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-stone-100 dark:border-stone-800 pb-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-3xl font-black text-stone-900 dark:text-white tracking-tight">
+        {/* Right Main Column: Contextual Illustrative Sentences or Drills */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Active Verb Summary Bar */}
+          <div className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-5 shadow-2xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-black font-serif text-stone-900 dark:text-stone-100">
                     {selectedVerb.infinitive}
                   </h2>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <button
+                    type="button"
                     onClick={() => speakSpanish(selectedVerb.infinitive)}
-                    className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 transition"
-                    title="Pronounce"
+                    className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-[#C85A32]/10 text-stone-500 hover:text-[#C85A32] transition cursor-pointer"
+                    title={`Pronunciar ${selectedVerb.infinitive}`}
                   >
-                    <Volume2 className="w-5 h-5" />
-                  </motion.button>
-                  <span className="px-2.5 py-0.8 rounded-xl text-[10px] font-black uppercase bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
-                    Level {selectedVerb.cefr}
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#C85A32]/10 text-[#C85A32] dark:text-[#E07A5F]">
+                    {selectedVerb.cefr}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm font-bold text-stone-600 dark:text-stone-300">
-                  🇬🇧 {selectedVerb.english}
-                </p>
-                <p className="text-xs sm:text-sm font-extrabold text-amber-600 dark:text-amber-400 font-arabic flex items-center gap-1.5" dir="rtl">
-                  <span>🇦🇪 {selectedVerb.arabic}</span>
+                <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
+                  {selectedVerb.english} • <span className="font-arabic" dir="rtl">{selectedVerb.arabic}</span>
                 </p>
               </div>
 
-              {/* Gerund & Participle blocks */}
-              <div className="flex items-center gap-3 text-xs bg-stone-50 dark:bg-stone-950 p-3 rounded-2xl border border-stone-200/80 dark:border-stone-800/80">
-                <div>
-                  <span className="text-[10px] text-stone-400 block font-bold">Gerund</span>
-                  <span className="font-extrabold text-stone-800 dark:text-stone-200 font-mono">{selectedVerb.gerund}</span>
+              {/* Participles and Gerunds */}
+              <div className="flex items-center gap-2 text-xs">
+                <div className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-850 text-stone-700 dark:text-stone-300">
+                  <span className="text-stone-400 text-[10px] uppercase font-bold mr-1">Gerundio:</span>
+                  <span className="font-bold">{selectedVerb.gerund}</span>
                 </div>
-                <div className="border-l border-stone-200 dark:border-stone-800 pl-3">
-                  <span className="text-[10px] text-stone-400 block font-bold">Participle</span>
-                  <span className="font-extrabold text-stone-800 dark:text-stone-200 font-mono">{selectedVerb.participle}</span>
+                <div className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-850 text-stone-700 dark:text-stone-300">
+                  <span className="text-stone-400 text-[10px] uppercase font-bold mr-1">Participio:</span>
+                  <span className="font-bold">{selectedVerb.participle}</span>
                 </div>
               </div>
             </div>
 
-            {/* Select Tense Pills */}
-            <div className="pt-4">
-              <span className="text-[10px] font-black text-stone-400 uppercase tracking-wider block mb-2 font-arabic">
-                اختر الزمن والقسم القواعدي
+            {/* Tense Selector Pills */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                Selecciona el Tiempo Verbal:
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 {tensesConfig.map(tense => (
                   <button
                     key={tense.id}
+                    type="button"
                     onClick={() => {
                       soundEffects.playPop();
                       setActiveTense(tense.id);
-                      resetQuestionState();
                     }}
-                    className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-150 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
                       activeTense === tense.id
-                        ? 'bg-amber-500 text-stone-950 shadow-md'
-                        : 'bg-stone-50 hover:bg-stone-100 dark:bg-stone-950 dark:hover:bg-stone-900 text-stone-600 dark:text-stone-400'
+                        ? 'bg-[#C85A32] text-white shadow-2xs'
+                        : 'bg-stone-100 dark:bg-stone-850 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800'
                     }`}
                   >
                     <span>{tense.name_es}</span>
-                    <span className="text-[9px] opacity-70 ml-1">({tense.level})</span>
+                    <span className="text-[10px] opacity-75 ml-1">({tense.level})</span>
                   </button>
                 ))}
               </div>
@@ -588,420 +559,447 @@ export const VerbConjugator: React.FC = () => {
 
           <AnimatePresence mode="wait">
             {!isPracticing ? (
-              /* VIEW MODE: INTERACTIVE CONJUGATION MATRIX (REGULAR/IRREGULAR PATTERN ANALYSIS) */
+              /* ======================================================== */
+              /* 1. CONTEXTUAL VERB CONJUGATOR REDESIGN: REAL SENTENCES   */
+              /* ======================================================== */
               <motion.div
-                key="matrix-view"
-                initial={{ opacity: 0, y: 10 }}
+                key="contextual-sentences-view"
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4"
+                exit={{ opacity: 0, y: -8 }}
+                className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-2xs space-y-4"
               >
                 <div className="flex justify-between items-center flex-wrap gap-2 border-b border-stone-100 dark:border-stone-800 pb-3">
                   <div>
-                    <h3 className="text-base font-black text-stone-900 dark:text-white font-arabic">
-                      {tensesConfig.find(t => t.id === activeTense)?.name_es} • Matrix
+                    <h3 className="text-base font-bold font-serif text-stone-900 dark:text-stone-100">
+                      {tensesConfig.find(t => t.id === activeTense)?.name_es} • Frases Ilustrativas en Contexto
                     </h3>
-                    <p className="text-[11px] text-stone-400">
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
                       {tensesConfig.find(t => t.id === activeTense)?.name_en}
                     </p>
                   </div>
 
-                  <span className="text-xs font-extrabold text-amber-600 dark:text-amber-500 font-arabic" dir="rtl">
+                  <span className="text-xs font-bold text-[#C85A32] dark:text-[#E07A5F] font-arabic" dir="rtl">
                     {tensesConfig.find(t => t.id === activeTense)?.name_ar}
                   </span>
                 </div>
 
-                {/* Suffix / Stem Breakdown Schema Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {/* Color Legend Note */}
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 text-xs text-stone-600 dark:text-stone-300">
+                  <span className="font-bold">Guía de Color:</span>
+                  <span className="inline-flex items-center gap-1 font-semibold">
+                    <span className="text-stone-900 dark:text-stone-100 font-extrabold">Raíz en tono neutro</span>
+                    <span>+</span>
+                    <span className="text-[#C85A32] dark:text-[#E07A5F] font-black underline decoration-[#C85A32]">Desinencia en terracota</span>
+                  </span>
+                  <span className="text-stone-400 text-[11px] ml-auto hidden sm:inline">
+                    Haz clic en cualquier frase para escuchar su pronunciación nativa
+                  </span>
+                </div>
+
+                {/* Contextual Illustrative Sentences List (Replacing decontextualized 6-box tables) */}
+                <div className="space-y-3">
                   {subjects.map(sub => {
                     const form = conjugationSet[sub.key] || '—';
-                    const parsed = parseStemAndSuffix(selectedVerb.infinitive, form, sub.key);
+                    if (form === '—') return null;
+
+                    const sentenceData = getContextualVerbSentence(
+                      selectedVerb.infinitive,
+                      selectedVerb.id,
+                      activeTense as string,
+                      sub.key,
+                      form,
+                      selectedVerb.english
+                    );
+
+                    const isPlaying = playingSentenceId === `${sub.key}-${activeTense}`;
 
                     return (
-                      <motion.div
+                      <div
                         key={sub.key}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => speakSpanish(`${sub.label_es} ${form}`)}
-                        className="group bg-stone-50 dark:bg-stone-950/40 hover:bg-amber-500/5 dark:hover:bg-amber-500/10 border border-stone-200 dark:border-stone-800 hover:border-amber-500/40 rounded-2xl p-4 transition-all duration-200 cursor-pointer text-left relative overflow-hidden"
+                        onClick={() => handlePlaySentenceAudio(sentenceData.es, `${sub.key}-${activeTense}`)}
+                        className={`p-4 rounded-2xl border transition group cursor-pointer space-y-2 ${
+                          isPlaying
+                            ? 'bg-amber-500/10 dark:bg-amber-400/10 border-[#C85A32] shadow-2xs'
+                            : 'bg-stone-50/70 dark:bg-stone-900/50 hover:bg-stone-100/70 dark:hover:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-amber-500/40'
+                        }`}
                       >
-                        <div className="flex justify-between items-center text-[10px] text-stone-400 font-bold mb-1">
-                          <span>{sub.label_es}</span>
-                          <Volume2 className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-500 transition-transform group-hover:scale-110" />
+                        {/* Subject pronoun header and quick audio button */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-white dark:bg-stone-850 text-stone-800 dark:text-stone-200 border border-stone-200/80 dark:border-stone-800 shadow-2xs">
+                              {sub.label_es}
+                            </span>
+                            <span className="text-xs text-stone-400">({sub.label_en})</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                              {form}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                handlePlaySentenceAudio(sentenceData.es, `${sub.key}-${activeTense}`);
+                              }}
+                              className="p-1.5 rounded-lg bg-white dark:bg-stone-850 text-stone-400 group-hover:text-[#C85A32] transition cursor-pointer shadow-2xs"
+                              title="Escuchar frase completa"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Visual Stem & Suffix distinction */}
-                        <div className="text-lg font-black tracking-tight leading-none">
-                          {form === '—' ? (
-                            <span className="text-stone-300">—</span>
-                          ) : (
-                            <>
-                              <span className={
-                                selectedVerb.regularType === 'irregular' || selectedVerb.regularType === 'stem-changing'
-                                  ? 'text-orange-600 dark:text-orange-400' // Irregular roots glow orange
-                                  : 'text-stone-900 dark:text-stone-200'
-                              }>
-                                {parsed.stem}
-                              </span>
-                              <span className="text-amber-500">
-                                {parsed.suffix}
-                              </span>
-                            </>
-                          )}
+                        {/* Real-World Contextual Sentence with Color-Coded Stem & Ending */}
+                        <div className="text-base sm:text-lg font-serif text-stone-900 dark:text-stone-100 font-normal">
+                          {renderHighlightedSentence(sentenceData.es, form, selectedVerb.infinitive)}
                         </div>
 
-                        <div className="flex items-center justify-between mt-2 pt-1 border-t border-stone-100 dark:border-stone-850">
-                          <span className="text-[10px] text-stone-400">
-                            {sub.label_en}
-                          </span>
-                          <span className="text-[10px] text-stone-500 font-arabic">
-                            {sub.label_ar}
+                        {/* Bilingual translations */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-1 border-t border-stone-200/40 dark:border-stone-800/60 text-xs text-stone-500 dark:text-stone-400">
+                          <span>🇬🇧 {sentenceData.en}</span>
+                          <span className="font-arabic text-stone-600 dark:text-stone-300 text-right" dir="rtl">
+                            🇦🇪 {sentenceData.ar}
                           </span>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
               </motion.div>
             ) : (
-              /* THE SCIENTIFIC DRILL ARENA (GAMIFIED INTERACTIVE MODES) */
+              /* ======================================================== */
+              /* 2. COMMUNICATIVE VERB DRILLS: SITUATIONAL & CONTRAST     */
+              /* ======================================================== */
               <motion.div
-                key="drill-practice-view"
-                initial={{ opacity: 0, y: 10 }}
+                key="communicative-drills-view"
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-md space-y-6"
+                exit={{ opacity: 0, y: -8 }}
+                className="bg-white dark:bg-[#181615] border border-stone-200/90 dark:border-stone-800 rounded-3xl p-5 sm:p-6 shadow-2xs space-y-6"
               >
-                {/* 3 Scientific Mode Selector Tabs */}
-                <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 flex-wrap gap-2">
-                  <div className="flex bg-stone-200 dark:bg-stone-950 p-1 rounded-2xl">
+                {/* Mode Selector Tabs (Situational Fill-in vs Tense Contrast) */}
+                <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3 flex-wrap gap-2">
+                  <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl">
                     <button
-                      onClick={() => { soundEffects.playFlip(); setPracticeMode('mcq'); resetQuestionState(); }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                        practiceMode === 'mcq'
-                          ? 'bg-amber-500 text-stone-950'
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playFlip();
+                        setPracticeMode('situational_fill');
+                        setSelectedFillOption(null);
+                        setFillFeedbackChecked(false);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        practiceMode === 'situational_fill'
+                          ? 'bg-[#C85A32] text-white shadow-2xs'
                           : 'text-stone-600 dark:text-stone-400'
                       }`}
                     >
-                      Rapid MCQ
+                      Modo A: Situational Fill-in
                     </button>
                     <button
-                      onClick={() => { soundEffects.playFlip(); setPracticeMode('cloze'); resetQuestionState(); }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                        practiceMode === 'cloze'
-                          ? 'bg-amber-500 text-stone-950'
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playFlip();
+                        setPracticeMode('tense_contrast');
+                        setSelectedContrastOption(null);
+                        setContrastFeedbackChecked(false);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        practiceMode === 'tense_contrast'
+                          ? 'bg-[#C85A32] text-white shadow-2xs'
                           : 'text-stone-600 dark:text-stone-400'
                       }`}
                     >
-                      Sentence Cloze
-                    </button>
-                    <button
-                      onClick={() => { soundEffects.playFlip(); setPracticeMode('surgeon'); resetQuestionState(); }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                        practiceMode === 'surgeon'
-                          ? 'bg-amber-500 text-stone-950'
-                          : 'text-stone-600 dark:text-stone-400'
-                      }`}
-                    >
-                      Suffix Surgeon
+                      Modo B: Tense Contrast
                     </button>
                   </div>
 
-                  <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-500 tracking-wider">
-                    {practiceMode === 'mcq' && '1. Pattern Recognition Speed'}
-                    {practiceMode === 'cloze' && '2. Contextual Integration'}
-                    {practiceMode === 'surgeon' && '3. Suffix Synthesis Recall'}
+                  <span className="text-xs font-bold text-stone-500">
+                    {practiceMode === 'situational_fill'
+                      ? 'Frases reales con audio inmediato'
+                      : 'Comparación paralela de tiempos sutiles'}
                   </span>
                 </div>
 
-                {/* Drill Area Card */}
-                {currentDrillQuestion && (
-                  <div className="space-y-6 bg-white dark:bg-stone-950 border border-stone-150 dark:border-stone-850 rounded-2xl p-5 shadow-sm">
-                    {/* Prompt Header */}
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase text-amber-600 tracking-wider">Target Subject Pronoun</span>
-                        <h4 className="text-xl font-black text-stone-900 dark:text-white flex items-center gap-2">
-                          <span className="bg-amber-500/10 text-amber-700 px-3 py-1 rounded-xl">
-                            {currentDrillQuestion.subject.label_es}
-                          </span>
-                          <span className="text-stone-400 text-sm">({currentDrillQuestion.subject.label_en})</span>
-                        </h4>
+                {/* ----------------- MODE A: SITUATIONAL FILL-IN ----------------- */}
+                {practiceMode === 'situational_fill' && (
+                  <div className="space-y-6">
+                    {/* Communicative Scenario Prompt */}
+                    <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/25 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#B47832] dark:text-amber-400">
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Situación Comunicativa Real:</span>
                       </div>
-
-                      <button
-                        onClick={() => speakSpanish(currentDrillQuestion.correctAnswer)}
-                        className="p-2 bg-stone-100 dark:bg-stone-900 text-stone-500 hover:text-amber-500 rounded-xl"
-                        title="Hear answer hint"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                      </button>
+                      <p className="text-sm font-semibold text-stone-800 dark:text-stone-200">
+                        {currentFillDrill.situation}
+                      </p>
+                      <p className="text-xs text-stone-600 dark:text-stone-400 font-arabic text-right" dir="rtl">
+                        {currentFillDrill.situation_ar}
+                      </p>
                     </div>
 
-                    {/* INTERACTIVE MODE IMPLEMENTATIONS */}
-                    {practiceMode === 'mcq' && (
-                      <div className="space-y-4">
-                        <p className="text-xs text-stone-400 font-arabic">
-                          ✍️ اختر التصريف الصحيح للضمير المعطى:
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {currentDrillQuestion.options.map((option, idx) => {
-                            const isSelected = selectedMCQOption === option;
-                            const isCorrect = option.toLowerCase() === currentDrillQuestion.correctAnswer.toLowerCase();
-                            const hasBeenAnswered = selectedMCQOption !== null;
-
-                            return (
-                              <motion.button
-                                key={idx}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => handleMCQSelect(option)}
-                                className={`p-4 rounded-2xl text-base font-black transition border-2 flex flex-col items-center justify-center gap-1.5 ${
-                                  hasBeenAnswered
-                                    ? isCorrect
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-700 text-emerald-800 dark:text-emerald-400'
-                                      : isSelected
-                                      ? 'bg-red-50 dark:bg-red-950/20 border-red-400 dark:border-red-700 text-red-800 dark:text-red-400'
-                                      : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-850 opacity-40'
-                                    : 'bg-stone-50 dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-850 border-stone-200 dark:border-stone-800 hover:border-amber-500'
-                                }`}
-                              >
-                                <span className="font-mono">{option}</span>
-                                {hasBeenAnswered && isCorrect && <Check className="w-4 h-4 text-emerald-500" />}
-                                {hasBeenAnswered && !isCorrect && isSelected && <X className="w-4 h-4 text-red-500" />}
-                              </motion.button>
-                            );
-                          })}
-                        </div>
+                    {/* Sentence Snippet with Blank */}
+                    <div className="p-5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-250 dark:border-stone-800 space-y-3">
+                      <div className="flex items-center justify-between text-xs text-stone-400">
+                        <span>Verbo: <strong className="text-stone-800 dark:text-stone-200">{currentFillDrill.verbInfinitive}</strong></span>
+                        <span className="font-bold text-[#C85A32]">{currentFillDrill.tenseLabel}</span>
                       </div>
-                    )}
 
-                    {practiceMode === 'cloze' && (
-                      <div className="space-y-5">
-                        <div className="p-4 bg-stone-50 dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-2xl text-center space-y-2">
-                          <span className="text-[9px] font-black uppercase text-stone-400 block tracking-wider">Spanish Context Scenario</span>
-                          <p className="text-lg font-black text-stone-800 dark:text-stone-100 tracking-wide font-mono">
-                            {currentDrillQuestion.clozeSentence}
-                          </p>
+                      <h4 className="text-lg sm:text-xl font-serif text-stone-900 dark:text-white leading-relaxed font-semibold">
+                        {currentFillDrill.sentenceWithBlank}
+                      </h4>
 
-                          {/* Bilingual translations */}
-                          <div className="pt-2 border-t border-stone-200/60 dark:border-stone-800 flex flex-col gap-0.5">
-                            <p className="text-xs text-stone-500">🇬🇧 {currentDrillQuestion.sentenceTranslations.en}</p>
-                            <p className="text-xs text-amber-800 dark:text-amber-500 font-arabic" dir="rtl">🇦🇪 {currentDrillQuestion.sentenceTranslations.ar}</p>
-                          </div>
-                        </div>
+                      <div className="flex flex-col sm:flex-row justify-between text-xs text-stone-500 dark:text-stone-400 gap-1 pt-1 border-t border-stone-200/50 dark:border-stone-800">
+                        <span>🇬🇧 {currentFillDrill.translation_en}</span>
+                        <span className="font-arabic" dir="rtl">🇦🇪 {currentFillDrill.translation_ar}</span>
+                      </div>
+                    </div>
 
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-stone-400 tracking-wider block">Conjugate Verb in the sentence</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={clozeUserInput}
-                              onChange={e => setClozeUserInput(e.target.value)}
-                              placeholder={`Type form of [${selectedVerb.infinitive}]`}
-                              disabled={clozeIsSubmitted}
-                              onKeyDown={e => { if (e.key === 'Enter') handleClozeSubmit(); }}
-                              className={`flex-1 px-4 py-3 bg-stone-50 dark:bg-stone-900 border rounded-2xl text-sm font-black tracking-wide focus:outline-none focus:ring-2 focus:ring-amber-500/20 ${
-                                clozeIsSubmitted
-                                  ? clozeUserInput.trim().toLowerCase() === currentDrillQuestion.correctAnswer.toLowerCase()
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-400 text-emerald-800'
-                                    : 'bg-red-50 dark:bg-red-950/20 border-red-400 text-red-800'
-                                  : 'border-stone-200 dark:border-stone-800'
+                    {/* 4 Interactive Option Buttons */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-stone-500 block">
+                        Selecciona la forma conjugada correcta:
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        {currentFillDrill.options.map((opt, optIdx) => {
+                          const isSelected = selectedFillOption === opt;
+                          const isRight = opt.toLowerCase() === currentFillDrill.correctAnswer.toLowerCase();
+
+                          return (
+                            <button
+                              key={optIdx}
+                              type="button"
+                              onClick={() => handleSelectFillOption(opt)}
+                              disabled={fillFeedbackChecked}
+                              className={`p-3.5 rounded-xl font-bold text-sm transition cursor-pointer border ${
+                                fillFeedbackChecked
+                                  ? isRight
+                                    ? 'bg-emerald-500 text-white border-emerald-600 font-black'
+                                    : isSelected
+                                    ? 'bg-rose-500/15 text-rose-600 border-rose-400'
+                                    : 'bg-stone-100 dark:bg-stone-900 text-stone-400 border-stone-200 dark:border-stone-800 opacity-50'
+                                  : isSelected
+                                  ? 'bg-[#C85A32] text-white border-[#C85A32]'
+                                  : 'bg-stone-50 dark:bg-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-800'
                               }`}
-                            />
-                            {!clozeIsSubmitted ? (
-                              <button
-                                onClick={handleClozeSubmit}
-                                className="px-4 bg-amber-500 text-stone-950 hover:bg-amber-400 rounded-2xl font-black text-xs"
-                              >
-                                Submit
-                              </button>
-                            ) : (
-                              <div className="px-4 py-2 bg-stone-100 dark:bg-stone-900 rounded-2xl flex items-center gap-1.5 text-xs text-stone-500 font-black font-mono">
-                                Correct: {currentDrillQuestion.correctAnswer}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
 
-                    {practiceMode === 'surgeon' && (
-                      <div className="space-y-5">
-                        <p className="text-xs text-stone-400 font-arabic">
-                          🧠 التركيب المعرفي: صل الجذر (Stem) باللاحقة (Suffix) الصحيحة لتكوين الفعل المطلوب:
+                    {/* Formative Recast & Instant Audio Feedback */}
+                    {fillFeedbackChecked && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/5 border border-emerald-500/30 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Frase Completa con Pronunciación Nativa:</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => speakSpanish(currentFillDrill.fullSentence)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>Repetir Audio</span>
+                          </button>
+                        </div>
+
+                        <p className="text-base font-serif font-bold text-stone-900 dark:text-white">
+                          "{currentFillDrill.fullSentence}"
                         </p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* Stems list */}
-                          <div className="space-y-2">
-                            <span className="text-[9px] font-black uppercase text-stone-400 block tracking-wider">1. Pick Root Stem</span>
-                            <div className="grid grid-cols-2 gap-2">
-                              {[currentDrillQuestion.stem, selectedVerb.infinitive.substring(0, selectedVerb.infinitive.length - 2) + 'x'].map((s, idx) => {
-                                const isSelected = surgeonSelectedStem === s;
-                                return (
-                                  <button
-                                    key={idx}
-                                    onClick={() => handleSurgeonSelect('stem', s)}
-                                    className={`p-3 rounded-xl border text-xs font-black tracking-widest uppercase ${
-                                      isSelected
-                                        ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
-                                        : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:bg-stone-100'
-                                    }`}
-                                  >
-                                    {s}-
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Suffix options list */}
-                          <div className="space-y-2">
-                            <span className="text-[9px] font-black uppercase text-stone-400 block tracking-wider">2. Pick Ending Suffix</span>
-                            <div className="grid grid-cols-2 gap-2">
-                              {[currentDrillQuestion.suffix, 'amos', 'eis', 'an'].slice(0, 4).sort().map((s, idx) => {
-                                const isSelected = surgeonSelectedSuffix === s;
-                                return (
-                                  <button
-                                    key={idx}
-                                    onClick={() => handleSurgeonSelect('suffix', s)}
-                                    className={`p-3 rounded-xl border text-xs font-black tracking-widest uppercase ${
-                                      isSelected
-                                        ? 'bg-amber-500 border-amber-400 text-stone-950 shadow-sm'
-                                        : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:bg-stone-100'
-                                    }`}
-                                  >
-                                    -{s}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
+                        <div className="space-y-1 text-xs text-stone-700 dark:text-stone-300 leading-relaxed border-t border-emerald-500/20 pt-2">
+                          <p>💡 {currentFillDrill.formativeExplanation_en}</p>
+                          <p className="font-arabic text-right text-stone-600 dark:text-stone-400" dir="rtl">
+                            {currentFillDrill.formativeExplanation_ar}
+                          </p>
                         </div>
 
-                        {/* Combined Surgery Feedback */}
-                        {surgeonFeedback && (
-                          <div className={`p-4 rounded-xl text-center font-black ${
-                            surgeonFeedback === 'correct'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 border border-emerald-400'
-                              : 'bg-red-50 dark:bg-red-950/20 text-red-800 border border-red-400'
-                          }`}>
-                            {surgeonFeedback === 'correct' ? (
-                              <p className="text-xs">
-                                Perfect Surgery! {surgeonSelectedStem} + {surgeonSelectedSuffix} = {currentDrillQuestion.correctAnswer}
-                              </p>
-                            ) : (
-                              <p className="text-xs">
-                                Flatline! {surgeonSelectedStem} + {surgeonSelectedSuffix} is incorrect. Target: {currentDrillQuestion.correctAnswer}
-                              </p>
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={handleNextFillDrill}
+                            className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                          >
+                            <span>Siguiente Frase Situacional</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                )}
+
+                {/* ----------------- MODE B: TENSE CONTRAST ----------------- */}
+                {practiceMode === 'tense_contrast' && (
+                  <div className="space-y-6">
+                    {/* Concept Header */}
+                    <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#C85A32] block">
+                        Contraste Conceptual Clave
+                      </span>
+                      <h4 className="text-lg font-bold font-serif text-stone-900 dark:text-stone-100">
+                        {currentContrastDrill.title}
+                      </h4>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 font-arabic mt-0.5" dir="rtl">
+                        {currentContrastDrill.title_ar}
+                      </p>
+                      <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed mt-2 bg-stone-50 dark:bg-stone-900 p-2.5 rounded-xl border border-stone-200/60 dark:border-stone-800">
+                        {currentContrastDrill.conceptExplanation_en}
+                      </p>
+                    </div>
+
+                    {/* Side-by-Side Comparison Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Pair A */}
+                      <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#B47832] text-white">
+                            {currentContrastDrill.pairA.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => speakSpanish(currentContrastDrill.pairA.sentence_es)}
+                            className="p-1 rounded-md text-stone-500 hover:text-[#C85A32] transition cursor-pointer"
+                            title="Escuchar pronunciación"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <p className="text-base font-serif font-bold text-stone-900 dark:text-white">
+                          "{currentContrastDrill.pairA.sentence_es}"
+                        </p>
+
+                        <p className="text-xs text-stone-600 dark:text-stone-400">
+                          🇬🇧 {currentContrastDrill.pairA.sentence_en}
+                        </p>
+                        <p className="text-xs font-arabic text-stone-600 dark:text-stone-400 text-right" dir="rtl">
+                          🇦🇪 {currentContrastDrill.pairA.sentence_ar}
+                        </p>
+
+                        <div className="pt-1 border-t border-amber-500/20 text-[11px] font-semibold text-[#B47832] dark:text-amber-400">
+                          {currentContrastDrill.pairA.aspectNote}
+                        </div>
+                      </div>
+
+                      {/* Pair B */}
+                      <div className="p-4 rounded-2xl bg-purple-500/10 dark:bg-purple-400/5 border border-purple-500/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-700 text-white">
+                            {currentContrastDrill.pairB.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => speakSpanish(currentContrastDrill.pairB.sentence_es)}
+                            className="p-1 rounded-md text-stone-500 hover:text-purple-600 transition cursor-pointer"
+                            title="Escuchar pronunciación"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <p className="text-base font-serif font-bold text-stone-900 dark:text-white">
+                          "{currentContrastDrill.pairB.sentence_es}"
+                        </p>
+
+                        <p className="text-xs text-stone-600 dark:text-stone-400">
+                          🇬🇧 {currentContrastDrill.pairB.sentence_en}
+                        </p>
+                        <p className="text-xs font-arabic text-stone-600 dark:text-stone-400 text-right" dir="rtl">
+                          🇦🇪 {currentContrastDrill.pairB.sentence_ar}
+                        </p>
+
+                        <div className="pt-1 border-t border-purple-500/20 text-[11px] font-semibold text-purple-700 dark:text-purple-400">
+                          {currentContrastDrill.pairB.aspectNote}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Interactive Contrast Challenge */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                          Reto de Discriminación Significativa:
+                        </span>
+                        <h5 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                          {currentContrastDrill.challenge.prompt}
+                        </h5>
+                        <p className="text-xs text-stone-500 font-arabic text-right" dir="rtl">
+                          {currentContrastDrill.challenge.prompt_ar}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {currentContrastDrill.challenge.options.map((opt, oIdx) => {
+                          const isSelected = selectedContrastOption === oIdx;
+                          return (
+                            <button
+                              key={oIdx}
+                              type="button"
+                              onClick={() => handleSelectContrastOption(oIdx)}
+                              disabled={contrastFeedbackChecked}
+                              className={`w-full text-left p-3.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                                contrastFeedbackChecked
+                                  ? opt.isCorrect
+                                    ? 'bg-emerald-500 text-white border-emerald-600 font-black'
+                                    : isSelected
+                                    ? 'bg-rose-500/15 text-rose-600 border-rose-400'
+                                    : 'bg-white dark:bg-stone-850 text-stone-400 border-stone-200 dark:border-stone-800 opacity-50'
+                                  : isSelected
+                                  ? 'bg-[#C85A32] text-white border-[#C85A32]'
+                                  : 'bg-white dark:bg-stone-850 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-800'
+                              }`}
+                            >
+                              <span>{opt.text}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {contrastFeedbackChecked && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="pt-2 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between flex-wrap gap-2"
+                        >
+                          <div className="text-xs text-stone-700 dark:text-stone-300">
+                            {selectedContrastOption !== null && (
+                              <p>💡 {currentContrastDrill.challenge.options[selectedContrastOption].explanation}</p>
                             )}
                           </div>
-                        )}
-                      </div>
-                    )}
 
-                    {/* Controller and Navigation actions */}
-                    <div className="flex justify-between items-center pt-4 border-t border-stone-200 dark:border-stone-850">
-                      <button
-                        onClick={() => {
-                          soundEffects.playFlip();
-                          resetQuestionState();
-                        }}
-                        className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 font-extrabold"
-                      >
-                        Reset Drill
-                      </button>
-
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleNextQuestion}
-                        className="px-5 py-2.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 rounded-2xl text-xs font-black flex items-center gap-1.5 transition"
-                      >
-                        <span>Next Conjugation</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </motion.button>
+                          <button
+                            type="button"
+                            onClick={handleNextContrastDrill}
+                            className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs ml-auto"
+                          >
+                            <span>Siguiente Contraste</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.div>
+                      )}
                     </div>
                   </div>
                 )}
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Suffix Formulas, Prepositions & Learning Pitfalls Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Real life contexts */}
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 shadow-sm space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-stone-400 flex items-center gap-1.5 font-arabic">
-                <BookOpen className="w-4 h-4 text-amber-500" />
-                <span>أمثلة سياقية حية • Examples</span>
-              </h4>
-
-              <div className="space-y-3">
-                {selectedVerb.examples.map((ex, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => speakSpanish(ex.es)}
-                    className="p-3 bg-stone-50 hover:bg-amber-500/5 dark:bg-stone-950 dark:hover:bg-stone-900 border border-stone-200/60 dark:border-stone-850 rounded-2xl cursor-pointer transition flex items-start justify-between gap-2"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-black text-stone-900 dark:text-stone-100 leading-snug">
-                        🇪🇸 {ex.es}
-                      </p>
-                      <p className="text-[11px] text-stone-500">
-                        🇬🇧 {ex.en}
-                      </p>
-                      <p className="text-[11px] text-amber-700 dark:text-amber-400 font-arabic font-semibold" dir="rtl">
-                        🇦🇪 {ex.ar}
-                      </p>
-                    </div>
-
-                    <Volume2 className="w-4 h-4 text-stone-400 shrink-0 mt-0.5" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Pitfalls and Common Mistakes */}
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 shadow-sm space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-stone-400 flex items-center gap-1.5 font-arabic">
-                <HelpCircle className="w-4 h-4 text-red-500 animate-pulse" />
-                <span>أخطاء شائعة وتنبيهات • Pitfalls</span>
-              </h4>
-
-              {selectedVerb.commonMistakes && (
-                <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200/60 dark:border-red-900/40 rounded-2xl space-y-1.5">
-                  <span className="font-black text-red-700 dark:text-red-400 text-xs block">⚠️ Caution / انتبه:</span>
-                  <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
-                    {selectedVerb.commonMistakes}
-                  </p>
-                  {selectedVerb.commonMistakes_ar && (
-                    <p className="text-xs text-red-900 dark:text-red-400 font-arabic font-medium leading-relaxed" dir="rtl">
-                      {selectedVerb.commonMistakes_ar}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {selectedVerb.collocations && (
-                <div className="p-4 bg-stone-50 dark:bg-stone-950 border border-stone-250 dark:border-stone-850 rounded-2xl space-y-2">
-                  <span className="font-black text-stone-600 dark:text-stone-300 text-[10px] uppercase tracking-wider block">Bilingual Collocations</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedVerb.collocations.map((col, i) => (
-                      <span
-                        key={i}
-                        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-800 dark:text-stone-200 px-2.5 py-1 rounded-xl text-xs font-black tracking-tight"
-                      >
-                        {col}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default VerbConjugator;

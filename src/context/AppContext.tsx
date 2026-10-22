@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { UserProgress } from '../types';
-import { loadUserProgress, saveUserProgress, createZeroUserProgress } from '../utils/storage';
+import { ComprehensibilityScore } from '../types/curriculum';
+import { calculateComprehensibilityScore } from '../services/comprehensibleInputService';
+import { loadUserProgress, saveUserProgress, createZeroUserProgress, mergeUserProgress } from '../utils/storage';
 import {
   auth,
   signUpWithEmail,
@@ -52,6 +54,8 @@ interface AppContextType {
   handleLessonCompleted: (lessonId: string) => void;
   grammarPracticeTopic: { id: string; title_es: string; title_en: string; formula?: string } | null;
   setGrammarPracticeTopic: (topic: { id: string; title_es: string; title_en: string; formula?: string } | null) => void;
+  userKnownLemmas: Set<string>;
+  analyzeComprehensibleInput: (text: string) => ComprehensibilityScore;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -70,7 +74,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
+  const [userProgress, setUserProgress] = useState<UserProgress>(loadUserProgress());
+  const [authUser, setAuthUser] = useState<User | null>(getStoredFallbackUser());
+
+  // Refs for debounced cloud sync to avoid stale closures
+  const userProgressRef = useRef<UserProgress>(userProgress);
+  userProgressRef.current = userProgress;
+  const authUserRef = useRef<User | null>(authUser);
+  authUserRef.current = authUser;
+  const cloudSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced cloud write flusher
+  const flushCloudSync = useCallback(() => {
+    if (cloudSyncTimeoutRef.current) {
+      clearTimeout(cloudSyncTimeoutRef.current);
+      cloudSyncTimeoutRef.current = null;
+    }
+    const user = authUserRef.current;
+    const progress = userProgressRef.current;
+    if (user && !user.isAnonymous && !user.uid.startsWith('guest_') && !user.uid.startsWith('user_ver_')) {
+      syncUserDataToFirestore(user, progress).catch(err => {
+        console.warn('Debounced Firestore sync error:', err);
+      });
+    }
+  }, []);
+
   const setActiveTab = (tab: string) => {
+    // Flush pending cloud sync immediately upon view/tab change
+    flushCloudSync();
     setActiveTabState(tab);
     try {
       if (tab !== 'landing') {
@@ -80,8 +111,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.warn('Failed to save activeTab to localStorage:', e);
     }
   };
-
-  const [userProgress, setUserProgress] = useState<UserProgress>(loadUserProgress());
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState<boolean>(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
@@ -93,7 +122,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     onPassed?: () => void;
   } | null>(null);
 
-  const [authUser, setAuthUser] = useState<User | null>(getStoredFallbackUser());
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(!getStoredFallbackUser());
   const [dailyGoalToast, setDailyGoalToast] = useState<{
     show: boolean;
@@ -138,14 +166,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ],
         tutor: [
           () => import('../components/VideoCoursesView'),
-          () => import('../components/LingLooperGame')
+          () => import('../components/OralShadowingDrill')
         ],
         videos: [
-          () => import('../components/LingLooperGame'),
+          () => import('../components/AITutorChat'),
           () => import('../components/CurriculumPlannerView')
         ],
         linglooper: [
-          () => import('../components/CurriculumPlannerView'),
+          () => import('../components/AITutorChat'),
           () => import('../components/ProfileView')
         ],
         planner: [
@@ -216,17 +244,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setAuthUser(user);
         setIsAuthLoading(false);
         const cloudData = await loadUserDataFromFirestore(user);
+        const currentLocal = loadUserProgress();
+
+        // Automatically merge offline guest data into the user's Firestore document without overwriting existing cloud history
+        const merged = mergeUserProgress(cloudData?.progress, currentLocal);
+        setUserProgress(merged);
+        saveUserProgress(merged);
+
         if (cloudData && cloudData.progress) {
-          setUserProgress((prev) => ({
-            ...prev,
-            ...cloudData.progress,
-            avatarId: cloudData.avatarId || cloudData.progress.avatarId || prev.avatarId || 'sun',
-            photoURL: cloudData.photoURL || cloudData.progress.photoURL || user.photoURL || prev.photoURL,
-            targetDialect: cloudData.targetDialect || cloudData.progress.targetDialect || prev.targetDialect || 'castilian'
-          }));
+          await syncUserDataToFirestore(user, merged);
         } else {
-          syncUserDataToFirestore(user, userProgress);
+          await syncUserDataToFirestore(user, merged);
         }
+
         // If current tab is landing or non-existent, navigate to saved/dashboard tab
         const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
         if (!savedTab || savedTab === 'landing') {
@@ -271,13 +301,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [userProgress.settings?.nativeLanguage]);
 
-  // Sync user progress to local storage & Firestore
+  // Immediate save to localStorage for guests & offline resilience;
+  // debounced Firestore sync (5s batch) for cloud accounts to eliminate re-render cascades.
   useEffect(() => {
     saveUserProgress(userProgress);
-    if (authUser) {
-      syncUserDataToFirestore(authUser, userProgress);
+
+    const user = authUser;
+    if (user && !user.isAnonymous && !user.uid.startsWith('guest_') && !user.uid.startsWith('user_ver_')) {
+      if (cloudSyncTimeoutRef.current) {
+        clearTimeout(cloudSyncTimeoutRef.current);
+      }
+      cloudSyncTimeoutRef.current = setTimeout(() => {
+        flushCloudSync();
+      }, 5000);
     }
-  }, [userProgress, authUser]);
+  }, [userProgress, authUser, flushCloudSync]);
+
+  // Flush pending cloud sync on page unmount / unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      flushCloudSync();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      flushCloudSync();
+    };
+  }, [flushCloudSync]);
 
   const handleEmailSignUp = async (
     email: string,
@@ -294,16 +344,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsOnboardingOpen(false);
       setIsAuthModalOpen(false);
 
-      // Initialize brand new account strictly at 0 XP, fresh start
-      const freshZeroProgress = createZeroUserProgress(
-        chosenLevel,
-        avatarId || 'sun',
-        photoURL || user.photoURL || '',
-        'castilian'
-      );
-      setUserProgress(freshZeroProgress);
-      saveUserProgress(freshZeroProgress);
-      await syncUserDataToFirestore(user, freshZeroProgress);
+      // Preserve any guest work accumulated before creating this account
+      const currentLocal = loadUserProgress();
+      const hasGuestHistory =
+        currentLocal.xp > 0 ||
+        currentLocal.completedLessonIds.length > 0 ||
+        (currentLocal.savedWordIds && currentLocal.savedWordIds.length > 0);
+
+      const targetProgress: UserProgress = hasGuestHistory
+        ? {
+            ...currentLocal,
+            avatarId: avatarId || currentLocal.avatarId || 'sun',
+            photoURL: photoURL || user.photoURL || currentLocal.photoURL || '',
+            targetDialect: currentLocal.targetDialect || 'castilian'
+          }
+        : createZeroUserProgress(
+            chosenLevel,
+            avatarId || 'sun',
+            photoURL || user.photoURL || '',
+            'castilian'
+          );
+
+      setUserProgress(targetProgress);
+      saveUserProgress(targetProgress);
+      await syncUserDataToFirestore(user, targetProgress);
 
       // Open welcome verification lifecycle notice in non-intrusive mode
       setIsWelcomeVerificationOpen(false);
@@ -327,16 +391,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsAuthModalOpen(false);
 
       const cloudData = await loadUserDataFromFirestore(user);
-      if (cloudData && cloudData.progress) {
-        setUserProgress({
-          ...cloudData.progress,
-          avatarId: cloudData.avatarId || cloudData.progress.avatarId || 'sun',
-          photoURL: cloudData.photoURL || cloudData.progress.photoURL || user.photoURL || '',
-          targetDialect: cloudData.targetDialect || cloudData.progress.targetDialect || 'castilian'
-        });
-      } else {
-        await syncUserDataToFirestore(user, userProgress);
-      }
+      const currentLocal = loadUserProgress();
+
+      // Automatically merge offline guest data into the user's Firestore document without overwriting existing cloud history
+      const mergedProgress = mergeUserProgress(cloudData?.progress, currentLocal);
+
+      setUserProgress(mergedProgress);
+      saveUserProgress(mergedProgress);
+      await syncUserDataToFirestore(user, mergedProgress);
+
       const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
       setActiveTab(savedTab && savedTab !== 'landing' ? savedTab : 'dashboard');
       return user;
@@ -356,14 +419,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ) => {
     const fallback = createFallbackUserSession(displayName, email, avatarId, photoURL);
     setAuthUser(fallback);
-    const zeroProgress = createZeroUserProgress(
-      chosenLevel,
-      avatarId || 'sun',
-      photoURL || '',
-      'castilian'
-    );
-    setUserProgress(zeroProgress);
-    saveUserProgress(zeroProgress);
+    const currentLocal = loadUserProgress();
+    // Only initialize zero progress if guest has zero prior practice
+    if (currentLocal.xp === 0 && currentLocal.completedLessonIds.length === 0) {
+      const zeroProgress = createZeroUserProgress(
+        chosenLevel,
+        avatarId || 'sun',
+        photoURL || '',
+        'castilian'
+      );
+      setUserProgress(zeroProgress);
+      saveUserProgress(zeroProgress);
+    }
     setIsOnboardingOpen(false);
     setIsAuthModalOpen(false);
     const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
@@ -439,6 +506,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, []);
 
+  // Set of known words and lemmas based on Krashen SLA user progress
+  const userKnownLemmas = useMemo(() => {
+    const set = new Set<string>();
+    (userProgress.knownWords || []).forEach(w => set.add(w.toLowerCase()));
+    (userProgress.masteredWordIds || []).forEach(w => set.add(w.toLowerCase()));
+    (userProgress.savedWordIds || []).forEach(w => set.add(w.toLowerCase()));
+    if (userProgress.lingqs) {
+      Object.keys(userProgress.lingqs).forEach(w => set.add(w.toLowerCase()));
+    }
+    return set;
+  }, [userProgress.knownWords, userProgress.masteredWordIds, userProgress.savedWordIds, userProgress.lingqs]);
+
+  // Dynamic SLA Comprehensible Input analyzer
+  const analyzeComprehensibleInput = useCallback((text: string): ComprehensibilityScore => {
+    return calculateComprehensibilityScore(text, userKnownLemmas);
+  }, [userKnownLemmas]);
+
   return (
     <AppContext.Provider
       value={{
@@ -469,6 +553,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleLessonCompleted,
         grammarPracticeTopic,
         setGrammarPracticeTopic,
+        userKnownLemmas,
+        analyzeComprehensibleInput,
       }}
     >
       {children}

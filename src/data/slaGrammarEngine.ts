@@ -27,6 +27,17 @@ export interface GrammarRuleMatrix {
   ten_point_matrix: DemonstrationPoint[];
 }
 
+export interface ContrastiveInterferenceNote {
+  title: string;
+  trap_en: string;
+  trap_ar: string;
+  correctRule_en: string;
+  correctRule_ar: string;
+  contrastExample_es: string;
+  contrastExample_en: string;
+  contrastExample_ar: string;
+}
+
 export interface PatternDiscoveryItem {
   id: string;
   topicId: string;
@@ -48,6 +59,7 @@ export interface PatternDiscoveryItem {
   }[];
   ruleExplanation_en: string;
   ruleExplanation_ar: string;
+  contrastiveNotes?: ContrastiveInterferenceNote[];
 }
 
 export interface MinimalPairCard {
@@ -109,9 +121,9 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
     cefr: 'A1',
     sentences: [
       {
-        es: 'El problema es difícil.',
-        en: 'The problem is difficult.',
-        ar: 'المشكلة صعبة (اسم مذكر ينتهي بـ -ma).',
+        es: 'El problema es difícil de resolver.',
+        en: 'The problem is difficult to solve.',
+        ar: 'المشكلة صعبة الحل (اسم مذكر ينتهي بـ -ma).',
         highlightWord: 'El',
         syntaxTags: [
           { word: 'El', tag: 'Masculine Article', color: 'bg-blue-100 text-blue-900 font-bold' },
@@ -119,9 +131,9 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         ]
       },
       {
-        es: 'El idioma es interesante.',
-        en: 'The language is interesting.',
-        ar: 'اللغة ممتعة (اسم مذكر ينتهي بـ -ma).',
+        es: 'El idioma español es muy musical y expresivo.',
+        en: 'The Spanish language is very musical and expressive.',
+        ar: 'اللغة الإسبانية موسيقية ومعبرة جداً (اسم مذكر ينتهي بـ -ma).',
         highlightWord: 'El',
         syntaxTags: [
           { word: 'El', tag: 'Masculine Article', color: 'bg-blue-100 text-blue-900' },
@@ -129,37 +141,49 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
         ]
       },
       {
-        es: 'Las lecciones son largas.',
-        en: 'The lessons are long.',
-        ar: 'الدروس طويلة (اسم مؤنث جمع ينتهي بـ -ción).',
-        highlightWord: 'Las',
+        es: 'El mapa del metro de Madrid es muy claro.',
+        en: 'The map of the Madrid subway is very clear.',
+        ar: 'خريطة مترو مدريد واضحة جداً (el mapa اسم مذكر شاذ).',
+        highlightWord: 'El',
         syntaxTags: [
-          { word: 'Las', tag: 'Feminine Plural Article', color: 'bg-rose-100 text-rose-900' },
-          { word: 'lecciones', tag: 'Feminine Plural Noun (-ción)', color: 'bg-rose-50 text-rose-800' }
+          { word: 'El', tag: 'Masculine Article', color: 'bg-blue-100 text-blue-900' },
+          { word: 'mapa', tag: 'Irregular Masculine Noun', color: 'bg-blue-50 text-blue-800' }
         ]
       }
     ],
-    question: 'Why do nouns like "problema" and "idioma" take the masculine article "el"?',
-    question_ar: 'لماذا تأخذ الأسماء مثل "problema" و "idioma" أداة التعريف المذكر "el"؟',
+    question: 'Why do nouns like "problema", "idioma", and "mapa" take the masculine article "el"?',
+    question_ar: 'لماذا تأخذ الأسماء مثل "problema" و "idioma" و "mapa" أداة التعريف المذكر "el"؟',
     options: [
       {
-        text: 'Nouns of Greek origin ending in "-ma" are masculine despite ending in "-a".',
-        text_ar: 'الأسماء ذات الأصل اليوناني المنتهية بـ "-ma" هي أسماء مذكرة على الرغم من انتهائها بـ "-a".',
+        text: 'Nouns of Greek origin ending in "-ma" (and exceptions like "mapa") are masculine despite ending in "-a".',
+        text_ar: 'الأسماء ذات الأصل اليوناني المنتهية بـ "-ma" (والشواذ مثل "mapa") هي أسماء مذكرة على الرغم من انتهائها بـ "-a".',
         isCorrect: true
       },
       {
-        text: 'Because all Spanish nouns are masculine by default.',
-        text_ar: 'لأن جميع الأسماء في اللغة الإسبانية مذكرة بشكل تلقائي.',
+        text: 'Because all Spanish nouns ending in a vowel are masculine by default.',
+        text_ar: 'لأن جميع الأسماء في اللغة الإسبانية المنتهية بحرف علة مذكرة بشكل تلقائي.',
         isCorrect: false
       },
       {
-        text: 'They are mistakes in Spanish and should use "la".',
-        text_ar: 'هي أخطاء في الإسبانية ويجب استخدام "la" معها.',
+        text: 'They are dialectal slang mistakes and should strictly use "la".',
+        text_ar: 'هي أخطاء عامية دارجة ويجب استخدام "la" معها بدقة.',
         isCorrect: false
       }
     ],
-    ruleExplanation_en: 'Spanish words of Greek origin ending in "-ma" (like problema, idioma, sistema, tema, poema) are grammatically masculine.',
-    ruleExplanation_ar: 'الكلمات من أصل يوناني المنتهية بـ "-ma" (مثل problema و idioma و sistema) هي كلمات مذكرة قواعدياً وتأخذ el.'
+    ruleExplanation_en: 'Spanish words of Greek origin ending in "-ma" (like problema, idioma, sistema, tema, poema, dilema, clima) are grammatically masculine and take "el/los".',
+    ruleExplanation_ar: 'الكلمات من أصل يوناني المنتهية بـ "-ma" (مثل problema و idioma و sistema و tema و clima) هي كلمات مذكرة قواعدياً وتأخذ el.',
+    contrastiveNotes: [
+      {
+        title: 'False Friend: "La problema" vs "El problema"',
+        trap_en: 'English speakers assume all -a nouns are feminine (saying "la problema").',
+        trap_ar: 'المتحدثون بالعربية يترجمون "مشكلة" كمؤنث ويقولون خطأ "la problema".',
+        correctRule_en: 'Always use "el problema", "el sistema", "el idioma", "el mapa", "el día".',
+        correctRule_ar: 'استخدم دائماً "el problema" و "el idioma" و "el mapa" و "el día" كمذكر قواعدي.',
+        contrastExample_es: 'Tengo un problema urgente (NO: una problema).',
+        contrastExample_en: 'I have an urgent problem (masculine "un").',
+        contrastExample_ar: 'لدي مشكلة عاجلة (باستخدام أداة التنكير المذكر un).'
+      }
+    ]
   },
   {
     id: 'pd-ser-estar',
@@ -168,44 +192,76 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
     cefr: 'A1',
     sentences: [
       {
-        es: 'La manzana es verde.',
-        en: 'The apple is green (a green variety).',
-        ar: 'التفاحة خضراء (نوعها ينتمي للصنف الأخضر).',
+        es: 'La manzana es verde (es de la variedad Granny Smith).',
+        en: 'The apple is green (that is its inherent variety and color).',
+        ar: 'التفاحة خضراء (نوعها ينتمي للصنف الأخضر بشكل دائم).',
         highlightWord: 'es',
         syntaxTags: [
           { word: 'La manzana', tag: 'Subject (Noun)', color: 'bg-blue-100 text-blue-900' },
-          { word: 'es', tag: 'SER (Inherent Quality)', color: 'bg-emerald-100 text-emerald-900' },
+          { word: 'es', tag: 'SER (Inherent Quality)', color: 'bg-emerald-100 text-emerald-900 font-bold' },
           { word: 'verde', tag: 'Inherent Characteristic', color: 'bg-purple-100 text-purple-900' }
         ]
       },
       {
-        es: 'La manzana está verde.',
-        en: 'The apple is unripe (temporary state).',
-        ar: 'التفاحة فجة غير ناضجة (حالة مؤقتة تقتضي التغير).',
+        es: 'La manzana está verde (todavía no ha madurado).',
+        en: 'The apple is unripe (temporary variable state).',
+        ar: 'التفاحة فجة غير ناضجة (حالة مؤقتة تقتضي التغير والنضوج).',
         highlightWord: 'está',
         syntaxTags: [
           { word: 'La manzana', tag: 'Subject (Noun)', color: 'bg-blue-100 text-blue-900' },
-          { word: 'está', tag: 'ESTAR (Temporary Condition)', color: 'bg-amber-100 text-amber-900' },
+          { word: 'está', tag: 'ESTAR (Temporary Condition)', color: 'bg-amber-100 text-amber-900 font-bold' },
           { word: 'verde', tag: 'Temporary State (Unripe)', color: 'bg-orange-100 text-orange-900' }
+        ]
+      },
+      {
+        es: 'Madrid está en España y es la capital del país.',
+        en: 'Madrid is located in Spain (location = estar) and is the capital (identity = ser).',
+        ar: 'مدريد تقع في إسبانيا (الموقع الجغرافي = estar) وهي عاصمة البلاد (الهوية والتعريف = ser).',
+        highlightWord: 'está / es',
+        syntaxTags: [
+          { word: 'está', tag: 'ESTAR (Geographic Location)', color: 'bg-amber-100 text-amber-900 font-bold' },
+          { word: 'es', tag: 'SER (Definition & Identity)', color: 'bg-emerald-100 text-emerald-900 font-bold' }
         ]
       }
     ],
-    question: 'What fundamental rule dictates using ESTAR over SER in Spanish?',
-    question_ar: 'ما هي القاعدة الأساسية التي تحدد استخدام Estar بدلاً من Ser؟',
+    question: 'What fundamental rule dictates choosing between SER and ESTAR in Spanish?',
+    question_ar: 'ما هي القاعدة الأساسية التي تحدد الاختيار الحاسم بين Ser و Estar؟',
     options: [
       {
-        text: 'ESTAR is used for temporary states, locations, and variable conditions.',
-        text_ar: 'يُscتخدم Estar للحالات المؤقتة والمواقع والمواقف المتغيرة.',
+        text: 'SER defines identity, origin, and intrinsic traits; ESTAR describes location, conditions, and temporary states.',
+        text_ar: 'يعبر Ser عن الهوية والأصل والصفات الجوهرية؛ بينما يعبر Estar عن الموقع والحالات المؤقتة والمتغيرة.',
         isCorrect: true
       },
       {
-        text: 'ESTAR is used only for permanent traits.',
-        text_ar: 'يُستخدم Estar فقط للصفات الشخصية الدائمة.',
+        text: 'SER is only used for humans, while ESTAR is only used for physical objects.',
+        text_ar: 'يُستخدم Ser للبشر فقط، بينما يُستخدم Estar للجماد والأشياء المادية فقط.',
         isCorrect: false
       }
     ],
-    ruleExplanation_en: 'SER defines permanent identity and intrinsic traits. ESTAR describes variable conditions, emotions, physical states, and geographic location.',
-    ruleExplanation_ar: 'يعبر Ser عن الهوية والصفات الثابتة. بينما يعبر Estar عن الحالات المؤقتة والمشاعر والمواقع الجغرافية.'
+    ruleExplanation_en: 'SER defines permanent identity and intrinsic traits (profession, nationality, time, material). ESTAR describes variable conditions, emotions, physical states, location, and actions in progress (estar + gerundio).',
+    ruleExplanation_ar: 'يعبر Ser عن الهوية والصفات الثابتة والوقت والمهن. بينما يعبر Estar عن الحالات المؤقتة والمشاعر والمواقع الجغرافية والمضارع المستمر.',
+    contrastiveNotes: [
+      {
+        title: 'L1 Interference: "Soy en Madrid" vs "Estoy en Madrid"',
+        trap_en: 'English uses "to be" for both identity and location ("I am John" / "I am in Madrid").',
+        trap_ar: 'اللغة العربية تستخدم الجملة الاسمية دون فعل كينونة (أنا في مدريد / أنا طالب).',
+        correctRule_en: 'Location is ALWAYS expressed with ESTAR, never with SER.',
+        correctRule_ar: 'الموقع الجغرافي يعبر عنه دائماً بـ ESTAR ولا يستخدم SER للموقع أبداً.',
+        contrastExample_es: 'Estoy en casa descansando (NUNCA: Soy en casa).',
+        contrastExample_en: 'I am at home resting (ESTAR for location).',
+        contrastExample_ar: 'أنا في المنزل أستريح (باستخدام Estoy للمكان).'
+      },
+      {
+        title: 'Adjective Semantic Shift: "Ser listo" vs "Estar listo"',
+        trap_en: 'Translating "ready" literally without realizing the verb changes the meaning completely.',
+        trap_ar: 'الخلط بين الصفة الجوهرية (ذكي) والحالة المؤقتة (مستعد وجاهز).',
+        correctRule_en: '"Soy listo" = I am smart/clever. "Estoy listo" = I am ready.',
+        correctRule_ar: '"Soy listo" تعني أنا ذكي، بينما "Estoy listo" تعني أنا مستعد وجاهز الآن.',
+        contrastExample_es: 'Ya me puse el abrigo y estoy listo para salir.',
+        contrastExample_en: 'I put on my coat and I am ready to leave.',
+        contrastExample_ar: 'ارتديت معطفي وأنا الآن جاهز للانطلاق.'
+      }
+    ]
   },
   {
     id: 'pd-por-para',
@@ -214,44 +270,132 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
     cefr: 'A2',
     sentences: [
       {
-        es: 'Estudio español para trabajar en España.',
-        en: 'I study Spanish in order to work in Spain.',
-        ar: 'أدرس الإسبانية من أجل العمل في إسبانيا (الهدف والغاية).',
+        es: 'Estudio español para trabajar en una empresa en España.',
+        en: 'I study Spanish in order to work at a company in Spain (future objective/goal).',
+        ar: 'أدرس الإسبانية من أجل العمل في شركة بإسبانيا (الهدف والغاية المستقبلية).',
         highlightWord: 'para',
         syntaxTags: [
           { word: 'Estudio', tag: 'Action Verb', color: 'bg-blue-100 text-blue-900' },
-          { word: 'para', tag: 'PARA (Goal/Purpose)', color: 'bg-emerald-100 text-emerald-900' },
+          { word: 'para', tag: 'PARA (Goal/Purpose)', color: 'bg-emerald-100 text-emerald-900 font-bold' },
           { word: 'trabajar', tag: 'Future Purpose', color: 'bg-purple-100 text-purple-900' }
         ]
       },
       {
-        es: 'Gracias por tu ayuda.',
-        en: 'Thank you because of your help.',
-        ar: 'شكراً لك بسبب مساعدتك (الدافع والسبب والرد).',
+        es: 'Muchas gracias por tu valiosa ayuda con el proyecto.',
+        en: 'Thank you very much because of your valuable help with the project (past cause/motive).',
+        ar: 'شكراً جزيلاً لك بسبب مساعدتك القيمة في المشروع (السبب والدافع والرد).',
         highlightWord: 'por',
         syntaxTags: [
           { word: 'Gracias', tag: 'Expression', color: 'bg-stone-100 text-stone-900' },
-          { word: 'por', tag: 'POR (Motive/Reason)', color: 'bg-amber-100 text-amber-900' },
-          { word: 'tu ayuda', tag: 'Past Cause', color: 'bg-rose-100 text-rose-900' }
+          { word: 'por', tag: 'POR (Motive/Reason)', color: 'bg-amber-100 text-amber-900 font-bold' },
+          { word: 'tu valiosa ayuda', tag: 'Past Cause', color: 'bg-rose-100 text-rose-900' }
+        ]
+      },
+      {
+        es: 'Caminamos por el parque para llegar a tiempo al museo.',
+        en: 'We walked through the park (transit/path = por) in order to arrive on time (destination/goal = para).',
+        ar: 'مشينا عبر الحديقة (المرور والمسار = por) من أجل الوصول في الوقت المحدد (الهدف = para).',
+        highlightWord: 'por / para',
+        syntaxTags: [
+          { word: 'por el parque', tag: 'POR (Movement through space)', color: 'bg-amber-100 text-amber-900 font-bold' },
+          { word: 'para llegar', tag: 'PARA (Target destination & goal)', color: 'bg-emerald-100 text-emerald-900 font-bold' }
         ]
       }
     ],
-    question: 'How do you distinguish PARA from POR when expressing intentions?',
-    question_ar: 'كيف تميز بين PARA و POR عند التعبير عن النوايا والأهداف؟',
+    question: 'How do you distinguish PARA from POR when expressing intentions and spatial movement?',
+    question_ar: 'كيف تميز بين PARA و POR عند التعبير عن النوايا والأهداف والحركة المكانية؟',
     options: [
       {
-        text: 'PARA points forward to future goals; POR points backward to past causes.',
-        text_ar: 'تشير PARA للأمام نحو أهداف مستهدفة؛ بينما تشير POR للخلف نحو الأسباب والدوافع.',
+        text: 'PARA points forward to future goals, destinations, and recipients; POR points backward to past causes, motives, exchanges, and routes.',
+        text_ar: 'تشير PARA للأمام نحو الأهداف المستقبلية والوجهات والمستلم؛ بينما تشير POR للخلف نحو الأسباب والدوافع والبدل والمسارات.',
         isCorrect: true
       },
       {
-        text: 'POR is used for deadlines; PARA is for duration.',
-        text_ar: 'تُستخدم POR للمواعيد النهائية بينما PARA للمدة الزمنية.',
+        text: 'POR is only used for physical objects, while PARA is exclusively used for people.',
+        text_ar: 'تُستخدم POR للأشياء المادية فقط بينما تُستخدم PARA حصرياً مع الأشخاص.',
         isCorrect: false
       }
     ],
-    ruleExplanation_en: 'PARA focuses on destination, deadline, recipient, and ultimate goal. POR focuses on motive, cause, exchange price, duration, and movement.',
-    ruleExplanation_ar: 'تركز PARA على الوجهة، الموعد، المستلم، والهدف. بينما تركز POR على السبب، المدة، والتبادل والمرور.'
+    ruleExplanation_en: 'PARA focuses on destination (voy para Madrid), deadline (para mañana), recipient (es para ti), and ultimate purpose/in order to (para aprender). POR focuses on cause/motive (por el tráfico), duration (por dos horas), exchange price (por diez euros), and movement through space (por la calle).',
+    ruleExplanation_ar: 'تركز PARA على الوجهة، الموعد النهائي، المستلم، والهدف المستقبلي (لكي). بينما تركز POR على السبب، المدة، سعر التبادل، والمرور عبر المكان.',
+    contrastiveNotes: [
+      {
+        title: 'Interference with English "For" / Arabic "لـ / من أجل"',
+        trap_en: 'English uses "for" for both "for you" (para ti) and "for three hours" (por tres horas).',
+        trap_ar: 'اللغة العربية قد تستخدم "لـ" للسبب والغاية، مما يوقع المتعلم في فخ استخدام para للسبب.',
+        correctRule_en: 'Always use POR for duration and cause; use PARA for deadlines and recipients.',
+        correctRule_ar: 'استخدم دائماً POR للمدة والسبب (شكراً لك)، واستخدم PARA للهدف والمستلم والميعاد.',
+        contrastExample_es: 'Este regalo es para ti (recipient) / Gracias por venir (cause).',
+        contrastExample_en: 'This gift is for you (para) / Thanks for coming (por).',
+        contrastExample_ar: 'هذه الهدية لك (para) / شكراً لحضورك (por).'
+      }
+    ]
+  },
+  {
+    id: 'pd-preterite-imperfect',
+    topicId: 'g-past-tenses',
+    title: 'Preterite vs Imperfect: The Foreground Event vs Background Scene',
+    cefr: 'A2',
+    sentences: [
+      {
+        es: 'Ayer a las cinco sonó el teléfono y salí de casa.',
+        en: 'Yesterday at five the phone rang and I left home (completed sequential events).',
+        ar: 'أمس في الساعة الخامسة رن الهاتف وخرجت من المنزل (أحداث متتالية مكتملة = Pretérito).',
+        highlightWord: 'sonó / salí',
+        syntaxTags: [
+          { word: 'sonó', tag: 'Preterite (Punctual event)', color: 'bg-emerald-100 text-emerald-900 font-bold' },
+          { word: 'salí', tag: 'Preterite (Completed action)', color: 'bg-emerald-100 text-emerald-900 font-bold' }
+        ]
+      },
+      {
+        es: 'Cuando tenía diez años, vivía en Valencia y jugaba al fútbol.',
+        en: 'When I was ten years old, I lived in Valencia and used to play soccer (ongoing habits & state).',
+        ar: 'عندما كان عمري عشر سنوات، كنت أعيش في فالنسيا وكنت ألعب كرة القدم (عادات ووصف = Imperfecto).',
+        highlightWord: 'tenía / vivía',
+        syntaxTags: [
+          { word: 'tenía', tag: 'Imperfect (Age/State)', color: 'bg-amber-100 text-amber-900 font-bold' },
+          { word: 'vivía', tag: 'Imperfect (Habitual residence)', color: 'bg-amber-100 text-amber-900 font-bold' }
+        ]
+      },
+      {
+        es: 'Yo leía tranquilamente en el salón cuando de repente se fue la luz.',
+        en: 'I was reading quietly in the living room (imperfect background) when suddenly the power went out (preterite interruption).',
+        ar: 'كنت أقرأ بهدوء في الصالون (خلفية مستمرة = Imperfecto) عندما انقطعت الكهرباء فجأة (حدث قاطع = Pretérito).',
+        highlightWord: 'leía / se fue',
+        syntaxTags: [
+          { word: 'leía', tag: 'Imperfect (Background action)', color: 'bg-amber-100 text-amber-900 font-bold' },
+          { word: 'se fue', tag: 'Preterite (Interrupting event)', color: 'bg-emerald-100 text-emerald-900 font-bold' }
+        ]
+      }
+    ],
+    question: 'How do native speakers mentally divide actions between Pretérito and Imperfecto?',
+    question_ar: 'كيف يقسم المتحدثون الأصليون الأحداث ذهنياً بين الماضي البسيط والماضي المستمر؟',
+    options: [
+      {
+        text: 'Preterite marks completed historical plot points (foreground); Imperfect sets the atmospheric scenery, routines, descriptions, and age (background).',
+        text_ar: 'الماضي البسيط يحدد أحداث القصة المكتملة المتتالية؛ بينما الماضي المستمر يرسم المشهد والوصف والعادات والعمر في الخلفية.',
+        isCorrect: true
+      },
+      {
+        text: 'Preterite is used only for things that happened this year; Imperfect is for things that happened centuries ago.',
+        text_ar: 'الماضي البسيط يُستخدم لأحداث هذا العام فقط بينما الماضي المستمر للأحداث القديمة جداً.',
+        isCorrect: false
+      }
+    ],
+    ruleExplanation_en: 'Think of the Imperfect as the movie set and background music (era de noche, hacía frío, yo leía) and the Preterite as the sudden action that occurs on stage (alguien gritó, sonó el teléfono).',
+    ruleExplanation_ar: 'تخيل Imperfecto كديكور المسرح والموسيقى التصويرية المستمرة (كان الوقت ليلاً، كان الجو بارداً، كنت أقرأ)، بينما Pretérito هو الحدث الطارئ الذي يقع فجأة (صرخ أحدهم، رن الهاتف).',
+    contrastiveNotes: [
+      {
+        title: 'Verb Meaning Shifts in Preterite vs Imperfect',
+        trap_en: 'Certain verbs alter their core translation between the two past tenses.',
+        trap_ar: 'بعض الأفعال يتغير معناها بالكامل بين الماضي البسيط والماضي المستمر.',
+        correctRule_en: '"Conocí" = I met for the first time vs "Conocía" = I already knew; "Supe" = I found out vs "Sabía" = I knew.',
+        correctRule_ar: '"Conocí" = تعرفت لأول مرة، بينما "Conocía" = كنت أعرفه مسبقاً؛ "Supe" = علمت واكتشفت، بينما "Sabía" = كنت أعلم.',
+        contrastExample_es: 'Ayer supe la verdad (I found out yesterday) / Ya lo sabía (I already knew).',
+        contrastExample_en: 'Yesterday I found out the truth / I already knew it.',
+        contrastExample_ar: 'أمس علمت بالحقيقة (اكتشاف = Pretérito) / كنت أعلم ذلك بالفعل (معرفة مسبقة = Imperfecto).'
+      }
+    ]
   },
   {
     id: 'pd-subjunctive-trigger',
@@ -260,44 +404,67 @@ export const PATTERN_DISCOVERY_ITEMS: PatternDiscoveryItem[] = [
     cefr: 'B1',
     sentences: [
       {
-        es: 'Sé que tú estudias mucho.',
-        en: 'I know that you study a lot (Fact / Certainty).',
-        ar: 'أعلم أنك تدرس كثيراً (حقيقة مؤكدة = Indicativo).',
+        es: 'Sé que tú estudias mucho para el examen (Hecho seguro / Indicativo).',
+        en: 'I know that you study a lot for the exam (Objective certainty/fact -> Indicative).',
+        ar: 'أعلم أنك تدرس كثيراً للامتحان (حقيقة مؤكدة موضوعية = Indicativo).',
         highlightWord: 'estudias',
         syntaxTags: [
           { word: 'Sé que', tag: 'Certainty Trigger', color: 'bg-sky-100 text-sky-900 font-bold' },
-          { word: 'estudias', tag: 'Indicative Mood (Fact)', color: 'bg-emerald-100 text-emerald-900' }
+          { word: 'estudias', tag: 'Indicative Mood (Fact)', color: 'bg-emerald-100 text-emerald-900 font-bold' }
         ]
       },
       {
-        es: 'Quiero que tú estudies mucho.',
-        en: 'I want you to study a lot (Desire / Unfulfilled Wish).',
-        ar: 'أريدك أن تدرس كثيراً (رغبة وأمنية = Subjuntivo).',
+        es: 'Quiero que tú estudies mucho para asegurar tu futuro (Deseo / Subjuntivo).',
+        en: 'I want you to study a lot to secure your future (Subjective wish directed at another -> Subjunctive).',
+        ar: 'أريدك أن تدرس كثيراً لتضمن مستقبلك (رغبة وتمنٍ موجه لشخص آخر = Subjuntivo).',
         highlightWord: 'estudies',
         syntaxTags: [
           { word: 'Quiero que', tag: 'WEIRDO Wish Trigger', color: 'bg-purple-100 text-purple-900 font-bold' },
-          { word: 'estudies', tag: 'Subjunctive Mood (Desire)', color: 'bg-amber-100 text-amber-900' }
+          { word: 'estudies', tag: 'Subjunctive Mood (Desire)', color: 'bg-amber-100 text-amber-900 font-bold' }
+        ]
+      },
+      {
+        es: 'Dudo que ellos tengan razón en esta discusión (Duda / Subjuntivo).',
+        en: 'I doubt that they are right in this discussion (Doubt/Uncertainty -> Subjunctive).',
+        ar: 'أشك في أنهم على حق في هذا النقاش (شك وعدم يقين = Subjuntivo).',
+        highlightWord: 'tengan',
+        syntaxTags: [
+          { word: 'Dudo que', tag: 'Doubt Trigger', color: 'bg-purple-100 text-purple-900 font-bold' },
+          { word: 'tengan', tag: 'Subjunctive Mood (Doubt)', color: 'bg-amber-100 text-amber-900 font-bold' }
         ]
       }
     ],
-    question: 'Why does "Quiero que" change the verb from "estudias" to "estudies"?',
-    question_ar: 'لماذا تغير العبارة "Quiero que" الفعل من "estudias" إلى "estudies"؟',
+    question: 'Why does "Quiero que" change the verb ending from "-as" to "-es" (estudias ➔ estudies)?',
+    question_ar: 'لماذا تغير العبارة "Quiero que" نهاية الفعل من "-as" إلى "-es" (estudias ➔ estudies)؟',
     options: [
       {
-        text: 'Because "Quiero que" expresses a subjective desire for someone else, triggering the Subjunctive mood.',
-        text_ar: 'لأن "Quiero que" تعبر عن رغبة شخصية تجاه شخص آخر، مما يتطلب صيغة المنصوب (Subjuntivo).',
+        text: 'Because "Quiero que" introduces a subjective desire for another subject, triggering the vowel-flip Subjunctive mood.',
+        text_ar: 'لأن "Quiero que" تقدم رغبة شخصية ذاتية لفاعل آخر، مما يقتضي تبديل حرف العلة في صيغة المنصوب (Subjuntivo).',
         isCorrect: true
       },
       {
-        text: 'Because it is referring to past completed time.',
-        text_ar: 'لأنها تشير إلى زمن ماضي مكتمل.',
+        text: 'Because the action has already finished in the past.',
+        text_ar: 'لأن الحدث قد انتهى واكتمل بالفعل في الماضي.',
         isCorrect: false
       }
     ],
-    ruleExplanation_en: 'The Subjunctive mood is triggered when the main clause expresses a wish, emotion, impersonal judgment, recommendation, doubt, or denial (WEIRDO) targeting a different subject.',
-    ruleExplanation_ar: 'تُستثار صيغة Subjuntivo عندما تنقل الجملة الرئيسية أمنية، شعوراً، تقييماً غير شخصي، شكاً، أو طلباً موظفاً لفاعل آخر.'
+    ruleExplanation_en: 'The Subjunctive mood is triggered when the main clause expresses Wishes (Quiero que), Emotions (Me alegra que), Impersonal judgments (Es importante que), Recommendations (Te sugiero que), Doubt (Dudo que), or Denial targeting a different subject. The vowels flip: -AR verbs take "-e" (estudie), while -ER/-IR verbs take "-a" (viva).',
+    ruleExplanation_ar: 'تُستثار صيغة Subjuntivo عندما تنقل الجملة الأولى أمنية، شعوراً، حكماً غير شخصي، نصيحة، أو شكاً لفاعل آخر. وتنقلب حروف العلة: أفعال -AR تأخذ e، وأفعال -ER/-IR تأخذ a.',
+    contrastiveNotes: [
+      {
+        title: 'False Friend & English Interference: Infinitive Trap ("I want you to go")',
+        trap_en: 'English uses infinitive ("I want you to go"); learners mistakenly say "Quiero tú ir".',
+        trap_ar: 'المتعلمون يترجمون حرفياً "أريدك أن تذهب" بنقل الكلمات دون صياغة صيغة المنصوب.',
+        correctRule_en: 'Spanish requires "Quiero que + Subjuntivo" whenever the two subjects differ: "Quiero que vayas".',
+        correctRule_ar: 'في الإسبانية يجب استخدام "Quiero que + Subjuntivo" لاختلاف الفاعل: "Quiero que vayas".',
+        contrastExample_es: 'Quiero que vengas a mi fiesta (NO: Quiero tú venir).',
+        contrastExample_en: 'I want you to come to my party.',
+        contrastExample_ar: 'أريدك أن تأتي إلى حفلتي (بصيغة المنصوب vengas).'
+      }
+    ]
   }
 ];
+
 
 export const MINIMAL_PAIR_CARDS: MinimalPairCard[] = [
   {

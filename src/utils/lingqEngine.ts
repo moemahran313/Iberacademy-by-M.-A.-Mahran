@@ -23,6 +23,9 @@ export interface WordDefinitionMatch {
   phonetic?: string;
   partOfSpeech?: string;
   gender?: string;
+  article?: string;
+  wordWithArticle?: string;
+  cefr?: string;
   lemma?: string;
   verbInfinitive?: string;
   verbTense?: string;
@@ -996,6 +999,33 @@ const STORY_WORDS_GLOSSARY: Record<string, { en: string; ar: string; pos?: strin
   colectivo: { en: "collective", ar: "جماعي / مشترك", pos: "adjective" }
 };
 
+// Helper to determine gender and gender article for Spanish nouns
+export function inferWordArticle(cleanWord: string, pos?: string, gender?: string): { article: string; formatted: string } {
+  const norm = cleanWord.toLowerCase().trim();
+  const isNoun = !pos || pos.toLowerCase().includes('noun') || pos.toLowerCase().includes('sustantivo') || pos.toLowerCase().includes('vocabulary');
+
+  const FEMININE_SPECIAL = new Set(['mano', 'foto', 'moto', 'noche', 'gente', 'tarde', 'calle', 'ciudad', 'luz', 'paz', 'flor', 'piel', 'mujer', 'madre', 'actriz']);
+  const MASCULINE_SPECIAL = new Set(['día', 'dia', 'mapa', 'planeta', 'problema', 'tema', 'sistema', 'idioma', 'clima', 'sol', 'árbol', 'arbol', 'mar', 'pan', 'café', 'cafe']);
+
+  if (gender === 'f' || gender === 'feminine' || FEMININE_SPECIAL.has(norm) || (isNoun && norm.endsWith('a') && !MASCULINE_SPECIAL.has(norm)) || norm.endsWith('ción') || norm.endsWith('sión') || norm.endsWith('dad') || norm.endsWith('tad')) {
+    const isPlural = norm.endsWith('s') && !norm.endsWith('es');
+    const art = isPlural ? 'las' : 'la';
+    return { article: art, formatted: `${art} ${cleanWord}` };
+  }
+
+  if (gender === 'm' || gender === 'masculine' || MASCULINE_SPECIAL.has(norm) || (isNoun && (norm.endsWith('o') || norm.endsWith('or') || norm.endsWith('ón') || norm.endsWith('aje')))) {
+    const isPlural = norm.endsWith('s') && !norm.endsWith('es');
+    const art = isPlural ? 'los' : 'el';
+    return { article: art, formatted: `${art} ${cleanWord}` };
+  }
+
+  if (isNoun && (norm.endsWith('o') || norm.endsWith('e') || norm.endsWith('l') || norm.endsWith('r') || norm.endsWith('s'))) {
+    return { article: 'el', formatted: `el ${cleanWord}` };
+  }
+
+  return { article: '', formatted: cleanWord };
+}
+
 // Instant Dictionary Lookup from Comprehensive 1,000+ Database and Verbs
 export function lookupSpanishWord(rawWord: string): WordDefinitionMatch {
   const norm = normalizeWord(rawWord);
@@ -1004,12 +1034,16 @@ export function lookupSpanishWord(rawWord: string): WordDefinitionMatch {
   // 1. Check Offline Graded Story Word Glossary for instant match
   const storyMatch = STORY_WORDS_GLOSSARY[cleanKey];
   if (storyMatch) {
+    const { article, formatted } = inferWordArticle(rawWord, storyMatch.pos);
     return {
       word: rawWord,
       translation_en: storyMatch.en,
       translation_ar: storyMatch.ar,
       phonetic: `/${rawWord}/`,
       partOfSpeech: storyMatch.pos || 'vocabulary',
+      article: article || undefined,
+      wordWithArticle: formatted,
+      cefr: 'A1',
       lemma: cleanKey,
       examples: [
         {
@@ -1034,13 +1068,19 @@ export function lookupSpanishWord(rawWord: string): WordDefinitionMatch {
       ar: ex.ar
     }));
 
+    const pos = vocabMatch.partOfSpeech || vocabMatch.pos || 'noun';
+    const { article, formatted } = inferWordArticle(vocabMatch.spanish || vocabMatch.word || norm, pos, vocabMatch.gender);
+
     return {
       word: vocabMatch.spanish || vocabMatch.word || norm,
       translation_en: vocabMatch.english || vocabMatch.translation_en || 'Spanish vocabulary item',
       translation_ar: vocabMatch.arabic || vocabMatch.translation_ar || 'مفردة إسبانية',
       phonetic: vocabMatch.phonetic || vocabMatch.ipa || '',
-      partOfSpeech: vocabMatch.partOfSpeech || vocabMatch.pos || 'noun',
-      gender: vocabMatch.gender || '',
+      partOfSpeech: pos,
+      gender: vocabMatch.gender || (article === 'el' ? 'm' : article === 'la' ? 'f' : ''),
+      article: article || undefined,
+      wordWithArticle: formatted,
+      cefr: vocabMatch.cefr || 'A2',
       lemma: norm,
       examples: examples.length > 0 ? examples : [
         {
@@ -1061,6 +1101,8 @@ export function lookupSpanishWord(rawWord: string): WordDefinitionMatch {
         translation_ar: verb.arabic,
         phonetic: `/${verb.infinitive}/`,
         partOfSpeech: 'verb (infinitive)',
+        wordWithArticle: verb.infinitive,
+        cefr: verb.cefr || 'A1',
         lemma: verb.infinitive,
         verbInfinitive: verb.infinitive,
         examples: verb.examples.map(e => ({ es: e.es, en: e.en, ar: e.ar }))
@@ -1080,7 +1122,9 @@ export function lookupSpanishWord(rawWord: string): WordDefinitionMatch {
               translation_en: `${verb.english} [${personLabel} - ${t}]`,
               translation_ar: `${verb.arabic} [تصريف ${t}]`,
               phonetic: `/${conj}/`,
-              partOfSpeech: 'verb (conjugated form)',
+              partOfSpeech: 'verb (conjugated)',
+              wordWithArticle: conj,
+              cefr: verb.cefr || 'A2',
               lemma: verb.infinitive,
               verbInfinitive: verb.infinitive,
               verbTense: `${t} (${personLabel})`,
@@ -1126,12 +1170,17 @@ function generateMorphologicalFallback(norm: string): WordDefinitionMatch {
     pos = 'vocabulary';
   }
 
+  const { article, formatted } = inferWordArticle(norm, pos);
+
   return {
     word: norm,
     translation_en: guessEn,
     translation_ar: guessAr,
     phonetic: `/${norm}/`,
     partOfSpeech: pos,
+    article: article || undefined,
+    wordWithArticle: formatted,
+    cefr: 'B1',
     lemma: norm,
     examples: [
       {

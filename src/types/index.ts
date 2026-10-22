@@ -1,4 +1,6 @@
 export type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2';
+export type { ComprehensibilityScore, ReadabilityMetrics, ScaffoldingPackage, TextAdvancementPackage } from './curriculum';
+export type { ExplorationEnergy, ContrastiveExplanation, ExerciseFeedbackState, FeedbackTone } from './gamification';
 export type ExplanationLanguage = 'en' | 'ar' | 'bilingual' | 'es_immersion';
 
 export type PartOfSpeech =
@@ -12,7 +14,7 @@ export type PartOfSpeech =
   | 'expression'
   | 'interjection';
 
-export type TutorPersona = 'teacher' | 'friend' | 'grammar_doctor' | 'dele_examiner' | 'juan' | 'sofia' | 'mateo' | 'camila';
+export type TutorPersona = 'teacher' | 'friend' | 'grammar_doctor' | 'dele_examiner' | 'juan' | 'sofia' | 'mateo' | 'camila' | 'elena';
 
 export interface Collocation {
   phrase_es: string;
@@ -61,6 +63,8 @@ export interface VocabularyItem {
   falseFriendAlert_ar?: string;
   relatedWords?: string[];
   relatedGrammarId?: string;
+  memoryHook?: string;
+  memoryHook_ar?: string;
 }
 
 export type VocabularyWord = VocabularyItem;
