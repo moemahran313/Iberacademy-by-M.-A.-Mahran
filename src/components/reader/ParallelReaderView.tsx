@@ -293,11 +293,11 @@ export const ParallelReaderView: React.FC<ParallelReaderViewProps> = ({
       </div>
 
       {/* Main Aligned Content by Paragraph Groups */}
-      <div className="space-y-8 font-serif">
+      <div className="space-y-8 reader-prose">
         {paragraphGroups.map((group) => (
           <div
             key={group.paragraphIndex}
-            className="rounded-3xl bg-white/80 dark:bg-stone-900/60 border border-stone-200/80 dark:border-stone-800/80 p-4 sm:p-5 shadow-xs space-y-4"
+            className="rounded-3xl bg-white/80 dark:bg-[#1E293B]/80 border border-stone-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-xs space-y-4"
           >
             {/* Paragraph Divider / Label */}
             <div className="flex items-center justify-between pb-2 border-b border-stone-100 dark:border-stone-800/80 text-xs font-sans">

@@ -1053,9 +1053,9 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FBF9F5] dark:bg-[#121110] text-stone-900 dark:text-stone-100 transition-colors pb-24">
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#0F172A] text-[#1E293B] dark:text-[#F1F5F9] transition-colors pb-24">
       {/* 1. DISCREET, STICKY TOP CONTROL BAR */}
-      <header className="sticky top-0 z-40 bg-[#FBF9F5]/95 dark:bg-[#121110]/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 px-4 sm:px-6 py-2.5 shadow-2xs">
+      <header className="sticky top-0 z-40 bg-[#FDFBF7]/95 dark:bg-[#0F172A]/95 backdrop-blur-md border-b border-stone-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-2.5 shadow-2xs">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 flex-wrap">
           {/* Left: Back & Story Identity */}
           <div className="flex items-center gap-2.5 min-w-0">
@@ -1232,7 +1232,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
       <main
         className={`${
           readerViewMode === 'parallel' ? 'max-w-6xl' : 'max-w-2xl'
-        } mx-auto px-4 sm:px-8 py-8 sm:py-14 space-y-10 font-serif transition-all duration-300`}
+        } mx-auto px-4 sm:px-8 py-8 sm:py-14 space-y-10 reader-prose transition-all duration-300`}
       >
         {/* Story Header Hook */}
         <div className="space-y-3 pb-6 border-b border-stone-200/70 dark:border-stone-800/70 font-sans">

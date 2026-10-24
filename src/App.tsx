@@ -10,6 +10,7 @@ import { ReadingDashboard } from './components/ReadingDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ImportedContent } from './types';
 import { TactileFeedback } from './components/TactileFeedback';
 import { LazyViewWrapper } from './components/LazyViewWrapper';
@@ -233,7 +234,7 @@ export function AppContent() {
   return (
     <>
       <ProtectedRoute>
-        <div className="min-h-screen w-full bg-[#FBF9F5] dark:bg-[#121110] text-stone-900 dark:text-stone-100 font-sans flex flex-col selection:bg-[#C85A32]/20 selection:text-stone-900 dark:selection:text-stone-100 transition-colors duration-200">
+        <div className="min-h-screen w-full bg-[#FDFBF7] dark:bg-[#0F172A] text-[#1E293B] dark:text-[#F1F5F9] font-sans flex flex-col selection:bg-[#EA580C]/20 selection:text-[#1E293B] dark:selection:text-[#F1F5F9] transition-colors duration-200">
           {/* World-Class Header with Duolingo Stats & Firebase Database Auth */}
           <Header
             activeTab={activeTab}
@@ -584,10 +585,12 @@ export function AppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MotionConfig transition={{ type: 'spring', stiffness: 300, damping: 25 }}>
-        <AppContent />
-      </MotionConfig>
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <MotionConfig transition={{ type: 'spring', stiffness: 300, damping: 25 }}>
+          <AppContent />
+        </MotionConfig>
+      </AppProvider>
+    </ThemeProvider>
   );
 }

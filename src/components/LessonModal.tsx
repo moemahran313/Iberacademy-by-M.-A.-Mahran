@@ -30,6 +30,9 @@ import { generate3ContextClozeExercises } from '../utils/lingqEngine';
 import { recordLessonCompletionInProgress } from '../utils/streak';
 import { SuccessCheckmark } from './SuccessCheckmark';
 import { FeedbackBanner } from './practice/FeedbackBanner';
+import { ConfettiBurst } from './ui/ConfettiBurst';
+import { TactileButton } from './ui/TactileButton';
+import { hapticTap, playSuccessPop } from '../utils/haptics';
 
 interface LessonModalProps {
   lesson: Lesson;
@@ -54,6 +57,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
   // Phase 4: 🏆 Checkpoint Mastery Quiz (>=85% required)
   // Phase 5: 🎉 Final Completion & Mastery Score
   const [currentPhase, setCurrentPhase] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState<boolean>(false);
 
   // Phase 0: Flashcards
   const [flashcardIdx, setFlashcardIdx] = useState<number>(0);
@@ -252,6 +256,8 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     setDrillAttempts(prev => prev + 1);
 
     if (correct) {
+      hapticTap();
+      playSuccessPop();
       soundEffects.playCorrect();
     } else {
       soundEffects.playIncorrect();
@@ -270,6 +276,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
   const handleSelectQuizAnswer = (qIdx: number, ans: string) => {
     if (quizSubmitted) return;
+    hapticTap();
     setQuizAnswers(prev => ({ ...prev, [qIdx]: ans }));
   };
 
@@ -280,6 +287,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
       setQuizScore(100);
       setHasPassedQuiz(true);
       setQuizSubmitted(true);
+      setShowConfetti(true);
       finishAndSaveMastery(100);
       return;
     }
@@ -299,6 +307,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     setQuizSubmitted(true);
 
     if (passed) {
+      setShowConfetti(true);
       soundEffects.playLevelUp();
       finishAndSaveMastery(calculatedScore);
     } else {
@@ -1198,15 +1207,13 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                   Back to Grammar
                 </motion.button>
  
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
+                <TactileButton
+                  variant="amber"
                   disabled={!selectedOpt}
                   onClick={handleCheckDrill}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 font-extrabold text-sm shadow-md transition cursor-pointer"
                 >
                   Check Answer
-                </motion.button>
+                </TactileButton>
               </div>
             )}
           </div>
@@ -1405,43 +1412,39 @@ export const LessonModal: React.FC<LessonModalProps> = ({
               </motion.button>
 
               {!quizSubmitted ? (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
+                <TactileButton
+                  variant="amber"
                   disabled={Object.keys(quizAnswers).length === 0}
                   onClick={handleSubmitQuiz}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm shadow-md transition disabled:opacity-40 cursor-pointer"
                 >
                   Submit Mastery Quiz
-                </motion.button>
+                </TactileButton>
               ) : hasPassedQuiz ? (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
+                <TactileButton
+                  variant="success"
+                  icon={<Check className="w-4 h-4" />}
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
-                  <Check className="w-4 h-4" />
                   Complete & Return to Path
-                </motion.button>
+                </TactileButton>
               ) : (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
+                <TactileButton
+                  variant="secondary"
+                  icon={<RefreshCw className="w-4 h-4" />}
                   onClick={() => {
                     setQuizSubmitted(false);
                     setQuizAnswers({});
                   }}
-                  className="px-6 py-2.5 rounded-xl bg-stone-800 text-amber-400 hover:bg-stone-700 font-extrabold text-sm shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
-                  <RefreshCw className="w-4 h-4" />
                   Retry Quiz
-                </motion.button>
+                </TactileButton>
               )}
             </div>
           </div>
         )}
 
+        {/* Lightweight Non-Intrusive 60 FPS Canvas Particle Celebration */}
+        <ConfettiBurst active={showConfetti} onComplete={() => setShowConfetti(false)} />
       </div>
     </div>
   );

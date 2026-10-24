@@ -35,6 +35,7 @@ import { IberioLogo } from './IberacademyLogo';
 import { soundEffects } from '../utils/audio';
 import { User } from 'firebase/auth';
 import { AvatarDisplay } from './AvatarDisplay';
+import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   activeTab: string;
@@ -61,6 +62,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
   isAuthLoading = false,
   navigation
 }) => {
+  const { isDark, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -220,6 +222,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
 
   const handleThemeToggle = () => {
     soundEffects.playPop();
+    toggleTheme();
     setUserProgress(prev => {
       const nextTheme = prev.settings.theme === 'dark' ? 'light' : 'dark';
       return {
@@ -235,7 +238,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
     return 'EN';
   };
 
-  const isDarkMode = userProgress.settings.theme === 'dark';
+  const isDarkMode = isDark;
 
   // 3 Essential Metrics for the Stat Bar
   const streakDays = userProgress.streakDays || 0;
@@ -262,7 +265,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
   return (
     <>
       {/* Streamlined Editorial Iberian Header */}
-      <header className="sticky top-0 z-40 bg-[#FBF9F5]/95 dark:bg-[#121110]/95 backdrop-blur-xl border-b border-stone-200/80 dark:border-stone-800/80 text-stone-900 dark:text-stone-100 transition-all duration-300 pt-safe">
+      <header className="sticky top-0 z-40 bg-[#FDFBF7]/95 dark:bg-[#0F172A]/95 backdrop-blur-xl border-b border-stone-200/80 dark:border-slate-800/80 text-[#1E293B] dark:text-[#F1F5F9] transition-all duration-300 pt-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 gap-3">
             
@@ -725,7 +728,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 260 }}
-              className="fixed top-0 right-0 h-full w-[290px] max-w-[85vw] bg-[#FBF9F5] dark:bg-[#121110] border-l border-stone-200/80 dark:border-stone-800/80 shadow-2xl z-50 flex flex-col md:hidden overflow-hidden"
+              className="fixed top-0 right-0 h-full w-[290px] max-w-[85vw] bg-[#FDFBF7] dark:bg-[#0F172A] border-l border-stone-200/80 dark:border-slate-800/80 shadow-2xl z-50 flex flex-col md:hidden overflow-hidden"
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-4 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100/40 dark:bg-stone-900/40">
@@ -920,7 +923,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({
       {/* Sticky Mobile Bottom Navigation Bar (Exactly 4 Primary Tabs) */}
       <nav 
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-[#FBF9F5]/95 dark:bg-[#121110]/95 backdrop-blur-md border-t border-stone-200/80 dark:border-stone-800/80 md:hidden flex items-center justify-between px-2 py-1 select-none pb-safe"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-[#FDFBF7]/95 dark:bg-[#0F172A]/95 backdrop-blur-md border-t border-stone-200/80 dark:border-slate-800/80 md:hidden flex items-center justify-between px-2 py-1 select-none pb-safe"
       >
         {mobileBottomTabs.map(tab => {
           const Icon = tab.icon;
