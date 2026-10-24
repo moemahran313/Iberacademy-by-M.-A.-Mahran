@@ -50,6 +50,7 @@ import {
   cancelSpanishSpeech,
   soundEffects
 } from '../utils/audio';
+import { lemmatizeSpanishWord, LemmatizationResult } from '../utils/spanishLemmatizer';
 
 interface LingQInteractiveReaderProps {
   content: ImportedContent;
@@ -107,6 +108,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   // Inspector & Popover states
   const [selectedToken, setSelectedToken] = useState<WordToken | null>(null);
   const [wordDef, setWordDef] = useState<WordDefinitionMatch | null>(null);
+  const [lemmaAnalysis, setLemmaAnalysis] = useState<LemmatizationResult | null>(null);
   const [popoverAnchor, setPopoverAnchor] = useState<PopoverAnchor | null>(null);
   const [multiContexts, setMultiContexts] = useState<ContextualSentence[]>([]);
   const [showCorpusExamples, setShowCorpusExamples] = useState<boolean>(false);
@@ -190,6 +192,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   const handleClosePopover = useCallback(() => {
     setSelectedToken(null);
     setWordDef(null);
+    setLemmaAnalysis(null);
     setPopoverAnchor(null);
     setShowCorpusExamples(false);
   }, []);
@@ -362,6 +365,10 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
     // 3. Show instant offline translation
     const def = lookupSpanishWord(token.clean);
     setWordDef(def);
+
+    // 3b. Run Spanish Lemmatization Engine (< 25ms client-side resolution)
+    const lemma = lemmatizeSpanishWord(token.clean, token.fullSentence);
+    setLemmaAnalysis(lemma);
 
     const contexts = findMultiContextSentences(token.clean);
     setMultiContexts(contexts);
@@ -1170,6 +1177,76 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
                       </>
                     )}
                   </button>
+
+                  {/* Lemmatization & Morphological Analysis Card */}
+                  {lemmaAnalysis && (
+                    <div className="p-2.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200/80 dark:border-amber-900/40 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                            Lema Base / Morfología
+                          </span>
+                        </div>
+
+                        {/* Save Base Lemma button if different from conjugated token */}
+                        {lemmaAnalysis.baseLemma.toLowerCase() !== selectedToken.clean.toLowerCase() && (
+                          <button
+                            onClick={() => handleToggleSaveToVocabulary(lemmaAnalysis.baseLemma)}
+                            className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500 text-amber-900 dark:text-amber-200 hover:text-stone-950 transition cursor-pointer border border-amber-500/40 shrink-0"
+                            title={`Guardar lema base '${lemmaAnalysis.baseLemma}' en SRS`}
+                          >
+                            {isWordSavedInVocabulary(lemmaAnalysis.baseLemma) ? '✓ Lema Guardado' : `Guardar '${lemmaAnalysis.baseLemma}'`}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-sm font-black text-stone-900 dark:text-stone-100 capitalize">
+                          {lemmaAnalysis.baseLemma}
+                        </span>
+                        <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 capitalize">
+                          ({lemmaAnalysis.parsingText})
+                        </span>
+                        {lemmaAnalysis.isIrregular && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                            Irregular
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Detached Enclitic Pronouns */}
+                      {lemmaAnalysis.detachedClitics && lemmaAnalysis.detachedClitics.length > 0 && (
+                        <div className="text-[11px] text-stone-700 dark:text-stone-300 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-1 rounded-lg">
+                          <span className="font-bold text-stone-600 dark:text-stone-400">Pronombres enclíticos: </span>
+                          <span className="font-mono font-bold text-amber-800 dark:text-amber-300">
+                            +{lemmaAnalysis.detachedClitics.join(', +')}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Multiple Lemmas Disambiguation (e.g. "fue" -> ser / ir) */}
+                      {lemmaAnalysis.multipleLemmas && lemmaAnalysis.multipleLemmas.length > 1 && (
+                        <div className="pt-1.5 border-t border-amber-200/60 dark:border-amber-900/50 space-y-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                            Desambiguación de Lema:
+                          </span>
+                          <div className="space-y-1">
+                            {lemmaAnalysis.multipleLemmas.map((m, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-[11px] gap-2">
+                                <span className="font-bold text-stone-800 dark:text-stone-200 capitalize">
+                                  {m.lemma} <span className="text-[10px] font-normal text-stone-500 dark:text-stone-400">({m.partOfSpeech})</span>
+                                </span>
+                                <span className="text-[10px] text-stone-600 dark:text-stone-400 truncate max-w-[170px]">
+                                  {m.contextDescription}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* English & Arabic Translations Card */}
                   <div className="space-y-1.5 p-2.5 bg-stone-50 dark:bg-stone-800/40 rounded-xl border border-stone-200/60 dark:border-stone-800">

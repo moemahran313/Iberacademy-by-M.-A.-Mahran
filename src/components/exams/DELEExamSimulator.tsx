@@ -35,6 +35,8 @@ import {
 import { DELE_B1_EXAM, DELE_B2_EXAM } from '../../data/deleExamsData';
 import { soundEffects } from '../../utils/audio';
 import { triggerConfettiBurst } from '../../utils/confetti';
+import { ExamSecurityWrapper } from './ExamSecurityWrapper';
+
 
 interface DELEExamSimulatorProps {
   onBackToDashboard?: () => void;
@@ -665,7 +667,11 @@ export const DELEExamSimulator: React.FC<DELEExamSimulatorProps> = ({
 
   // ACTIVE EXAM VIEW (Timed Interactive Interface)
   return (
-    <div className="max-w-6xl mx-auto px-2 sm:px-6 py-4 space-y-4">
+    <ExamSecurityWrapper
+      isExamActive={isExamActive && examMode === 'exam'}
+      examTitle={`${currentExam.title} (${currentExam.level})`}
+    >
+      <div className="max-w-6xl mx-auto px-2 sm:px-6 py-4 space-y-4">
       {/* Top Header: Level, Timer, Progress, Drawer toggle */}
       <div className="sticky top-2 z-30 p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#181615]/95 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-md flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 sm:gap-4">
@@ -1259,6 +1265,7 @@ export const DELEExamSimulator: React.FC<DELEExamSimulatorProps> = ({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ExamSecurityWrapper>
   );
 };

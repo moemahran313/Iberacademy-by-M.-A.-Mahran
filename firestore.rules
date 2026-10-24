@@ -7,6 +7,12 @@ service cloud.firestore {
       allow write: if true;
       allow delete: if true;
 
+      match /progress/{docId} {
+        allow read, write, delete: if true;
+      }
+      match /vocabulary/{wordId} {
+        allow read, write, delete: if true;
+      }
       match /learningJournal/{journalId} {
         allow read, write, delete: if true;
       }

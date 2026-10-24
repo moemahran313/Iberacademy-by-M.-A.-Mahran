@@ -169,7 +169,7 @@ html.lang-ar,
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* Safe area inset paddings for iOS notch, dynamic island, and Android gesture navigation bars */
+/* Native iOS/Android safe area inset rules for device notch, dynamic island & home indicator */
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -177,20 +177,34 @@ html.lang-ar,
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
+.safe-area-root,
+.root-layout-container {
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
 .pt-safe {
-  padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
 }
 .pb-safe {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 .pl-safe {
-  padding-left: max(env(safe-area-inset-left, 0px), 0.75rem);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
 }
 .pr-safe {
-  padding-right: max(env(safe-area-inset-right, 0px), 0.75rem);
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.p-safe {
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .mb-safe {
-  margin-bottom: env(safe-area-inset-bottom, 0px);
+  margin-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
 /* Mobile viewport keyboard adaptability */
@@ -200,35 +214,59 @@ html.lang-ar,
   overscroll-behavior: contain;
 }
 
-/* Mobile touch handling and fast-click 300ms delay bypass */
+/* Touch handling, fast-click 300ms delay bypass, & 48px Touch Target Geometry (Apple HIG & Material Design) */
 button,
 a,
 [role="button"],
 input[type="button"],
-input[type="submit"] {
+input[type="submit"],
+.touch-target,
+.nav-item-touch,
+.reader-word-touch,
+.audio-trigger-touch {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 44px minimum touch targets enforcement for interactive elements on touch screens */
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 768px) {
   button:not(.no-min-touch),
   [role="button"]:not(.no-min-touch),
   a.touch-target,
   input[type="button"],
-  input[type="submit"] {
-    min-height: 44px;
-    min-width: 44px;
+  input[type="submit"],
+  .touch-target,
+  .nav-item-touch,
+  .reader-word-touch,
+  .audio-trigger-touch {
+    min-width: 48px;
+    min-height: 48px;
   }
 }
 
 .touch-target,
 .fast-touch-target {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
+
+/* Expanded touch bounds using ::after pseudo-element for physically compact elements */
+.touch-expand-48 {
+  position: relative;
+}
+.touch-expand-48::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 48px;
+  min-height: 48px;
+  width: max(100%, 48px);
+  height: max(100%, 48px);
+}
+
 
 

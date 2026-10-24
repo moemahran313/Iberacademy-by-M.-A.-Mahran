@@ -44,6 +44,14 @@
       "schema": "users",
       "description": "User profile document containing account credentials, avatar ID, XP, level, and stats for global league ranking and cloud synchronization."
     },
+    "/users/{userId}/progress/summary": {
+      "schema": "users",
+      "description": "User aggregated progress summary document."
+    },
+    "/users/{userId}/vocabulary/{wordId}": {
+      "schema": "users",
+      "description": "Individual word and LingQ acquisition status document."
+    },
     "/grammar_reports/{reportId}": {
       "schema": "grammar_reports",
       "description": "Grammar and content feedback reports submitted by learners to refine content accuracy."

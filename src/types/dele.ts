@@ -125,4 +125,19 @@ export interface DELEScoreBreakdown {
   isApto: boolean;
   statusLabel: 'APTO' | 'NO APTO';
   timeSpentSeconds: number;
+  telemetry?: ExamTelemetry;
 }
+
+export interface ExamTelemetry {
+  sessionId: string;
+  startedAt: string;
+  finishedAt?: string;
+  tabSwitchesCount: number;
+  timeSpentPerQuestion: Record<string, number>;
+  totalCopyPasteAttempts: number;
+  isFullscreen: boolean;
+  isCertificateEligible: boolean;
+  isInvalidated: boolean;
+  invalidationReason?: string;
+}
+

@@ -5,6 +5,7 @@ import { soundEffects } from './utils/audio';
 import { triggerConfettiBurst } from './utils/confetti';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
+import { MobileFooterNav } from './components/layout/MobileFooterNav';
 import { ReadingDashboard } from './components/ReadingDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -15,32 +16,68 @@ import { LazyViewWrapper } from './components/LazyViewWrapper';
 import { VirtualizedList } from './components/VirtualizedList';
 import { TabLoadingSkeleton } from './components/Skeletons';
 
+// Helper for resilient dynamic chunk loading with retry and export resolution
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<any>,
+  exportName?: string
+) {
+  return React.lazy(async () => {
+    try {
+      const module = await factory();
+      if (exportName && module[exportName]) {
+        return { default: module[exportName] };
+      }
+      if (module.default) {
+        return { default: module.default };
+      }
+      const exportedKeys = Object.keys(module);
+      if (exportedKeys.length > 0) {
+        return { default: module[exportedKeys[0]] };
+      }
+      throw new Error('Module has no exports');
+    } catch (error) {
+      console.warn('Dynamic chunk import failed, retrying once...', error);
+      await new Promise(res => setTimeout(res, 500));
+      const module = await factory();
+      if (exportName && module[exportName]) {
+        return { default: module[exportName] };
+      }
+      if (module.default) {
+        return { default: module.default };
+      }
+      const exportedKeys = Object.keys(module);
+      return { default: module[exportedKeys[0]] };
+    }
+  });
+}
+
 // Code-split modals
-const PlacementTestModal = React.lazy(() => import('./components/PlacementTestModal').then(m => ({ default: m.PlacementTestModal })));
-const OnboardingModal = React.lazy(() => import('./components/OnboardingModal').then(m => ({ default: m.OnboardingModal })));
-const AuthModal = React.lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
-const WelcomeVerificationModal = React.lazy(() => import('./components/WelcomeVerificationModal').then(m => ({ default: m.WelcomeVerificationModal })));
-const EmailVerificationEnforcementModal = React.lazy(() => import('./components/EmailVerificationEnforcementModal').then(m => ({ default: m.EmailVerificationEnforcementModal })));
+const PlacementTestModal = lazyWithRetry(() => import('./components/PlacementTestModal'), 'PlacementTestModal');
+const OnboardingModal = lazyWithRetry(() => import('./components/OnboardingModal'), 'OnboardingModal');
+const AuthModal = lazyWithRetry(() => import('./components/AuthModal'), 'AuthModal');
+const WelcomeVerificationModal = lazyWithRetry(() => import('./components/WelcomeVerificationModal'), 'WelcomeVerificationModal');
+const EmailVerificationEnforcementModal = lazyWithRetry(() => import('./components/EmailVerificationEnforcementModal'), 'EmailVerificationEnforcementModal');
 
 // Code-split feature views to reduce initial JS payload size
-const LearningPathView = React.lazy(() => import('./components/LearningPathView').then(m => ({ default: m.LearningPathView })));
-const VocabularyLibrary = React.lazy(() => import('./components/VocabularyLibrary').then(m => ({ default: m.VocabularyLibrary })));
-const ComprehensibleInputView = React.lazy(() => import('./components/ComprehensibleInputView').then(m => ({ default: m.ComprehensibleInputView })));
-const VerbConjugator = React.lazy(() => import('./components/VerbConjugator').then(m => ({ default: m.VerbConjugator })));
-const GrammarEncyclopediaView = React.lazy(() => import('./components/GrammarEncyclopediaView').then(m => ({ default: m.GrammarEncyclopediaView })));
-const AITutorChat = React.lazy(() => import('./components/AITutorChat').then(m => ({ default: m.AITutorChat })));
-const VideoCoursesView = React.lazy(() => import('./components/VideoCoursesView').then(m => ({ default: m.VideoCoursesView })));
-const ProfileView = React.lazy(() => import('./components/ProfileView').then(m => ({ default: m.ProfileView })));
-const CurriculumPlannerView = React.lazy(() => import('./components/CurriculumPlannerView').then(m => ({ default: m.CurriculumPlannerView })));
-const A0BeginnerFoundationView = React.lazy(() => import('./components/A0BeginnerFoundationView').then(m => ({ default: m.A0BeginnerFoundationView })));
-const OralShadowingDrill = React.lazy(() => import('./components/OralShadowingDrill').then(m => ({ default: m.OralShadowingDrill })));
-const SkillWorkshopView = React.lazy(() => import('./components/SkillWorkshopView').then(m => ({ default: m.SkillWorkshopView })));
-const SitemapAndContentHub = React.lazy(() => import('./components/SitemapAndContentHub').then(m => ({ default: m.SitemapAndContentHub })));
-const PushedOutputDrill = React.lazy(() => import('./components/practice/PushedOutputDrill').then(m => ({ default: m.PushedOutputDrill })));
-const TaskBasedSimulation = React.lazy(() => import('./components/tasks/TaskBasedSimulation').then(m => ({ default: m.TaskBasedSimulation })));
-const AdaptivePlacementExam = React.lazy(() => import('./components/assessment/AdaptivePlacementExam').then(m => ({ default: m.AdaptivePlacementExam })));
-const DELEExamSimulator = React.lazy(() => import('./components/exams/DELEExamSimulator').then(m => ({ default: m.DELEExamSimulator })));
-const WritingAssessmentView = React.lazy(() => import('./components/assessment/WritingAssessmentView').then(m => ({ default: m.WritingAssessmentView })));
+const LearningPathView = lazyWithRetry(() => import('./components/LearningPathView'), 'LearningPathView');
+const VocabularyLibrary = lazyWithRetry(() => import('./components/VocabularyLibrary'), 'VocabularyLibrary');
+const ComprehensibleInputView = lazyWithRetry(() => import('./components/ComprehensibleInputView'), 'ComprehensibleInputView');
+const VerbConjugator = lazyWithRetry(() => import('./components/VerbConjugator'), 'VerbConjugator');
+const GrammarEncyclopediaView = lazyWithRetry(() => import('./components/GrammarEncyclopediaView'), 'GrammarEncyclopediaView');
+const AITutorChat = lazyWithRetry(() => import('./components/AITutorChat'), 'AITutorChat');
+const VideoCoursesView = lazyWithRetry(() => import('./components/VideoCoursesView'), 'VideoCoursesView');
+const ProfileView = lazyWithRetry(() => import('./components/ProfileView'), 'ProfileView');
+const CurriculumPlannerView = lazyWithRetry(() => import('./components/CurriculumPlannerView'), 'CurriculumPlannerView');
+const A0BeginnerFoundationView = lazyWithRetry(() => import('./components/A0BeginnerFoundationView'), 'A0BeginnerFoundationView');
+const OralShadowingDrill = lazyWithRetry(() => import('./components/OralShadowingDrill'), 'OralShadowingDrill');
+const SkillWorkshopView = lazyWithRetry(() => import('./components/SkillWorkshopView'), 'SkillWorkshopView');
+const SitemapAndContentHub = lazyWithRetry(() => import('./components/SitemapAndContentHub'), 'SitemapAndContentHub');
+const PushedOutputDrill = lazyWithRetry(() => import('./components/practice/PushedOutputDrill'), 'PushedOutputDrill');
+const TaskBasedSimulation = lazyWithRetry(() => import('./components/tasks/TaskBasedSimulation'), 'TaskBasedSimulation');
+const AdaptivePlacementExam = lazyWithRetry(() => import('./components/assessment/AdaptivePlacementExam'), 'AdaptivePlacementExam');
+const DELEExamSimulator = lazyWithRetry(() => import('./components/exams/DELEExamSimulator'), 'DELEExamSimulator');
+const WritingAssessmentView = lazyWithRetry(() => import('./components/assessment/WritingAssessmentView'), 'WritingAssessmentView');
+const ListeningExamTask = lazyWithRetry(() => import('./components/listening/ListeningExamTask'), 'ListeningExamTask');
 
 export interface AppContentNavigationProps {
   activeTab: string;
@@ -89,6 +126,8 @@ export const AppContentNavigation: React.FC<AppContentNavigationProps> = ({
         'cat_placement',
         'dele_exam',
         'writing_eval',
+        'listening_exam',
+        'listening_comp',
         'linglooper',
         'a0_foundation',
         'sitemap'
@@ -348,6 +387,10 @@ export function AppContent() {
                     <WritingAssessmentView />
                   )}
 
+                  {(activeTab === 'listening_exam' || activeTab === 'listening_comp') && (
+                    <ListeningExamTask onBackToDashboard={handleOpenDashboard} />
+                  )}
+
                   {activeTab === 'videos' && (
                     <VideoCoursesView />
                   )}
@@ -384,6 +427,9 @@ export function AppContent() {
             userEmail={authUser?.email}
             userName={authUser?.displayName}
           />
+
+          {/* Native Mobile Bottom Navigation Bar with Safe Area Bottom Inset & 48px Touch Targets */}
+          <MobileFooterNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
           {/* Floating Mobile PWA Install Banner */}
           <PWAInstallBanner />

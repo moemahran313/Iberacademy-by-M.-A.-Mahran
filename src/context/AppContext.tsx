@@ -16,6 +16,7 @@ import {
   updateUserProfileData,
   deleteAllAccountsInSystem
 } from '../lib/firebase';
+import { firestoreSyncService } from '../services/firestoreSyncService';
 
 interface AppContextType {
   authUser: User | null;
@@ -100,8 +101,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const setActiveTab = (tab: string) => {
-    // Flush pending cloud sync immediately upon view/tab change
-    flushCloudSync();
+    // Flush pending atomic write batch immediately upon view/tab change
+    firestoreSyncService.flushQueueImmediately();
     setActiveTabState(tab);
     try {
       if (tab !== 'landing') {
@@ -301,33 +302,112 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [userProgress.settings?.nativeLanguage]);
 
-  // Immediate save to localStorage for guests & offline resilience;
-  // debounced Firestore sync (5s batch) for cloud accounts to eliminate re-render cascades.
+  // Track previous progress state for diffing mutations
+  const prevProgressRef = useRef<UserProgress>(userProgress);
+
+  // Immediate synchronous save to local storage for 0ms UI latency;
+  // Enqueue mutations into FIFO syncQueue with 4s debounced atomic writeBatch and LWW conflict resolution.
   useEffect(() => {
     saveUserProgress(userProgress);
 
-    const user = authUser;
-    if (user && !user.isAnonymous && !user.uid.startsWith('guest_') && !user.uid.startsWith('user_ver_')) {
-      if (cloudSyncTimeoutRef.current) {
-        clearTimeout(cloudSyncTimeoutRef.current);
-      }
-      cloudSyncTimeoutRef.current = setTimeout(() => {
-        flushCloudSync();
-      }, 5000);
-    }
-  }, [userProgress, authUser, flushCloudSync]);
+    const prev = prevProgressRef.current;
+    const next = userProgress;
+    const user = authUserRef.current;
 
-  // Flush pending cloud sync on page unmount / unload
+    if (user && !user.isAnonymous && !user.uid.startsWith('guest_') && !user.uid.startsWith('user_ver_')) {
+      let summaryChanged = false;
+      const summaryPatch: Record<string, any> = {};
+
+      if (next.xp !== prev.xp) {
+        summaryPatch.xp = next.xp;
+        summaryChanged = true;
+      }
+      if (next.streakDays !== prev.streakDays) {
+        summaryPatch.streakDays = next.streakDays;
+        summaryChanged = true;
+      }
+      if (next.currentLevel !== prev.currentLevel) {
+        summaryPatch.currentLevel = next.currentLevel;
+        summaryChanged = true;
+      }
+      if (next.totalWordsRead !== prev.totalWordsRead) {
+        summaryPatch.totalWordsRead = next.totalWordsRead;
+        summaryChanged = true;
+      }
+      if (next.completedLessonIds?.length !== prev.completedLessonIds?.length) {
+        summaryPatch.completedLessonIds = next.completedLessonIds;
+        summaryChanged = true;
+      }
+
+      if (summaryChanged) {
+        summaryPatch.lastActiveDate = next.lastActiveDate;
+        summaryPatch.progressData = JSON.stringify(next);
+        firestoreSyncService.enqueueSummaryUpdate(user.uid, summaryPatch);
+      }
+
+      // Check LingQ status / word mutations (e.g. status change 1 -> 2)
+      if (next.lingqs !== prev.lingqs) {
+        const nextLingqs = (next.lingqs || {}) as Record<string, any>;
+        const prevLingqs = (prev.lingqs || {}) as Record<string, any>;
+
+        Object.entries(nextLingqs).forEach(([word, lingqItem]) => {
+          const lingq = lingqItem as { status: number; definition?: string; translation?: string; lastReviewed?: string };
+          const prevItem = prevLingqs[word] as { status?: number; lastReviewed?: string } | undefined;
+
+          if (!prevItem || prevItem.status !== lingq.status || prevItem.lastReviewed !== lingq.lastReviewed) {
+            firestoreSyncService.enqueueVocabularyUpdate(
+              user.uid,
+              word,
+              lingq.status,
+              {
+                definition: lingq.definition,
+                translation: lingq.translation,
+                lastReviewed: lingq.lastReviewed,
+                srs: next.srsData?.[word] || null
+              }
+            );
+          }
+        });
+      }
+
+      // Check SRS changes
+      if (next.srsData !== prev.srsData) {
+        const nextSrs = (next.srsData || {}) as Record<string, any>;
+        const prevSrs = (prev.srsData || {}) as Record<string, any>;
+
+        Object.entries(nextSrs).forEach(([word, srsItem]) => {
+          const srs = srsItem as { repetitions?: number; nextReviewDate?: string };
+          const prevItem = prevSrs[word] as { repetitions?: number; nextReviewDate?: string } | undefined;
+
+          if (!prevItem || prevItem.repetitions !== srs.repetitions || prevItem.nextReviewDate !== srs.nextReviewDate) {
+            firestoreSyncService.enqueueVocabularyUpdate(
+              user.uid,
+              word,
+              (next.lingqs as Record<string, any>)?.[word]?.status || 2,
+              {
+                srs,
+                lastReviewed: new Date().toISOString()
+              }
+            );
+          }
+        });
+      }
+    }
+
+    prevProgressRef.current = userProgress;
+  }, [userProgress]);
+
+  // Flush pending cloud writeBatch on page unmount / unload / tab blur
   useEffect(() => {
     const handleBeforeUnload = () => {
-      flushCloudSync();
+      firestoreSyncService.flushQueueImmediately();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      flushCloudSync();
+      firestoreSyncService.flushQueueImmediately();
     };
-  }, [flushCloudSync]);
+  }, []);
 
   const handleEmailSignUp = async (
     email: string,

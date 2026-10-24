@@ -9,7 +9,8 @@ import {
   Sparkles,
   GraduationCap,
   Zap,
-  Video,
+  Radio,
+  Headphones,
   Compass
 } from 'lucide-react';
 import { UserProgress } from '../types';
@@ -77,6 +78,7 @@ export const SkillWorkshopView: React.FC<SkillWorkshopViewProps> = ({
 
   // Subdued Secondary Reference Strip (Non-intrusive)
   const referenceTools = [
+    { id: 'listening_exam', title: 'Comprensión Auditiva Real (DELE/SIELE)', icon: Headphones },
     { id: 'writing_eval', title: 'Evaluador de Escritura (CEFR 4D)', icon: Sparkles },
     { id: 'dele_exam', title: 'Simulador DELE/SIELE (Cervantes)', icon: Sparkles },
     { id: 'cat_placement', title: 'Examen Adaptativo CAT (Rasch IRT)', icon: Sparkles },
@@ -180,3 +182,5 @@ export const SkillWorkshopView: React.FC<SkillWorkshopViewProps> = ({
     </div>
   );
 };
+
+export default SkillWorkshopView;
