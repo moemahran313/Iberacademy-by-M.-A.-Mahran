@@ -255,10 +255,10 @@ export const VISUAL_ASSOCIATION_ENGINE: VisualAssociationItem[] = [
     options: [
       {
         id: 'vis_6_a',
-        label_es: 'El niño come manzana',
-        visual_emoji: '👦🍎😋',
-        visual_bg_gradient: 'from-red-50 to-rose-100 dark:from-slate-800 dark:to-slate-900',
-        visual_description: 'Boy taking a bite of an apple',
+        label_es: 'El chico merienda un bocadillo',
+        visual_emoji: '🥪😋',
+        visual_bg_gradient: 'from-amber-50 to-orange-100 dark:from-slate-800 dark:to-slate-900',
+        visual_description: 'Boy eating a Spanish bocadillo sandwich for an afternoon snack',
         is_correct: false
       },
       {

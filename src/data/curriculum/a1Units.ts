@@ -32,9 +32,9 @@ export const A1_UNITS_PART1: Unit[] = [
           content_ar: 'في إسبانيا وأمريكا اللاتينية، تتسم التحيات بالدفء والود، وغالباً ما تترافق بمصافحة أو عناق أو قبلات على الوجنتين بحسب البلد.'
         },
         dialogue: [
-          { speaker: 'Mateo', es: '¡Hola! Buenos días, ¿cómo estás?', en: 'Hello! Good morning, how are you?', ar: 'مرحباً! صباح الخير، كيف حالك؟' },
-          { speaker: 'Sofía', es: 'Muy bien, gracias. ¿Y tú?', en: 'Very well, thank you. And you?', ar: 'بخير جداً، شكراً. وأنت؟' },
-          { speaker: 'Mateo', es: 'Excelente. Me llamo Mateo.', en: 'Excellent. My name is Mateo.', ar: 'ممتاز. اسمي ماتيو.' }
+          { speaker: 'Mateo', es: '¡Buenas! Perdona, ¿este sitio está libre o lo tienes ocupado?', en: 'Hi there! Excuse me, is this seat free or taken?', ar: 'مرحباً! معذرة، هل هذا المقعد شاغر أم محجوز؟' },
+          { speaker: 'Sofía', es: 'Nada, libre total. Pasa y siéntate. Yo soy Sofía, por cierto.', en: 'Not at all, totally free. Come on and sit down. I am Sofía, by the way.', ar: 'أبداً، شاغر تماماً. تفضل واجلس. أنا صوفيا، بالمناسبة.' },
+          { speaker: 'Mateo', es: 'Encantado, Sofía, yo Mateo. Oye, ¿sabes si la clave del Wi-Fi sigue siendo la de siempre?', en: 'Pleased to meet you, Sofía, I am Mateo. Hey, do you know if the Wi-Fi password is the usual one?', ar: 'تشرفت بمعرفتك يا صوفيا، أنا ماتيو. اسمعي، هل تعرفين ما إذا كانت كلمة مرور الواي فاي هي نفسها المعتادة؟' }
         ],
         exercises: [
           {

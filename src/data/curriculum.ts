@@ -2,6 +2,7 @@ import { Unit, Lesson, RevisitedVocabItem, Exercise } from '../types';
 import { A1_CURRICULUM_UNITS, A2_CURRICULUM_UNITS } from './curriculum/generatedCurriculum';
 import { B1_CURRICULUM_UNITS } from './curriculum/b1Units';
 import { B2_CURRICULUM_UNITS } from './curriculum/b2Units';
+import { getAuthenticDialogueForTopic } from './dialoguesData';
 
 // Pedagogical vocabulary database with authentic translations & communicative sentences
 const PEDAGOGICAL_VOCAB_MAP: Record<string, { en: string; ar: string; sample: { es: string; en: string; ar: string } }> = {
@@ -142,101 +143,113 @@ function transformLessonToCanDo(lesson: Lesson, unitNumber: number, indexInUnit:
     objectives_ar = [`إتقان الهدف التواصلي: "${title_ar}"`, 'التعبير بطلاقة باستخدام تراكيب المتحدثين الأصليين'];
   }
 
-  // Ensure authentic micro-dialogue exists and has at least 3 turns
+  // Ensure authentic, culturally grounded micro-dialogue exists (Anti-Slop Audit)
   let dialogue = lesson.dialogue;
-  if (!dialogue || dialogue.length < 2) {
-    dialogue = [
-      {
-        speaker: 'Elena',
-        es: `Hola, disculpa. ¿Me puedes ayudar con esto? Necesito saber cómo hacer para ${title_es.toLowerCase()}.`,
-        en: `Hello, excuse me. Could you help me with this? I need to know how to ${title_en.toLowerCase()}.`,
-        ar: `مرحباً، معذرة. هل يمكنك مساعدتي؟ أحتاج إلى معرفة كيفية ${title_ar}.`
-      },
-      {
-        speaker: 'Carlos',
-        es: `¡Claro que sí! Es muy sencillo, solo tienes que decirlo con naturalidad y amabilidad.`,
-        en: `Of course! It is very simple, you just have to say it naturally and politely.`,
-        ar: `بالتأكيد! الأمر بسيط للغاية، فقط عليك قوله بعفوية ولطف.`
-      },
-      {
-        speaker: 'Elena',
-        es: `¡Muchísimas gracias! Me ayuda un montón para desenvolverme mejor aquí.`,
-        en: `Thank you so much! It helps me a lot to navigate everyday life here.`,
-        ar: `شكراً جزيلاً! هذا يساعدني كثيراً في التعامل اليومي هنا بثقة.`
-      }
-    ];
+  const isGenericDialogue =
+    !dialogue ||
+    dialogue.length < 2 ||
+    dialogue.some(
+      t =>
+        t.es.includes('Necesito saber cómo hacer para') ||
+        t.es.includes('El niño come') ||
+        t.es.includes('manzana roja') ||
+        (t.es.includes('Buenos días, ¿cómo estás?') && t.es.includes('Excelente. Me llamo'))
+    );
+
+  if (isGenericDialogue) {
+    const authenticObj = getAuthenticDialogueForTopic(title_es, lesson.cefr || 'A1');
+    dialogue = authenticObj.turns;
   }
 
-  // Ensure exercises exist (minimum 4-5 communicative exercises)
-  let exercises: Exercise[] = lesson.exercises ? [...lesson.exercises] : [];
+  // Ensure exercises exist (minimum 4 communicative exercises with authentic cultural distractors)
+  let exercises: Exercise[] = lesson.exercises
+    ? lesson.exercises.filter(
+        ex =>
+          !ex.options.some(
+            o =>
+              o.includes('El coche está en el garaje') ||
+              o.includes('Ayer fui al cine solo') ||
+              o.includes('come una manzana') ||
+              o.includes('La biblioteca cierra a las')
+          )
+      )
+    : [];
+
   if (exercises.length < 4) {
     const defaultEx: Exercise[] = [
       {
         id: `ex-${lesson.id}-comm-1`,
         type: 'multiple_choice',
-        prompt_es: `Para "${title_es}", ¿cuál es la frase más adecuada y natural?`,
+        prompt_es: `Para "${title_es}", ¿cuál es la expresión más natural y auténtica?`,
         prompt_en: `For "${title_en}", which is the most natural native phrase?`,
         prompt_ar: `لتحقيق "${title_ar}"، ما هي العبارة الأكثر ملاءمة وطبيعية؟`,
         options: [
-          dialogue[0]?.es || 'Por favor, ¿me pones un café?',
-          'No entiendo nada de lo que dices',
-          'Ayer fui al cine solo',
-          'El coche está en el garaje'
+          dialogue[0]?.es || 'A ver, te paso mi parte por Bizum ahora mismo.',
+          'Fíjate que la cita previa para el NIE se agotó en dos minutos.',
+          'Mire, Don Ramón, llevamos tres días sin agua caliente en el piso.',
+          'Con esta ola de calor es imposible salir a la calle a las cuatro de la tarde.'
         ],
-        correctAnswer: dialogue[0]?.es || 'Por favor, ¿me pones un café?',
-        explanation_en: 'This phrase directly expresses the communicative intent naturally.',
-        explanation_ar: 'هذه العبارة تعبر مباشرة عن الهدف التواصلي بطريقة طبيعية.'
+        correctAnswer: dialogue[0]?.es || 'A ver, te paso mi parte por Bizum ahora mismo.',
+        explanation_en: 'This phrase directly expresses the communicative intent naturally with native discourse markers.',
+        explanation_ar: 'هذه العبارة تعبر مباشرة عن الهدف التواصلي بطريقة طبيعية باستخدام علامات الخطاب الأصلية.'
       },
       {
         id: `ex-${lesson.id}-comm-2`,
         type: 'fill_blank',
-        prompt_es: `Completa con cortesía nativa: "Disculpa, ¿________ ayudarme con esta gestión por favor?"`,
-        prompt_en: `Complete with native politeness: "Excuse me, ________ you help me with this task please?"`,
-        prompt_ar: `أكمل بلباقة طبيعية: "لو سمحت، هل يمكنك مساعدتي في هذا الإجراء من فضلك؟"`,
-        options: ['puedes', 'comes', 'duermes', 'corres'],
-        correctAnswer: 'puedes',
-        explanation_en: '"¿Puedes ayudarme...?" is the natural polite way to request help.',
-        explanation_ar: '"¿Puedes ayudarme...?" هي الصيغة المهذبة الأكثر شيوعاً لطلب المساعدة.'
+        prompt_es: `Completa con el marcador de discurso natural: "________ la verdad es que tienes toda la razón, lo solucionamos ahora."`,
+        prompt_en: `Complete with the natural discourse marker: "________ the truth is you are totally right, we will fix it now."`,
+        prompt_ar: `أكمل بعلامة الخطاب الطبيعية: "في الحقيقة معك كل الحق، سنحل الأمر الآن."`,
+        options: ['Pues', 'Siempre', 'Nunca', 'Tarde'],
+        correctAnswer: 'Pues',
+        explanation_en: '"Pues la verdad es que..." is the standard conversational bridge for frank, natural agreement.',
+        explanation_ar: '"Pues la verdad es que..." هو الرابط الحواري القياسي للتعبير عن الاتفاق الصادق بعفوية.'
       },
       {
         id: `ex-${lesson.id}-comm-3`,
         type: 'multiple_choice',
-        prompt_es: `Si el camarero o dependiente te pregunta: "¿Desea algo más?", tú respondes amablemente:`,
-        prompt_en: `If the waiter or clerk asks: "Would you like anything else?", you reply politely:`,
-        prompt_ar: `إذا سألك النادل أو البائع: "هل ترغب في شيء آخر؟"، تجيب بلباقة:`,
+        prompt_es: `En una conversación informal entre compañeros sobre gastos compartidos o planes, dices con naturalidad:`,
+        prompt_en: `In a casual conversation among friends or flatmates about split expenses or plans, you say naturally:`,
+        prompt_ar: `في محادثة عفوية بين زملاء السكن أو الأصدقاء حول تقسيم المصاريف، تقول بطبيعية:`,
         options: [
-          'No, nada más, muchas gracias.',
-          'Quiero salir de aquí ya.',
-          'No tengo dinero en efectivo.',
-          'La puerta está cerrada.'
+          'No te preocupes por la fianza, nos arreglamos por Bizum al momento.',
+          'El casero me dijo que no piensa devolverme el depósito del alquiler.',
+          'Llevo dos semanas intentando conseguir cita previa para el NIE.',
+          'Con esta ola de calor es imposible salir a la terraza a las cuatro de la tarde.'
         ],
-        correctAnswer: 'No, nada más, muchas gracias.',
-        explanation_en: '"No, nada más, muchas gracias" is the polished, standard polite response.',
-        explanation_ar: '"No, nada más, muchas gracias" هي الإجابة الودية القياسية.'
+        correctAnswer: 'No te preocupes por la fianza, nos arreglamos por Bizum al momento.',
+        explanation_en: 'Uses contemporary, culturally grounded topics (fianza, Bizum) instead of textbook tropes.',
+        explanation_ar: 'تستخدم مواضيع معاصرة وحقيقية (التأمين، تطبيق بيزوم) بدلاً من القوالب التقليدية الجامدة.'
       },
       {
         id: `ex-${lesson.id}-comm-4`,
         type: 'fill_blank',
-        prompt_es: `Para pedir la cuenta o el total dices: "¿Cuánto es en ________, por favor?"`,
-        prompt_en: `To ask for the bill or total you say: "How much is it in ________, please?"`,
-        prompt_ar: `للسؤال عن الحساب الإجمالي تقول: "كم المجموع من فضلك؟"`,
-        options: ['total', 'lejos', 'rápido', 'difícil'],
-        correctAnswer: 'total',
-        explanation_en: '"En total" asks for the full bill amount.',
-        explanation_ar: '"En total" تعني في المجموع الإجمالي.'
+        prompt_es: `Para expresar precaución coloquial dices: "Guarda el justificante del trámite, por si las ________."`,
+        prompt_en: `To express colloquial precaution you say: "Keep the receipt, just in case (por si las ________)."`,
+        prompt_ar: `للتعبير عن أخذ الحيطة والحذر بالعامية الإسبانية تقول: "احتفظ بإيصال المعاملة، تحسباً لأي طارئ (por si las moscas)."`,
+        options: ['moscas', 'dudas', 'prisas', 'penas'],
+        correctAnswer: 'moscas',
+        explanation_en: '"Por si las moscas" is an essential high-frequency Spanish idiom for "just in case".',
+        explanation_ar: '"Por si las moscas" هو التعبير الاصطلاحي الإسباني الشهير لقول "تحسباً لأي طارئ".'
       }
     ];
 
     exercises = [...exercises, ...defaultEx.slice(0, 4 - exercises.length)];
   }
 
-  // Ensure productionPrompt represents a real-world communicative mission
-  const productionPrompt = lesson.productionPrompt || {
-    prompt_en: `Real-World Mission: ${title_en}. Express your needs clearly, request what you want politely, and confirm details with the other speaker.`,
-    prompt_ar: `مهمة واقعية: ${title_ar}. عبر عن رغباتك بوضوح، اطلب ما تريده بلباقة، وتحقق من التفاصيل مع المتحدث الآخر.`,
-    minSentences: 3,
-    sampleTarget: `Hola, buenas tardes. Quisiera ${title_es.toLowerCase()} por favor. ¿Me podrías indicar los detalles? Muchas gracias por tu ayuda.`
-  };
+  // Ensure productionPrompt represents an authentic, real-world communicative scenario
+  const isGenericProduction =
+    !lesson.productionPrompt ||
+    lesson.productionPrompt.sampleTarget.includes('Quisiera') &&
+      lesson.productionPrompt.sampleTarget.includes('Muchas gracias por tu ayuda.');
+
+  const productionPrompt = !isGenericProduction
+    ? lesson.productionPrompt!
+    : {
+        prompt_en: `Real-World Communicative Mission: ${title_en}. Express your thoughts naturally, use modern conversational connectors ("A ver...", "Pues la verdad es que..."), and solve the situation collaboratively.`,
+        prompt_ar: `مهمة تواصلية واقعية: ${title_ar}. عبر عن أفكارك بعفوية، استخدم الروابط الحوارية المعاصرة ("A ver...", "Pues la verdad es que...")، وحل الموقف بتعاون.`,
+        minSentences: 3,
+        sampleTarget: `A ver, te comento rápido sobre el tema de ${title_es.toLowerCase()}: pues la verdad es que me parece genial tu propuesta. Si quieres, nos organizamos por WhatsApp y te paso los detalles por Bizum al instante.`
+      };
 
   return {
     ...lesson,

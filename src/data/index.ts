@@ -10,3 +10,5 @@ export * from './a0BeginnerFoundation';
 export * from './learningPath';
 export * from './highFrequencyVocab';
 export * from './situationalScenarios';
+export * from './dialoguesData';
+export * from './sampleLessons';

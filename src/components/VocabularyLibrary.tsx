@@ -35,6 +35,7 @@ import {
   getTodayDateString
 } from '../utils/srs';
 import { useDebounce } from '../hooks/useDebounce';
+import { getCollocationsForWord } from '../services/collocationService';
 
 interface VocabularyLibraryProps {
   userProgress: UserProgress;
@@ -70,6 +71,7 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
 
   // Active card in review queue
   const currentCard: UnifiedMemoryCard | undefined = dueCards[currentReviewIdx];
+  const cardCollocations = useMemo(() => currentCard ? getCollocationsForWord(currentCard.word) : [], [currentCard]);
 
   // Auto-play audio when front of card is first shown
   useEffect(() => {
@@ -464,13 +466,48 @@ export const VocabularyLibrary: React.FC<VocabularyLibraryProps> = ({
                             </div>
                           )}
 
-                          {/* Mnemonic / Collocation cue */}
-                          {currentCard.collocation && (
+                          {/* Authentic Collocations with Audio Pronunciation */}
+                          {cardCollocations.length > 0 ? (
+                            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-left space-y-2">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Colocaciones Auténticas en Español:</span>
+                              </div>
+                              <div className="space-y-1.5">
+                                {cardCollocations.slice(0, 2).map((col, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between text-xs gap-2"
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="font-black text-stone-900 dark:text-stone-100 block">
+                                        {col.pairing_es}
+                                      </span>
+                                      <span className="text-[11px] text-stone-500 dark:text-stone-400 block truncate">
+                                        {col.translation_en}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        speakSpanish(col.pairing_es);
+                                      }}
+                                      className="p-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500 text-amber-800 dark:text-amber-200 hover:text-stone-950 transition cursor-pointer shrink-0"
+                                      title="Escuchar colocación"
+                                    >
+                                      <Volume2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : currentCard.collocation ? (
                             <div className="text-xs text-stone-500 dark:text-stone-400 flex items-center justify-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                               <span>Colocación: <strong>{currentCard.collocation}</strong></span>
                             </div>
-                          )}
+                          ) : null}
                         </motion.div>
                       ) : (
                         /* FRONT CONTENT: Context Sentence preview */

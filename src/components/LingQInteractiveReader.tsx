@@ -20,7 +20,8 @@ import {
   Lightbulb,
   Zap,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Columns2
 } from 'lucide-react';
 import {
   UserProgress,
@@ -51,6 +52,20 @@ import {
   soundEffects
 } from '../utils/audio';
 import { lemmatizeSpanishWord, LemmatizationResult } from '../utils/spanishLemmatizer';
+import {
+  AcquisitionStage,
+  STAGE_CONFIGS,
+  MultiWordExpression,
+  MWEMatch,
+  MultiTokenSelection,
+  CollocationPairing
+} from '../types/vocabulary';
+import { findMWEMatchesInTokens, lookupMWEByPhrase } from '../data/spanishMWEs';
+import { determineStageFromInterval, transitionToStage } from '../utils/srsAlgorithm';
+import { getCollocationsForWord } from '../services/collocationService';
+import { WordPopover } from './reader/WordPopover';
+import { useSentenceAlignment } from '../hooks/useSentenceAlignment';
+import { ParallelReaderView } from './reader/ParallelReaderView';
 
 interface LingQInteractiveReaderProps {
   content: ImportedContent;
@@ -69,6 +84,71 @@ interface PopoverAnchor {
 }
 
 type TextSizeOption = 'base' | 'lg' | 'xl' | '2xl';
+
+// Determine word's 5-stage vocabulary acquisition lifecycle status
+export function getWordAcquisitionStage(cleanWord: string, userProgress: UserProgress): AcquisitionStage {
+  if (!cleanWord || !/[a-záéíóúñü]/i.test(cleanWord)) {
+    return 5;
+  }
+  const norm = cleanWord.toLowerCase().trim();
+
+  // If marked in userProgress.knownWords or masteredWordIds -> Stage 5 (Mastered)
+  if ((userProgress.knownWords || []).includes(norm) || (userProgress.masteredWordIds || []).includes(norm)) {
+    return 5;
+  }
+
+  // If in userProgress.lingqs
+  if (userProgress.lingqs && userProgress.lingqs[norm]) {
+    const st = userProgress.lingqs[norm].status;
+    return (st as AcquisitionStage);
+  }
+
+  // If in userProgress.srsData
+  if (userProgress.srsData && userProgress.srsData[norm]) {
+    const srs = userProgress.srsData[norm];
+    return determineStageFromInterval(srs.interval, srs.repetitions);
+  }
+
+  // Common high-frequency functional words -> Stage 5
+  if (['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al', 'en', 'y', 'a', 'por', 'para', 'con', 'sin', 'que', 'se', 'es', 'son', 'su', 'sus'].includes(norm)) {
+    return 5;
+  }
+
+  // Otherwise: Stage 0 (New / Unsaved)
+  return 0;
+}
+
+// 5-Stage Lifecycle Visual Class mappings
+export function getStageVisualClass(stage: AcquisitionStage, isSelected: boolean, isAudioHighlighted: boolean): string {
+  if (isAudioHighlighted) {
+    return 'bg-amber-400 text-stone-950 rounded-md font-bold transition-all duration-75 shadow-xs';
+  }
+  if (isSelected) {
+    return 'bg-amber-200/90 dark:bg-amber-900/80 rounded-md font-bold ring-2 ring-amber-400 text-stone-950 dark:text-stone-100';
+  }
+
+  switch (stage) {
+    case 0:
+      // Stage 0 (New / Unsaved): Blue background highlight
+      return 'bg-sky-100/90 dark:bg-sky-950/70 text-sky-950 dark:text-sky-100 rounded px-0.5 border-b-2 border-sky-400 hover:bg-sky-200/70';
+    case 1:
+      // Stage 1 (Just Saved / Learning - Interval 1 day): Soft Amber highlight
+      return 'bg-amber-200/90 dark:bg-amber-900/60 text-amber-950 dark:text-amber-100 rounded px-0.5 border-b-2 border-amber-500 hover:bg-amber-300/80 shadow-2xs';
+    case 2:
+      // Stage 2 (Recognized / Review - Interval 3 days): Light Amber tint
+      return 'bg-amber-100/60 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 rounded px-0.5 border-b border-amber-400/80 hover:bg-amber-200/60';
+    case 3:
+      // Stage 3 (Familiar / Recall - Interval 7 days): Very faint yellow underline
+      return 'text-stone-900 dark:text-stone-100 underline decoration-amber-300/80 dark:decoration-amber-500/60 decoration-1 underline-offset-3 hover:bg-stone-200/50';
+    case 4:
+      // Stage 4 (Near Mastery - Interval 14 days): Dotted green underline
+      return 'text-stone-900 dark:text-stone-100 underline decoration-dotted decoration-emerald-500/80 decoration-2 underline-offset-4 hover:bg-stone-200/50';
+    case 5:
+    default:
+      // Stage 5 (Mastered / Known - Interval 60+ days): No highlight (clean text appearance)
+      return 'hover:bg-stone-200/50 dark:hover:bg-stone-800 text-stone-900 dark:text-stone-100';
+  }
+}
 
 export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   content,
@@ -89,6 +169,16 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
     return tokenizedParagraphs.flat();
   }, [tokenizedParagraphs]);
 
+  const allWordTokens = useMemo(() => {
+    return allTokens.filter(t => t.isWord);
+  }, [allTokens]);
+
+  const tokenToWordIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    allWordTokens.forEach((t, i) => map.set(t.id, i));
+    return map;
+  }, [allWordTokens]);
+
   // Audio Playback & Real-time Read-Along Highlighting states
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
@@ -100,6 +190,7 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(userProgress.settings.audioSpeed || 0.9);
   const [showFullTranslations, setShowFullTranslations] = useState<boolean>(false);
   const [textSize, setTextSize] = useState<TextSizeOption>('lg');
+  const [readerViewMode, setReaderViewMode] = useState<'standard' | 'parallel'>('standard');
 
   // Active Session Reading Timer
   const [sessionSeconds, setSessionSeconds] = useState<number>(0);
@@ -107,6 +198,33 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
 
   // Inspector & Popover states
   const [selectedToken, setSelectedToken] = useState<WordToken | null>(null);
+  const [selectedMWE, setSelectedMWE] = useState<MultiWordExpression | null>(null);
+  const [selectedMWETokenIds, setSelectedMWETokenIds] = useState<string[]>([]);
+  const [activeCollocations, setActiveCollocations] = useState<CollocationPairing[]>([]);
+  const [mweChoice, setMweChoice] = useState<{
+    singleToken: WordToken;
+    mweMatch: MWEMatch;
+    rect: DOMRect;
+  } | null>(null);
+  const [multiTokenSelection, setMultiTokenSelection] = useState<MultiTokenSelection | null>(null);
+  const [dragStartIdx, setDragStartIdx] = useState<number | null>(null);
+  const [dragCurrentIdx, setDragCurrentIdx] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Scan text tokens for Multi-Word Expressions
+  const mweMatches = useMemo(() => {
+    return findMWEMatchesInTokens(allTokens);
+  }, [allTokens]);
+
+  const tokenToMWEMap = useMemo(() => {
+    const map = new Map<string, MWEMatch>();
+    mweMatches.forEach(match => {
+      match.tokenIds.forEach(id => map.set(id, match));
+    });
+    return map;
+  }, [mweMatches]);
+
   const [wordDef, setWordDef] = useState<WordDefinitionMatch | null>(null);
   const [lemmaAnalysis, setLemmaAnalysis] = useState<LemmatizationResult | null>(null);
   const [popoverAnchor, setPopoverAnchor] = useState<PopoverAnchor | null>(null);
@@ -158,6 +276,13 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
     return content.translation_ar.split('\n\n').filter(p => p.trim().length > 0);
   }, [content.translation_ar]);
 
+  // Aligned sentence pairs for Parallel Bilingual Reader mode
+  const alignmentResult = useSentenceAlignment(
+    tokenizedParagraphs,
+    englishParagraphs,
+    arabicParagraphs
+  );
+
   // Active reading timer effect
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -191,6 +316,9 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   // Close floating definition popover
   const handleClosePopover = useCallback(() => {
     setSelectedToken(null);
+    setSelectedMWE(null);
+    setSelectedMWETokenIds([]);
+    setMweChoice(null);
     setWordDef(null);
     setLemmaAnalysis(null);
     setPopoverAnchor(null);
@@ -333,12 +461,15 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
   const handleSelectToken = async (token: WordToken, event?: React.MouseEvent) => {
     if (!token.isWord) return;
     setSelectedToken(token);
+    setSelectedMWE(null);
+    setSelectedMWETokenIds([]);
+    setMweChoice(null);
 
     // 1. Calculate cursor/token anchor position clamped to viewport
     const target = (event?.currentTarget as HTMLElement) || document.getElementById(`word-token-${token.id}`);
     if (target && typeof window !== 'undefined') {
       const rect = target.getBoundingClientRect();
-      const popoverWidth = Math.min(360, window.innerWidth - 32);
+      const popoverWidth = Math.min(380, window.innerWidth - 32);
 
       // Horizontal centering clamped inside viewport
       const idealLeft = rect.left + rect.width / 2 - popoverWidth / 2;
@@ -369,6 +500,10 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
     // 3b. Run Spanish Lemmatization Engine (< 25ms client-side resolution)
     const lemma = lemmatizeSpanishWord(token.clean, token.fullSentence);
     setLemmaAnalysis(lemma);
+
+    // 3c. Authentic Collocations retrieval
+    const colls = getCollocationsForWord(token.clean);
+    setActiveCollocations(colls);
 
     const contexts = findMultiContextSentences(token.clean);
     setMultiContexts(contexts);
@@ -425,56 +560,313 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
     }
   };
 
-  // 1-Click: Mark Word as Known
-  const handleMarkAsKnown = (cleanWord: string) => {
-    soundEffects.playCorrect();
+  // Inspect Multi-Word Expression (MWE)
+  const handleSelectMWE = (mwe: MultiWordExpression, tokens: WordToken[], event?: React.MouseEvent) => {
+    setSelectedMWE(mwe);
+    setSelectedMWETokenIds(tokens.map(t => t.id));
+    if (tokens.length > 0) {
+      setSelectedToken(tokens[0]);
+    }
+    setMweChoice(null);
+
+    const mweDef: WordDefinitionMatch = {
+      word: mwe.phrase_es,
+      translation_en: mwe.phrase_en,
+      translation_ar: '',
+      phonetic: '',
+      partOfSpeech: mwe.category === 'idiom' ? 'modismo' : mwe.category === 'phrasal_expression' ? 'locución' : 'expresión',
+      gender: undefined,
+      cefr: mwe.cefr,
+      examples: [
+        { es: mwe.example_es, en: mwe.example_en, ar: mwe.example_ar || '' }
+      ]
+    };
+    setWordDef(mweDef);
+    setLemmaAnalysis(null);
+
+    const colls = getCollocationsForWord(mwe.phrase_es);
+    setActiveCollocations(colls);
+
+    const firstToken = tokens[0];
+    const target = (event?.currentTarget as HTMLElement) || (firstToken ? document.getElementById(`word-token-${firstToken.id}`) : null);
+    if (target && typeof window !== 'undefined') {
+      const rect = target.getBoundingClientRect();
+      const popoverWidth = Math.min(380, window.innerWidth - 32);
+      const idealLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+      const clampedLeft = Math.max(16, Math.min(window.innerWidth - popoverWidth - 16, idealLeft));
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placeAbove = spaceAbove > 300 || spaceAbove > spaceBelow;
+
+      setPopoverAnchor({
+        x: rect.left + rect.width / 2,
+        y: placeAbove ? rect.top : rect.bottom,
+        top: placeAbove ? rect.top - 12 : rect.bottom + 12,
+        left: clampedLeft,
+        width: popoverWidth,
+        placement: placeAbove ? 'top' : 'bottom'
+      });
+    }
+
+    speakTargetVoice(mwe.phrase_es);
+  };
+
+  // Save custom multi-token selection as unified vocabulary item (e.g. "por si las moscas")
+  const handleSaveCustomMultiToken = (phrase: string, tokens: WordToken[]) => {
+    const norm = phrase.toLowerCase().trim();
+    const today = new Date().toISOString().split('T')[0];
+    const knownMwe = lookupMWEByPhrase(phrase);
+    const translation_en = knownMwe ? knownMwe.phrase_en : `Frase: ${phrase}`;
+    const partOfSpeech = knownMwe ? knownMwe.category : 'frase';
+
     setUserProgress(prev => {
-      const knownSet = new Set(prev.knownWords || []);
-      knownSet.add(cleanWord.toLowerCase());
+      const savedList = prev.savedWordIds || [];
+      const newSaved = savedList.includes(norm) ? savedList : [...savedList, norm];
+
+      const updatedSrs = { ...(prev.srsData || {}) };
+      if (!updatedSrs[norm]) {
+        updatedSrs[norm] = {
+          wordId: norm,
+          interval: 1,
+          repetitions: 0,
+          easeFactor: 2.5,
+          nextReviewDate: today,
+          streak: 0,
+          successCount: 0,
+          failCount: 0,
+          history: []
+        };
+      }
 
       const updatedLingqs = { ...(prev.lingqs || {}) };
-      delete updatedLingqs[cleanWord.toLowerCase()];
+      if (!updatedLingqs[norm]) {
+        updatedLingqs[norm] = {
+          word: norm,
+          status: 1,
+          translation_en,
+          translation_ar: '',
+          phonetic: '',
+          partOfSpeech,
+          sentenceContext: tokens[0]?.fullSentence || '',
+          createdAt: new Date().toISOString(),
+          lastReviewed: new Date().toISOString()
+        };
+      }
+
+      return {
+        ...prev,
+        savedWordIds: newSaved,
+        srsData: updatedSrs,
+        lingqs: updatedLingqs,
+        xp: prev.xp + 20
+      };
+    });
+
+    soundEffects.playLevelUp();
+    setMinedSuccessMessage(`✓ Guardada frase "${phrase}" en Vocabulario (+20 XP)`);
+    setTimeout(() => setMinedSuccessMessage(null), 3000);
+  };
+
+  // 5-Stage Lifecycle direct stage updater (Stages 1 to 5)
+  const handleSetStage = useCallback((wordOrPhrase: string, stage: AcquisitionStage) => {
+    const norm = wordOrPhrase.toLowerCase().trim();
+    soundEffects.playPop();
+
+    setUserProgress(prev => {
+      const isMastered = stage === 5;
+      const knownSet = new Set(prev.knownWords || []);
+      const masteredSet = new Set(prev.masteredWordIds || []);
+      const savedSet = new Set(prev.savedWordIds || []);
+
+      if (isMastered) {
+        knownSet.add(norm);
+        masteredSet.add(norm);
+        savedSet.delete(norm);
+      } else {
+        knownSet.delete(norm);
+        masteredSet.delete(norm);
+        savedSet.add(norm);
+      }
+
+      const sm2 = transitionToStage(stage);
+      const updatedSrs = { ...(prev.srsData || {}) };
+      updatedSrs[norm] = {
+        wordId: norm,
+        interval: sm2.interval,
+        repetitions: sm2.repetitions,
+        easeFactor: sm2.easinessFactor,
+        nextReviewDate: sm2.nextReviewDate,
+        streak: stage >= 3 ? stage : 0,
+        successCount: (updatedSrs[norm]?.successCount || 0) + 1,
+        failCount: updatedSrs[norm]?.failCount || 0,
+        history: updatedSrs[norm]?.history || []
+      };
+
+      const currentLingq = prev.lingqs?.[norm];
+      const updatedLingqs = { ...(prev.lingqs || {}) };
+      updatedLingqs[norm] = {
+        word: norm,
+        status: (stage as LingQStatus),
+        translation_en: wordDef?.translation_en || currentLingq?.translation_en || '',
+        translation_ar: wordDef?.translation_ar || currentLingq?.translation_ar || '',
+        phonetic: wordDef?.phonetic || currentLingq?.phonetic || '',
+        partOfSpeech: wordDef?.partOfSpeech || currentLingq?.partOfSpeech || 'palabra',
+        gender: wordDef?.gender || currentLingq?.gender,
+        sentenceContext: selectedToken?.fullSentence || currentLingq?.sentenceContext || '',
+        createdAt: currentLingq?.createdAt || new Date().toISOString(),
+        lastReviewed: new Date().toISOString()
+      };
 
       return {
         ...prev,
         knownWords: Array.from(knownSet),
+        masteredWordIds: Array.from(masteredSet),
+        savedWordIds: Array.from(savedSet),
+        srsData: updatedSrs,
         lingqs: updatedLingqs,
-        xp: prev.xp + 5
+        xp: prev.xp + 10
       };
     });
+  }, [wordDef, selectedToken, setUserProgress]);
+
+  // Auto-advance to the next unknown word (stage < 5)
+  const autoAdvanceToNextUnknownWord = useCallback(() => {
+    if (!selectedToken) return;
+    const currentIdx = allWordTokens.findIndex(t => t.id === selectedToken.id);
+    if (currentIdx === -1) return;
+
+    for (let i = currentIdx + 1; i < allWordTokens.length; i++) {
+      const candidate = allWordTokens[i];
+      const candidateStage = getWordAcquisitionStage(candidate.clean, userProgress);
+      if (candidateStage < 5) {
+        handleSelectToken(candidate);
+        return;
+      }
+    }
+    for (let i = 0; i < currentIdx; i++) {
+      const candidate = allWordTokens[i];
+      const candidateStage = getWordAcquisitionStage(candidate.clean, userProgress);
+      if (candidateStage < 5) {
+        handleSelectToken(candidate);
+        return;
+      }
+    }
+  }, [selectedToken, allWordTokens, userProgress, handleSelectToken]);
+
+  // Keyboard shortcut listener: 1-5 keys for instant stage update + auto-advance
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (['1', '2', '3', '4', '5'].includes(e.key)) {
+        if (selectedToken || selectedMWE) {
+          e.preventDefault();
+          const targetWord = selectedMWE ? selectedMWE.phrase_es : selectedToken!.clean;
+          const stage = parseInt(e.key, 10) as AcquisitionStage;
+          handleSetStage(targetWord, stage);
+          autoAdvanceToNextUnknownWord();
+        }
+      } else if (e.key === 'Escape') {
+        handleClosePopover();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedToken, selectedMWE, handleSetStage, autoAdvanceToNextUnknownWord, handleClosePopover]);
+
+  // Multi-Token drag range selection
+  const applyRangeSelection = useCallback((startIdx: number, endIdx: number) => {
+    const min = Math.min(startIdx, endIdx);
+    const max = Math.max(startIdx, endIdx);
+    const clampedMax = Math.min(min + 5, max);
+    const selected = allWordTokens.slice(min, clampedMax + 1);
+
+    if (selected.length > 1) {
+      const phrase = selected.map(t => t.clean).join(' ');
+      setMultiTokenSelection({
+        tokenIds: selected.map(t => t.id),
+        cleanWords: selected.map(t => t.clean),
+        combinedPhrase: phrase,
+        sentenceIndex: selected[0].sentenceIndex,
+        fullSentence: selected[0].fullSentence
+      });
+    }
+  }, [allWordTokens]);
+
+  const handleTokenMouseDown = (token: WordToken, globalWordIdx: number, e: React.MouseEvent) => {
+    if (e.shiftKey && dragStartIdx !== null) {
+      applyRangeSelection(dragStartIdx, globalWordIdx);
+      return;
+    }
+    setIsDragging(true);
+    setDragStartIdx(globalWordIdx);
+    setDragCurrentIdx(globalWordIdx);
+  };
+
+  const handleTokenMouseEnter = (globalWordIdx: number) => {
+    if (isDragging && dragStartIdx !== null) {
+      setDragCurrentIdx(globalWordIdx);
+    }
+  };
+
+  const handleGlobalMouseUp = useCallback(() => {
+    if (isDragging && dragStartIdx !== null && dragCurrentIdx !== null) {
+      if (dragStartIdx !== dragCurrentIdx) {
+        applyRangeSelection(dragStartIdx, dragCurrentIdx);
+      }
+    }
+    setIsDragging(false);
+  }, [isDragging, dragStartIdx, dragCurrentIdx, applyRangeSelection]);
+
+  useEffect(() => {
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [handleGlobalMouseUp]);
+
+  const handleTouchStart = (globalWordIdx: number) => {
+    touchTimerRef.current = setTimeout(() => {
+      const start = globalWordIdx;
+      const end = Math.min(allWordTokens.length - 1, start + 3);
+      applyRangeSelection(start, end);
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+    }
+  };
+
+  // Word token click with MWE disambiguation
+  const handleTokenClick = (token: WordToken, event: React.MouseEvent) => {
+    const mweMatch = tokenToMWEMap.get(token.id);
+
+    if (mweMatch) {
+      event.stopPropagation();
+      const target = event.currentTarget as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      setMweChoice({
+        singleToken: token,
+        mweMatch,
+        rect
+      });
+    } else {
+      setMweChoice(null);
+      handleSelectToken(token, event);
+    }
+  };
+
+  // 1-Click: Mark Word as Known
+  const handleMarkAsKnown = (cleanWord: string) => {
+    handleSetStage(cleanWord, 5);
   };
 
   // 1-Click: Set LingQ Status (1, 2, 3, 4)
   const handleSetLingQStatus = (cleanWord: string, status: LingQStatus) => {
-    if (!wordDef) return;
-    soundEffects.playPop();
-
-    const newLingQ: LingQItem = {
-      word: cleanWord.toLowerCase(),
-      status,
-      translation_en: wordDef.translation_en,
-      translation_ar: wordDef.translation_ar,
-      phonetic: wordDef.phonetic,
-      partOfSpeech: wordDef.partOfSpeech,
-      gender: wordDef.gender,
-      sentenceContext: selectedToken?.fullSentence || '',
-      createdAt: new Date().toISOString(),
-      lastReviewed: new Date().toISOString()
-    };
-
-    setUserProgress(prev => {
-      const knownList = (prev.knownWords || []).filter(w => w !== cleanWord.toLowerCase());
-
-      return {
-        ...prev,
-        knownWords: knownList,
-        lingqs: {
-          ...(prev.lingqs || {}),
-          [cleanWord.toLowerCase()]: newLingQ
-        },
-        xp: prev.xp + 10
-      };
-    });
+    handleSetStage(cleanWord, status as AcquisitionStage);
   };
 
   // 1-Click: Sentence Mining to Cloze SRS
@@ -770,19 +1162,51 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
               </button>
             </div>
 
-            {/* Translation Toggle */}
-            <button
-              onClick={() => setShowFullTranslations(!showFullTranslations)}
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
-                showFullTranslations
-                  ? 'bg-stone-200 dark:bg-stone-800 text-amber-700 dark:text-amber-300'
-                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-200/50 dark:hover:bg-stone-800'
-              }`}
-              title={showFullTranslations ? 'Ocultar traducciones paralelas' : 'Mostrar traducciones paralelas'}
-            >
-              {showFullTranslations ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              <span className="hidden lg:inline">{showFullTranslations ? 'Traducción' : 'Inmersión'}</span>
-            </button>
+            {/* View Mode Switcher: Standard Immersion vs Parallel Bilingual */}
+            <div className="flex items-center bg-stone-200/60 dark:bg-stone-800 rounded-xl p-0.5 border border-stone-300/40 dark:border-stone-700/40 text-xs font-bold">
+              <button
+                onClick={() => setReaderViewMode('standard')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                  readerViewMode === 'standard'
+                    ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-2xs font-black'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800'
+                }`}
+                title="Modo Estándar de Lectura Inmersiva"
+              >
+                <span>Estándar</span>
+              </button>
+              <button
+                onClick={() => setReaderViewMode('parallel')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                  readerViewMode === 'parallel'
+                    ? 'bg-white dark:bg-stone-700 text-[#C85A32] dark:text-amber-400 shadow-2xs font-black'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800'
+                }`}
+                title="Modo Bilingüe Paralelo con alineación sincrónica de oraciones"
+              >
+                <Columns2 className="w-3.5 h-3.5 text-amber-500" />
+                <span>Paralelo</span>
+                <span className="hidden sm:inline text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
+                  Bilingüe
+                </span>
+              </button>
+            </div>
+
+            {/* Translation Scaffolding Toggle (For Standard Mode) */}
+            {readerViewMode === 'standard' && (
+              <button
+                onClick={() => setShowFullTranslations(!showFullTranslations)}
+                className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
+                  showFullTranslations
+                    ? 'bg-stone-200 dark:bg-stone-800 text-amber-700 dark:text-amber-300'
+                    : 'text-stone-500 dark:text-stone-400 hover:bg-stone-200/50 dark:hover:bg-stone-800'
+                }`}
+                title={showFullTranslations ? 'Ocultar traducciones en línea' : 'Mostrar traducciones en línea'}
+              >
+                {showFullTranslations ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                <span className="hidden lg:inline">{showFullTranslations ? 'Traducción' : 'Inmersión'}</span>
+              </button>
+            )}
 
             {/* Session Complete Button */}
             {!hasCompletedReading ? (
@@ -804,8 +1228,12 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
         </div>
       </header>
 
-      {/* 2. OPTIMAL EDITORIAL READING CANVAS (Centered column max-w-2xl mx-auto) */}
-      <main className="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-14 space-y-10 font-serif">
+      {/* 2. OPTIMAL EDITORIAL READING CANVAS (Responsive width for standard vs dual-column parallel mode) */}
+      <main
+        className={`${
+          readerViewMode === 'parallel' ? 'max-w-6xl' : 'max-w-2xl'
+        } mx-auto px-4 sm:px-8 py-8 sm:py-14 space-y-10 font-serif transition-all duration-300`}
+      >
         {/* Story Header Hook */}
         <div className="space-y-3 pb-6 border-b border-stone-200/70 dark:border-stone-800/70 font-sans">
           <div className="flex items-center gap-2 text-xs font-mono text-stone-500 dark:text-stone-400 flex-wrap">
@@ -941,110 +1369,136 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
           )}
         </div>
 
-        {/* Story Paragraphs & Sentences */}
-        <article className="space-y-8 font-serif">
-          {tokenizedParagraphs.map((paraTokens, pIdx) => {
-            const sentences = groupTokensIntoSentences(paraTokens);
+        {/* Story Rendering: Parallel Bilingual View OR Standard Immersion View */}
+        {readerViewMode === 'parallel' ? (
+          <ParallelReaderView
+            paragraphGroups={alignmentResult.paragraphGroups}
+            totalSentences={alignmentResult.totalSentences}
+            hasTranslations={alignmentResult.hasTranslations}
+            hasArabic={alignmentResult.hasArabic}
+            userProgress={userProgress}
+            selectedToken={selectedToken}
+            selectedMWE={selectedMWE}
+            selectedMWETokenIds={selectedMWETokenIds}
+            multiTokenSelection={multiTokenSelection}
+            activeWordTokenId={activeWordTokenId}
+            activeSentenceIndex={activeSentenceIndex}
+            textSizeClass={textSizeClasses[textSize]}
+            tokenToWordIndexMap={tokenToWordIndexMap}
+            tokenToMWEMap={tokenToMWEMap}
+            getStageVisualClass={getStageVisualClass}
+            getWordAcquisitionStage={getWordAcquisitionStage}
+            handleTokenClick={handleTokenClick}
+            handleTokenMouseDown={handleTokenMouseDown}
+            handleTokenMouseEnter={handleTokenMouseEnter}
+            handleTouchStart={handleTouchStart}
+            handleTouchEnd={handleTouchEnd}
+            handlePlaySentence={handlePlaySentence}
+          />
+        ) : (
+          <article className="space-y-8 font-serif">
+            {tokenizedParagraphs.map((paraTokens, pIdx) => {
+              const sentences = groupTokensIntoSentences(paraTokens);
 
-            const englishParaText = englishParagraphs[pIdx] || '';
-            const englishParaSentences = englishParaText ? englishParaText.split(/(?<=[.!?])\s+/) : [];
+              const englishParaText = englishParagraphs[pIdx] || '';
+              const englishParaSentences = englishParaText ? englishParaText.split(/(?<=[.!?])\s+/) : [];
 
-            const arabicParaText = arabicParagraphs[pIdx] || '';
-            const arabicParaSentences = arabicParaText ? arabicParaText.split(/(?<=[.!?])\s+/) : [];
+              const arabicParaText = arabicParagraphs[pIdx] || '';
+              const arabicParaSentences = arabicParaText ? arabicParaText.split(/(?<=[.!?])\s+/) : [];
 
-            return (
-              <div key={pIdx} className="space-y-4">
-                <div className="space-y-3">
-                  {sentences.map(sentence => {
-                    const isSentenceActive = activeSentenceIndex === sentence.sentenceIndex;
+              return (
+                <div key={pIdx} className="space-y-4">
+                  <div className="space-y-3">
+                    {sentences.map(sentence => {
+                      const isSentenceActive = activeSentenceIndex === sentence.sentenceIndex;
 
-                    return (
-                      <div
-                        id={`sentence-card-${sentence.sentenceIndex}`}
-                        key={sentence.sentenceIndex}
-                        className={`rounded-2xl p-2 sm:p-2.5 transition-colors duration-200 relative ${
-                          isSentenceActive
-                            ? 'bg-amber-500/10 dark:bg-amber-400/10 ring-1 ring-amber-400/40 shadow-xs'
-                            : 'hover:bg-stone-200/30 dark:hover:bg-stone-800/30'
-                        }`}
-                      >
-                        {/* Sentence Text with Interactive Word Tokens */}
-                        <p className={`${textSizeClasses[textSize]} text-stone-900 dark:text-stone-100 flex flex-wrap gap-x-1.5 gap-y-1.5 items-baseline font-serif selection:bg-amber-400/30`}>
-                          {sentence.tokens.map(token => {
-                            if (!token.isWord) {
+                      return (
+                        <div
+                          id={`sentence-card-${sentence.sentenceIndex}`}
+                          key={sentence.sentenceIndex}
+                          className={`rounded-2xl p-2 sm:p-2.5 transition-colors duration-200 relative ${
+                            isSentenceActive
+                              ? 'bg-amber-500/10 dark:bg-amber-400/10 ring-1 ring-amber-400/40 shadow-xs'
+                              : 'hover:bg-stone-200/30 dark:hover:bg-stone-800/30'
+                          }`}
+                        >
+                          {/* Sentence Text with Interactive Word Tokens */}
+                          <p className={`${textSizeClasses[textSize]} text-stone-900 dark:text-stone-100 flex flex-wrap gap-x-1.5 gap-y-1.5 items-baseline font-serif selection:bg-amber-400/30`}>
+                            {sentence.tokens.map(token => {
+                              if (!token.isWord) {
+                                return (
+                                  <span key={token.id} className="text-stone-400 dark:text-stone-500 font-sans select-none">
+                                    {token.raw}
+                                  </span>
+                                );
+                              }
+
+                              const wordIdx = tokenToWordIndexMap.get(token.id) ?? -1;
+                              const stage = getWordAcquisitionStage(token.clean, userProgress);
+                              const mweMatch = tokenToMWEMap.get(token.id);
+                              const isSelected = selectedToken?.id === token.id;
+                              const isMWEActive = selectedMWETokenIds.includes(token.id);
+                              const isInMultiSelect = multiTokenSelection?.tokenIds.includes(token.id) || false;
+                              const isHighlightedByAudio = activeWordTokenId === token.id;
+
+                              let stateClass = getStageVisualClass(stage, isSelected || isMWEActive, isHighlightedByAudio);
+
+                              if (mweMatch && !isSelected && !isMWEActive) {
+                                stateClass += ' border-b-2 border-dashed border-purple-500/80 hover:border-purple-600';
+                              }
+                              if (isInMultiSelect) {
+                                stateClass += ' bg-amber-300/80 dark:bg-amber-800/80 rounded ring-1 ring-amber-500';
+                              }
+
                               return (
-                                <span key={token.id} className="text-stone-400 dark:text-stone-500 font-sans select-none">
-                                  {token.raw}
+                                <span key={token.id} className="inline-flex items-baseline">
+                                  {token.prefixPunct && (
+                                    <span className="text-stone-400 font-sans select-none">{token.prefixPunct}</span>
+                                  )}
+                                  <button
+                                    id={`word-token-${token.id}`}
+                                    onClick={(e) => handleTokenClick(token, e)}
+                                    onMouseDown={(e) => handleTokenMouseDown(token, wordIdx, e)}
+                                    onMouseEnter={() => handleTokenMouseEnter(wordIdx)}
+                                    onTouchStart={() => handleTouchStart(wordIdx)}
+                                    onTouchEnd={handleTouchEnd}
+                                    className={`px-0.5 rounded transition-all duration-100 cursor-pointer font-serif select-none ${stateClass}`}
+                                    title={mweMatch ? `Expresión: "${mweMatch.mwe.phrase_es}" (${mweMatch.mwe.phrase_en})` : `Nivel ${stage}: "${token.clean}" (Pulsa 1-5)`}
+                                  >
+                                    {token.clean}
+                                  </button>
+                                  {token.suffixPunct && (
+                                    <span className="text-stone-400 font-sans select-none">{token.suffixPunct}</span>
+                                  )}
                                 </span>
                               );
-                            }
+                            })}
+                          </p>
 
-                            const state = getWordState(token.clean, userProgress);
-                            const isSelected = selectedToken?.id === token.id;
-                            const isHighlightedByAudio = activeWordTokenId === token.id;
-
-                            // LingQ Color Coding: subtle, non-intrusive
-                            let stateClass = '';
-                            if (state === 'new') {
-                              stateClass = 'border-b-2 border-sky-400/70 hover:bg-sky-100/60 dark:hover:bg-sky-950/60 text-sky-950 dark:text-sky-200';
-                            } else if (state.startsWith('lingq_')) {
-                              stateClass = 'border-b-2 border-amber-400/80 hover:bg-amber-100/60 dark:hover:bg-amber-950/60 text-amber-950 dark:text-amber-200';
-                            } else {
-                              stateClass = 'hover:bg-stone-200/50 dark:hover:bg-stone-800 text-stone-900 dark:text-stone-100';
-                            }
-
-                            if (isSelected) {
-                              stateClass += ' bg-amber-200/70 dark:bg-amber-900/60 rounded-md font-semibold';
-                            }
-
-                            if (isHighlightedByAudio) {
-                              stateClass += ' bg-amber-400 text-stone-950 rounded-md font-bold transition-all duration-75 shadow-xs';
-                            }
-
-                            return (
-                              <span key={token.id} className="inline-flex items-baseline">
-                                {token.prefixPunct && (
-                                  <span className="text-stone-400 font-sans select-none">{token.prefixPunct}</span>
-                                )}
-                                <button
-                                  id={`word-token-${token.id}`}
-                                  onClick={(e) => handleSelectToken(token, e)}
-                                  className={`px-0.5 rounded transition-all duration-100 cursor-pointer font-serif ${stateClass}`}
-                                  title={`Ver significado de "${token.clean}"`}
-                                >
-                                  {token.clean}
-                                </button>
-                                {token.suffixPunct && (
-                                  <span className="text-stone-400 font-sans select-none">{token.suffixPunct}</span>
-                                )}
-                              </span>
-                            );
-                          })}
-                        </p>
-
-                        {/* Optional discreet parallel translation scaffolding */}
-                        {showFullTranslations && (
-                          <div className="mt-2 pt-2 border-t border-stone-200/60 dark:border-stone-800/60 text-xs text-stone-500 dark:text-stone-400 space-y-1 font-sans">
-                            {englishParaSentences[sentence.sentenceIndex] && (
-                              <p className="italic text-stone-600 dark:text-stone-300">
-                                {englishParaSentences[sentence.sentenceIndex]}
-                              </p>
-                            )}
-                            {arabicParaSentences[sentence.sentenceIndex] && (
-                              <p className="font-arabic text-right text-stone-500 dark:text-stone-400" dir="rtl">
-                                {arabicParaSentences[sentence.sentenceIndex]}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {/* Optional discreet parallel translation scaffolding */}
+                          {showFullTranslations && (
+                            <div className="mt-2 pt-2 border-t border-stone-200/60 dark:border-stone-800/60 text-xs text-stone-500 dark:text-stone-400 space-y-1 font-sans">
+                              {englishParaSentences[sentence.sentenceIndex] && (
+                                <p className="italic text-stone-600 dark:text-stone-300">
+                                  {englishParaSentences[sentence.sentenceIndex]}
+                                </p>
+                              )}
+                              {arabicParaSentences[sentence.sentenceIndex] && (
+                                <p className="font-arabic text-right text-stone-500 dark:text-stone-400" dir="rtl">
+                                  {arabicParaSentences[sentence.sentenceIndex]}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </article>
+              );
+            })}
+          </article>
+        )}
 
         {/* Footer completion note */}
         <div className="pt-8 border-t border-stone-200/70 dark:border-stone-800/70 text-center font-sans space-y-3">
@@ -1097,292 +1551,117 @@ export const LingQInteractiveReader: React.FC<LingQInteractiveReaderProps> = ({
                 }}
                 className="pointer-events-auto bg-white dark:bg-[#1C1B1A] border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-xl z-[121] overflow-hidden flex flex-col max-h-[min(80dvh,calc(100dvh-48px))] font-sans ring-1 ring-black/5 dark:ring-white/5 pb-safe"
               >
-                {/* Popover Header: Word + Gender Article, CEFR Badge, Audio & Close */}
-                <div className="p-3.5 bg-stone-50/80 dark:bg-stone-800/50 border-b border-stone-200/70 dark:border-stone-800 flex items-start justify-between gap-2 shrink-0">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Spanish word with gender article (e.g. "el sol", "la casa") */}
-                      <span className="text-base font-black text-stone-900 dark:text-stone-100 capitalize">
-                        {wordDef.wordWithArticle || (wordDef.article ? `${wordDef.article} ${wordDef.word}` : wordDef.word)}
-                      </span>
-
-                      {/* CEFR Level badge */}
-                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-[#C85A32]/15 text-[#C85A32] dark:text-[#E07A5F]">
-                        {wordDef.cefr || 'A1'}
-                      </span>
-
-                      {/* Part of Speech */}
-                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-stone-500 dark:text-stone-400 bg-stone-200/60 dark:bg-stone-700/60 uppercase">
-                        {wordDef.partOfSpeech || 'palabra'}
-                      </span>
-                    </div>
-
-                    {wordDef.phonetic && (
-                      <span className="text-[11px] font-mono text-stone-400 block mt-0.5">
-                        /{wordDef.phonetic}/
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Native Audio & Close */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {/* Mexican voice button */}
-                    <button
-                      onClick={() => speakTargetVoice(selectedToken.clean, 'mexico')}
-                      className="p-1.5 rounded-lg bg-stone-200/70 dark:bg-stone-700 text-stone-700 dark:text-stone-200 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition cursor-pointer"
-                      title="Pronunciación Mexicana (Juan)"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Castilian voice button */}
-                    <button
-                      onClick={() => speakTargetVoice(selectedToken.clean, 'spain')}
-                      className="px-1.5 py-1 rounded-lg bg-stone-200/70 dark:bg-stone-700 text-stone-700 dark:text-stone-200 hover:bg-amber-100 dark:hover:bg-amber-950/60 text-[10px] font-bold transition cursor-pointer"
-                      title="Pronunciación Castellana (Mateo)"
-                    >
-                      🇪🇸 ES
-                    </button>
-
-                    <button
-                      onClick={handleClosePopover}
-                      className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-800 transition cursor-pointer"
-                      title="Cerrar"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Popover Body Content */}
-                <div className="p-3.5 space-y-3 overflow-y-auto overscroll-contain text-xs">
-                  {/* Instant Action: Single-click Save to SRS Vocabulary */}
-                  <button
-                    onClick={() => handleToggleSaveToVocabulary(selectedToken.clean)}
-                    className={`w-full py-2 px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
-                      isWordSavedInVocabulary(selectedToken.clean)
-                        ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
-                        : 'bg-stone-100 dark:bg-stone-800 hover:bg-[#C85A32] hover:text-white text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700'
-                    }`}
-                  >
-                    {isWordSavedInVocabulary(selectedToken.clean) ? (
-                      <>
-                        <BookmarkCheck className="w-4 h-4 fill-current text-stone-950" />
-                        <span>✓ Guardado en Vocabulario</span>
-                      </>
-                    ) : (
-                      <>
-                        <BookmarkPlus className="w-4 h-4 text-[#C85A32]" />
-                        <span>Guardar (+ Vocab)</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Lemmatization & Morphological Analysis Card */}
-                  {lemmaAnalysis && (
-                    <div className="p-2.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200/80 dark:border-amber-900/40 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                            Lema Base / Morfología
-                          </span>
-                        </div>
-
-                        {/* Save Base Lemma button if different from conjugated token */}
-                        {lemmaAnalysis.baseLemma.toLowerCase() !== selectedToken.clean.toLowerCase() && (
-                          <button
-                            onClick={() => handleToggleSaveToVocabulary(lemmaAnalysis.baseLemma)}
-                            className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500 text-amber-900 dark:text-amber-200 hover:text-stone-950 transition cursor-pointer border border-amber-500/40 shrink-0"
-                            title={`Guardar lema base '${lemmaAnalysis.baseLemma}' en SRS`}
-                          >
-                            {isWordSavedInVocabulary(lemmaAnalysis.baseLemma) ? '✓ Lema Guardado' : `Guardar '${lemmaAnalysis.baseLemma}'`}
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-sm font-black text-stone-900 dark:text-stone-100 capitalize">
-                          {lemmaAnalysis.baseLemma}
-                        </span>
-                        <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 capitalize">
-                          ({lemmaAnalysis.parsingText})
-                        </span>
-                        {lemmaAnalysis.isIrregular && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
-                            Irregular
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Detached Enclitic Pronouns */}
-                      {lemmaAnalysis.detachedClitics && lemmaAnalysis.detachedClitics.length > 0 && (
-                        <div className="text-[11px] text-stone-700 dark:text-stone-300 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-1 rounded-lg">
-                          <span className="font-bold text-stone-600 dark:text-stone-400">Pronombres enclíticos: </span>
-                          <span className="font-mono font-bold text-amber-800 dark:text-amber-300">
-                            +{lemmaAnalysis.detachedClitics.join(', +')}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Multiple Lemmas Disambiguation (e.g. "fue" -> ser / ir) */}
-                      {lemmaAnalysis.multipleLemmas && lemmaAnalysis.multipleLemmas.length > 1 && (
-                        <div className="pt-1.5 border-t border-amber-200/60 dark:border-amber-900/50 space-y-1">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
-                            Desambiguación de Lema:
-                          </span>
-                          <div className="space-y-1">
-                            {lemmaAnalysis.multipleLemmas.map((m, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-[11px] gap-2">
-                                <span className="font-bold text-stone-800 dark:text-stone-200 capitalize">
-                                  {m.lemma} <span className="text-[10px] font-normal text-stone-500 dark:text-stone-400">({m.partOfSpeech})</span>
-                                </span>
-                                <span className="text-[10px] text-stone-600 dark:text-stone-400 truncate max-w-[170px]">
-                                  {m.contextDescription}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* English & Arabic Translations Card */}
-                  <div className="space-y-1.5 p-2.5 bg-stone-50 dark:bg-stone-800/40 rounded-xl border border-stone-200/60 dark:border-stone-800">
-                    <div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
-                        Significado en inglés
-                      </span>
-                      <p className="text-xs font-bold text-stone-900 dark:text-stone-100 capitalize">
-                        {wordDef.translation_en}
-                      </p>
-                    </div>
-
-                    {wordDef.translation_ar && (
-                      <div className="pt-1.5 border-t border-stone-200/60 dark:border-stone-700/60">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
-                          الترجمة العربية
-                        </span>
-                        <p className="text-xs font-bold text-amber-700 dark:text-amber-300 font-arabic text-right" dir="rtl">
-                          {wordDef.translation_ar}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* AI Explanation / Context if available */}
-                  {(wordDef.explanation_en || wordDef.explanation_ar) && (
-                    <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/50 dark:border-amber-900/30 space-y-1">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-[#B47832] flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        <span>Contexto de uso</span>
-                      </span>
-                      {wordDef.explanation_en && (
-                        <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-normal">
-                          {wordDef.explanation_en}
-                        </p>
-                      )}
-                      {wordDef.explanation_ar && (
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 font-arabic text-right leading-normal" dir="rtl">
-                          {wordDef.explanation_ar}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* LingQ Word Status Bar: Known + L1-L4 */}
-                  <div className="space-y-1">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
-                      Nivel de dominio LingQ
-                    </span>
-                    <div className="grid grid-cols-5 gap-1">
-                      <button
-                        onClick={() => handleMarkAsKnown(selectedToken.clean)}
-                        className="py-1 px-1 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-emerald-500 hover:text-white border border-stone-200 dark:border-stone-700 text-[10px] font-black text-stone-700 dark:text-stone-300 transition flex flex-col items-center gap-0.5 cursor-pointer"
-                        title="Marcar como conocida (mastered)"
-                      >
-                        <Check className="w-3 h-3 text-emerald-500" />
-                        <span>Sabida</span>
-                      </button>
-
-                      {([1, 2, 3, 4] as LingQStatus[]).map(st => (
-                        <button
-                          key={st}
-                          onClick={() => handleSetLingQStatus(selectedToken.clean, st)}
-                          className={`py-1 px-1 rounded-lg border text-[10px] font-black transition flex flex-col items-center gap-0.5 cursor-pointer ${
-                            userProgress.lingqs?.[selectedToken.clean.toLowerCase()]?.status === st
-                              ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs'
-                              : 'bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
-                          }`}
-                        >
-                          <Bookmark className="w-3 h-3 text-amber-500" />
-                          <span>L{st}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 1-Click Sentence Mining to Cloze SRS */}
-                  <button
-                    onClick={handleMineSentence}
-                    className="w-full py-1.5 px-3 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-[#C85A32]/10 text-stone-700 dark:text-stone-300 hover:text-[#C85A32] font-bold text-[11px] flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition cursor-pointer"
-                  >
-                    <BookmarkPlus className="w-3.5 h-3.5" />
-                    <span>Guardar oración entera en SRS</span>
-                  </button>
-
-                  {minedSuccessMessage && (
-                    <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold text-center animate-fadeIn">
-                      {minedSuccessMessage}
-                    </div>
-                  )}
-
-                  {/* Multi-Context Corpus toggle */}
-                  {multiContexts.length > 0 && (
-                    <div className="pt-1 border-t border-stone-200/60 dark:border-stone-800">
-                      <button
-                        onClick={() => setShowCorpusExamples(!showCorpusExamples)}
-                        className="w-full py-1 px-2 rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-bold text-[10px] flex items-center justify-between transition cursor-pointer"
-                      >
-                        <span>Ver en otros {multiContexts.length} contextos reales</span>
-                        <span>{showCorpusExamples ? '▲' : '▼'}</span>
-                      </button>
-
-                      {showCorpusExamples && (
-                        <div className="space-y-1.5 max-h-32 overflow-y-auto mt-1 pr-1 text-[11px]">
-                          {multiContexts.map((ctx, idx) => (
-                            <div
-                              key={idx}
-                              className="p-2 bg-stone-50 dark:bg-stone-800/60 rounded-lg border border-stone-200/60 dark:border-stone-700 space-y-0.5"
-                            >
-                              <div className="flex items-center justify-between text-[9px] text-stone-400 font-mono">
-                                <span>{ctx.source}</span>
-                                <button
-                                  onClick={() => speakTargetVoice(ctx.es)}
-                                  className="text-[#C85A32] hover:underline cursor-pointer"
-                                >
-                                  ▶ Escuchar
-                                </button>
-                              </div>
-                              <p className="font-bold text-stone-900 dark:text-white">
-                                {ctx.es}
-                              </p>
-                              <p className="text-stone-500 dark:text-stone-400 text-[10px]">
-                                {ctx.en}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <WordPopover
+                  wordOrPhrase={selectedMWE ? selectedMWE.phrase_es : selectedToken.clean}
+                  isMWE={Boolean(selectedMWE)}
+                  mweDescription={selectedMWE?.phrase_en}
+                  wordDef={wordDef}
+                  currentStage={getWordAcquisitionStage(selectedMWE ? selectedMWE.phrase_es : selectedToken.clean, userProgress)}
+                  isSavedInSRS={isWordSavedInVocabulary(selectedMWE ? selectedMWE.phrase_es : selectedToken.clean)}
+                  lemmaAnalysis={selectedMWE ? null : lemmaAnalysis}
+                  collocations={activeCollocations}
+                  onSetStage={(st) => handleSetStage(selectedMWE ? selectedMWE.phrase_es : selectedToken.clean, st)}
+                  onToggleSaveSRS={() => handleToggleSaveToVocabulary(selectedMWE ? selectedMWE.phrase_es : selectedToken.clean)}
+                  onClose={handleClosePopover}
+                  onSpeak={(text, voice) => speakTargetVoice(text, voice)}
+                  onSaveLemma={(lemma) => handleToggleSaveToVocabulary(lemma)}
+                  isLemmaSaved={lemmaAnalysis ? isWordSavedInVocabulary(lemmaAnalysis.baseLemma) : false}
+                />
               </motion.div>
             </div>
           )}
         </AnimatePresence>,
         document.body
+      )}
+      {/* MWE Disambiguation Choice Modal */}
+      {mweChoice && (
+        <div
+          className="fixed z-[160] bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-2xl shadow-2xl p-3.5 space-y-2.5 max-w-xs animate-fadeIn font-sans"
+          style={{
+            top: `${Math.min(window.innerHeight - 170, Math.max(16, mweChoice.rect.top - 70))}px`,
+            left: `${Math.min(window.innerWidth - 300, Math.max(16, mweChoice.rect.left - 60))}px`
+          }}
+        >
+          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
+            <span className="text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Expresión Multi-Palabra
+            </span>
+            <button
+              onClick={() => setMweChoice(null)}
+              className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            {/* Option A: Select Full Phrase */}
+            <button
+              onClick={() => {
+                const matchedTokens = allWordTokens.filter(t => mweChoice.mweMatch.tokenIds.includes(t.id));
+                handleSelectMWE(mweChoice.mweMatch.mwe, matchedTokens);
+              }}
+              className="w-full text-left p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 transition cursor-pointer"
+            >
+              <span className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300 block">
+                Seleccionar frase completa:
+              </span>
+              <span className="text-xs font-black text-stone-900 dark:text-stone-100 block capitalize">
+                "{mweChoice.mweMatch.mwe.phrase_es}"
+              </span>
+              <span className="text-[11px] text-stone-500 dark:text-stone-400 block truncate">
+                {mweChoice.mweMatch.mwe.phrase_en}
+              </span>
+            </button>
+
+            {/* Option B: Select Individual Word */}
+            <button
+              onClick={(e) => {
+                const tok = mweChoice.singleToken;
+                setMweChoice(null);
+                handleSelectToken(tok, e);
+              }}
+              className="w-full text-left p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition cursor-pointer text-xs flex items-center justify-between"
+            >
+              <span>Seleccionar palabra: <strong>"{mweChoice.singleToken.clean}"</strong></span>
+              <span className="text-stone-400">➔</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Badge for Custom Multi-Token Selection */}
+      {multiTokenSelection && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[150] bg-stone-900 text-white rounded-2xl p-3 shadow-2xl flex items-center gap-3 border border-stone-700 animate-slideUp font-sans">
+          <div className="space-y-0.5 max-w-[200px] sm:max-w-xs">
+            <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">
+              Frase seleccionada ({multiTokenSelection.cleanWords.length} palabras)
+            </span>
+            <span className="text-sm font-black truncate block">
+              "{multiTokenSelection.combinedPhrase}"
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              const matchedTokens = allWordTokens.filter(t => multiTokenSelection.tokenIds.includes(t.id));
+              handleSaveCustomMultiToken(multiTokenSelection.combinedPhrase, matchedTokens);
+              setMultiTokenSelection(null);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5" />
+            <span>Guardar en SRS (+20 XP)</span>
+          </button>
+
+          <button
+            onClick={() => setMultiTokenSelection(null)}
+            className="p-1.5 rounded-lg text-stone-400 hover:text-white transition cursor-pointer"
+            title="Cancelar selección"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {/* Grammar / spelling issue reporting modal */}
